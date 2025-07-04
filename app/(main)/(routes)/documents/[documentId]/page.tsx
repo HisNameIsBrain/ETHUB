@@ -2,34 +2,31 @@
 
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import dynamic from "next/dynamic";
 
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { Toolbar } from "@/components/toolbar";
 import { Cover } from "@/components/cover";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// ✅ Move outside of component
-const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
+import Editor from "@/components/editor"; // import Editor from separate file
+import { Id } from "@/convex/_generated/dataModel";
 
 const DocumentIdPage = () => {
-  const params = useParams() as { documentId: Id<"documents"> };
+  const params = useParams();
+  const documentId = params?.documentId as Id<"documents">;
 
-  const document = useQuery(api.documents.getById, {
-    documentId: params.documentId,
-  });
+  if (!documentId) {
+    return <div>Invalid document ID</div>;
+  }
 
+  const document = useQuery(api.documents.getById, { documentId });
   const update = useMutation(api.documents.update);
 
   const onChange = (content: string) => {
-    update({
-      id: params.documentId,
-      content,
-    });
+    update({ id: documentId, content });
   };
 
   if (document === undefined) {
+    // Loading state
     return (
       <div>
         <Cover.Skeleton />
@@ -54,7 +51,7 @@ const DocumentIdPage = () => {
       <Cover url={document.coverImage} />
       <div className="md:max-w-3xl lg:max-w-4xl mx-auto">
         <Toolbar initialData={document} />
-        <Editor initialContent={document.content} onChange={onChange} />
+        <Editor initialContent={document.content} onChange={onChange} editable />
       </div>
     </div>
   );
