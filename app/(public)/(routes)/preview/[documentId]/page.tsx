@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
+import { useParams } from "next/navigation";
 
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -10,27 +11,25 @@ import { Toolbar } from "@/components/toolbar";
 import { Cover } from "@/components/cover";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface DocumentIdPageProps {
-  params: {
-    documentId: string;
-  };
-};
+const DocumentIdPage = () => {
+  const params = useParams();
+  const documentId = params.documentId as string;
 
-const DocumentIdPage = ({
-  params
-}: DocumentIdPageProps) => {
-  const Editor = useMemo(() => dynamic(() => import("@/components/editor"), { ssr: false }) ,[]);
+  const Editor = useMemo(
+    () => dynamic(() => import("@/components/editor"), { ssr: false }),
+    []
+  );
 
   const document = useQuery(api.documents.getById, {
-    documentId: params.documentId as Id<"documents">,
+    documentId: documentId as Id<"documents">,
   });
 
   const update = useMutation(api.documents.update);
 
   const onChange = (content: string) => {
     update({
-      id: params.documentId as Id<"documents">,
-      content
+      id: documentId as Id<"documents">,
+      content,
     });
   };
 
@@ -51,10 +50,10 @@ const DocumentIdPage = ({
   }
 
   if (document === null) {
-    return <div>Not found</div>
+    return <div>Not found</div>;
   }
 
-  return ( 
+  return (
     <div className="pb-40">
       <Cover preview url={document.coverImage} />
       <div className="md:max-w-3xl lg:max-w-4xl mx-auto">
@@ -67,6 +66,6 @@ const DocumentIdPage = ({
       </div>
     </div>
   );
-}
- 
+};
+
 export default DocumentIdPage;
