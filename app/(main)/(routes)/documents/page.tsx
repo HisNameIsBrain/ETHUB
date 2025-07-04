@@ -6,6 +6,7 @@ import { PlusCircle } from "lucide-react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ const DocumentsPage = () => {
   const { user } = useUser();
   const create = useMutation(api.documents.create);
 
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const onCreate = async () => {
     setIsLoading(true);
