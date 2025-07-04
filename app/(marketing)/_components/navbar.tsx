@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/spinner";
@@ -11,6 +12,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import { Logo } from "./logo";
 
 export const Navbar = () => {
+  const { resolvedTheme } = useTheme();
   const { isLoaded, isSignedIn, user } = useUser();
   const scrolled = useScrollTop();
 
@@ -20,17 +22,27 @@ export const Navbar = () => {
     { href: "/search", label: "Search" },
   ];
 
+  const glowColors =
+    resolvedTheme === "dark"
+      ? "radial-gradient(circle at 20% 40%, #7f00ff, transparent 50%), radial-gradient(circle at 80% 60%, #00e0ff, transparent 50%), radial-gradient(circle at 50% 80%, #ff00a1, transparent 50%)"
+      : "radial-gradient(circle at 20% 40%, #ff00cc, transparent 50%), radial-gradient(circle at 80% 60%, #00ccff, transparent 50%), radial-gradient(circle at 50% 80%, #ffcc00, transparent 50%)";
+
   return (
     <>
-      {/* 🌈 Siri-like Fluid Background */}
+      {/* 🌈 Siri-like Fluid Background with Theme-Aware Colors */}
       <div className="fixed top-0 left-0 w-full h-20 z-[-1] pointer-events-none overflow-hidden">
         <div className="absolute inset-0 animate-fluidGradient opacity-70 blur-3xl will-change-transform">
-          <div className="w-full h-full" style={{
-            background: "radial-gradient(circle at 20% 40%, #ff00cc, transparent 50%), radial-gradient(circle at 80% 60%, #00ccff, transparent 50%), radial-gradient(circle at 50% 80%, #ffcc00, transparent 50%)",
-            backgroundBlendMode: "screen",
-            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))",
-            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))"
-          }} />
+          <div
+            className="w-full h-full"
+            style={{
+              background: glowColors,
+              backgroundBlendMode: "screen",
+              maskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+            }}
+          />
         </div>
       </div>
 
