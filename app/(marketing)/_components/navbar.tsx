@@ -22,56 +22,19 @@ export const Navbar = () => {
 
   return (
     <>
-      {/* 🌈 Full Bright Rainbow Wave Background */}
-      <div className="fixed top-0 left-0 w-full h-20 z-[-1] overflow-hidden pointer-events-none">
-        {/* Back layer (slower) */}
-        <div className="absolute inset-0 animate-rainbowWaveSlow blur-xl">
-          <div
-            className="w-[400%] h-full"
-            style={{
-              background: `
-                repeating-linear-gradient(
-                  120deg,
-                  rgba(255, 0, 150, 0.8) 0%,
-                  rgba(255, 140, 0, 0.8) 20%,
-                  rgba(0, 255, 150, 0.8) 40%,
-                  rgba(0, 180, 255, 0.8) 60%,
-                  rgba(180, 0, 255, 0.8) 80%,
-                  rgba(255, 0, 150, 0) 100%
-                )
-              `,
-              backgroundSize: "200% 100%",
-              maskImage: "linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))",
-              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))",
-            }}
-          />
-        </div>
-
-        {/* Front layer (faster) */}
-        <div className="absolute inset-0 animate-rainbowWaveFast blur-2xl">
-          <div
-            className="w-[400%] h-full"
-            style={{
-              background: `
-                repeating-linear-gradient(
-                  120deg,
-                  rgba(255, 0, 150, 1) 0%,
-                  rgba(255, 140, 0, 1) 20%,
-                  rgba(0, 255, 150, 1) 40%,
-                  rgba(0, 180, 255, 1) 60%,
-                  rgba(180, 0, 255, 1) 80%,
-                  rgba(255, 0, 150, 0) 100%
-                )
-              `,
-              backgroundSize: "200% 100%",
-              maskImage: "linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))",
-              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))",
-            }}
-          />
+      {/* 🌈 Siri-like Fluid Background */}
+      <div className="fixed top-0 left-0 w-full h-20 z-[-1] pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 animate-fluidGradient opacity-70 blur-3xl will-change-transform">
+          <div className="w-full h-full" style={{
+            background: "radial-gradient(circle at 20% 40%, #ff00cc, transparent 50%), radial-gradient(circle at 80% 60%, #00ccff, transparent 50%), radial-gradient(circle at 50% 80%, #ffcc00, transparent 50%)",
+            backgroundBlendMode: "screen",
+            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))"
+          }} />
         </div>
       </div>
 
-      {/* 🌐 Navbar */}
+      {/* Navbar Content */}
       <nav
         className={cn(
           "sticky top-0 inset-x-0 z-50 flex w-full items-center justify-between px-6 py-4",
@@ -79,9 +42,8 @@ export const Navbar = () => {
           scrolled && "border-b border-border shadow-sm"
         )}
       >
-        {/* Logo & Navigation Tabs */}
         <div className="flex flex-col md:flex-row items-start md:items-center w-full gap-2 md:gap-8">
-          <Logo className="opacity-60 hover:opacity-100 transition"/>
+          <Logo className="opacity-60 hover:opacity-100 transition" />
           <div className="flex flex-wrap gap-2 ml-8">
             {navLinks.map((tab) => (
               <Link key={tab.href} href={tab.href}>
@@ -105,7 +67,6 @@ export const Navbar = () => {
           </div>
         </div>
 
-        {/* Auth & Settings */}
         <div className="flex items-center gap-x-2">
           {!isLoaded && <Spinner />}
 
@@ -138,32 +99,22 @@ export const Navbar = () => {
         </div>
       </nav>
 
-      {/* 🔁 Animation Keyframes */}
+      {/* 🎞️ Animation Styles */}
       <style jsx global>{`
-        @keyframes rainbowWaveFast {
+        @keyframes fluidGradient {
           0% {
-            transform: translateX(0%);
+            transform: translate(0%, 0%) scale(1);
+          }
+          50% {
+            transform: translate(-10%, 10%) scale(1.05);
           }
           100% {
-            transform: translateX(-50%);
+            transform: translate(0%, 0%) scale(1);
           }
         }
 
-        @keyframes rainbowWaveSlow {
-          0% {
-            transform: translateX(0%);
-          }
-          100% {
-            transform: translateX(-25%);
-          }
-        }
-
-        .animate-rainbowWaveFast > div {
-          animation: rainbowWaveFast 20s linear infinite;
-        }
-
-        .animate-rainbowWaveSlow > div {
-          animation: rainbowWaveSlow 60s linear infinite;
+        .animate-fluidGradient > div {
+          animation: fluidGradient 20s ease-in-out infinite;
         }
       `}</style>
     </>
