@@ -2,31 +2,33 @@
 
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
+import dynamic from "next/dynamic";
 
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Toolbar } from "@/components/toolbar";
 import { Cover } from "@/components/cover";
 import { Skeleton } from "@/components/ui/skeleton";
-import Editor from "@/components/editor"; // import Editor from separate file
-import { Id } from "@/convex/_generated/dataModel";
+
+// move outside
+const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
 const DocumentIdPage = () => {
-  const params = useParams();
-  const documentId = params?.documentId as Id<"documents">;
+  const params = useParams() as { documentId: Id<"documents"> };
 
-  if (!documentId) {
-    return <div>Invalid document ID</div>;
-  }
+  // ✅ HOOKS MUST GO HERE – before any return or if-checks
+  const document = useQuery(api.documents.getById, {
+    documentId: params.documentId,
+  });
 
-  const document = useQuery(api.documents.getById, { documentId });
   const update = useMutation(api.documents.update);
 
   const onChange = (content: string) => {
-    update({ id: documentId, content });
+    update({ id: params.documentId, content });
   };
 
+  // ✅ These checks are OK because they don’t affect the hook calls
   if (document === undefined) {
-    // Loading state
     return (
       <div>
         <Cover.Skeleton />
@@ -51,7 +53,7 @@ const DocumentIdPage = () => {
       <Cover url={document.coverImage} />
       <div className="md:max-w-3xl lg:max-w-4xl mx-auto">
         <Toolbar initialData={document} />
-        <Editor initialContent={document.content} onChange={onChange} editable />
+        <Editor initialContent={document.content} onChange={onChange} />
       </div>
     </div>
   );
