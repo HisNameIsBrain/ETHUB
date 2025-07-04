@@ -21,24 +21,15 @@ interface EditorProps {
 }
 
 const Editor = ({ onChange, initialContent, editable }: EditorProps) => {
-  const [isMounted, setIsMounted] = useState(false);
   const { resolvedTheme } = useTheme();
   const { edgestore } = useEdgeStore();
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const handleUpload = async (file: File) => {
-    const response = await edgestore.publicFiles.upload({
-      file,
-    });
-
+    const response = await edgestore.publicFiles.upload({ file });
     return response.url;
   };
 
-  if (!isMounted) return null;
-
+  // ✅ Call hook unconditionally
   const editor: BlockNoteEditor = useBlockNote({
     editable,
     initialContent: initialContent
@@ -49,6 +40,14 @@ const Editor = ({ onChange, initialContent, editable }: EditorProps) => {
     },
     uploadFile: handleUpload,
   });
+
+  // ✅ Guard rendering (not hook calls) until mounted
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
 
   return (
     <div>
