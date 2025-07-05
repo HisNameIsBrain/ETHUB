@@ -1,6 +1,7 @@
 "use client";
 
 import { Navbar } from "./_components/navbar";
+import { SiriGlow } from "@/components/siri-glow";
 
 const MarketingLayout = ({
   children
@@ -9,6 +10,7 @@ const MarketingLayout = ({
 }) => {
   return ( 
     <div className="h-full dark:bg-[#1F1F1F]">
+      <SiriGlow />
       <Navbar />
       <main className="h-full pt-40">
         {children}

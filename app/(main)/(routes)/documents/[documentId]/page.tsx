@@ -42,7 +42,7 @@ const DocumentIdPage = () => {
         </div>
       </div>
     );
-  }
+  }1
 
   if (document === null) {
     return <div>Not found</div>;
