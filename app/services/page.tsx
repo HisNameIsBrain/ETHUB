@@ -39,7 +39,9 @@ export default function ServicesPage() {
   return (
     <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
       <SiriGlow />
-      <Navbar />
+      <Navbar isCollapsed={false} onResetWidth={function (): void {
+        throw new Error("Function not implemented.");
+      } } />
       <main className="pt-32 px-8">
         <h1 className="text-3xl font-bold mb-6">Service Table</h1>
         <div className="overflow-x-auto">
