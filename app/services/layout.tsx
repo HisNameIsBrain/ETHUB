@@ -2,16 +2,14 @@
 
 import { useConvexAuth } from "convex/react";
 import { redirect } from "next/navigation";
-
 import { Spinner } from "@/components/spinner";
 import { SearchCommand } from "@/components/search-command";
-
-import { Navigation } from "./_components/navigation";
+import { Navbar } from "./_components/navbar";
 import { SiriGlow } from '@/components/siri-glow';
 
 
 
-const MainLayout = ({
+const ServicesLayout = ({
   children
 }: {
   children: React.ReactNode;
@@ -33,7 +31,9 @@ const MainLayout = ({
   return ( 
     <div className="h-screen w-full flex flex-col dark:bg-[#1F1F1F]]">
      <SiriGlow />
-      <Navigation />
+      <Navbar isCollapsed={false} onResetWidth={function (): void {
+        throw new Error("Function not implemented.");
+      } } />
       <main className="flex-1 overflow-y-auto p-6">
       <SearchCommand />
         {children}
@@ -42,4 +42,4 @@ const MainLayout = ({
    );
 }
  
-export default MainLayout;
+export default ServicesLayout;

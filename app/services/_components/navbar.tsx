@@ -15,17 +15,24 @@ import { SiriGlow } from "@/components/siri-glow";
 
 interface NavbarProps {
   isCollapsed: boolean;
-  onResetWidth: () => void;
+  onResetWidth: () =>  void;
 };
+
 
 export const Navbar = ({
   isCollapsed,
-  onResetWidth
+  onResetWidth 
 }: NavbarProps) => {
   const params = useParams();
 
+  // Debug: log params to ensure documentId is present
+  console.log("Navbar params:", params);
+
+  // Adjust this line if your param key is different (e.g., 'id' or 'docId')
+  const documentId = (params?.documentId || params?.id) as Id<"documents">;
+
   const document = useQuery(api.documents.getById, {
-    documentId: params.documentId as Id<"documents">,
+    documentId,
   });
 
   if (document === undefined) {

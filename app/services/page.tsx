@@ -26,7 +26,7 @@ const initialServices: Service[] = [
 
 export default function ServicesPage() {
   const { user, isLoaded } = useUser();
-  const isAdmin = isLoaded && user?.emailAddresses[0].emailAddress.endsWith('@yourdomain.com');
+  const isAdmin = isLoaded && user?.emailAddresses[0].emailAddress.endsWith('z@gmail.com');
   const [services, setServices] = useState<Service[]>(initialServices);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -38,7 +38,6 @@ export default function ServicesPage() {
 
   return (
     <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
-      <SiriGlow />
       <Navbar isCollapsed={false} onResetWidth={function (): void {
         throw new Error("Function not implemented.");
       } } />
