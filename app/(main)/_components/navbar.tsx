@@ -12,7 +12,7 @@ import { Banner } from "./banner";
 import { Menu } from "./menu";
 import { Publish } from "./publish";
 import { SiriGlow } from "@/components/siri-glow";
-import { UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import { getById } from "@/convex/documents";
 
 interface NavbarProps {
   isCollapsed: boolean;
@@ -43,7 +43,6 @@ export const Navbar = ({ isCollapsed, onResetWidth
 
   return (
     <>
-      <SiriGlow />
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center gap-x-4">
         {isCollapsed && (
           <MenuIcon
@@ -57,18 +56,6 @@ export const Navbar = ({ isCollapsed, onResetWidth
           <div className="flex items-center gap-x-2">
             <Publish initialData={document} />
             <Menu documentId={document._id} />
-                       {/* Clerk Auth UI */}
-
-            <SignedIn>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="text-sm px-3 py-1 border rounded-md">
-                  Sign in
-                </button>
-              </SignInButton>
-            </SignedOut>
           </div>
         </div>
       </nav>
