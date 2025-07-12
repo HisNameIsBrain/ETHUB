@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Navbar } from "./_components/navbar";
-import { SiriGlow } from "@/components/siri-glow";
 
 type Service = {
   id: string;
@@ -38,9 +37,6 @@ export default function ServicesPage() {
 
   return (
     <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
-      <Navbar isCollapsed={false} onResetWidth={function (): void {
-        throw new Error("Function not implemented.");
-      } } />
       <main className="pt-32 px-8">
         <h1 className="text-3xl font-bold mb-6">Service Table</h1>
         <div className="overflow-x-auto">
