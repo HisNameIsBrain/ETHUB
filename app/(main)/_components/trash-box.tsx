@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react"; // ✅ this line was missing
 import { useQuery } from "convex/react";
 import { Trash } from "lucide-react";
 
@@ -8,7 +9,6 @@ import { Doc } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 
 import { Item } from "./item";
-
 export const TrashBox = () => {
   const router = useRouter();
   const documents = useQuery(api.documents.trash);
