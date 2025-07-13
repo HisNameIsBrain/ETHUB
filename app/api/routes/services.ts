@@ -1,4 +1,4 @@
-import { query, mutation } from 'convex/edge';
+import { query, mutation } from 'convex/server';
 
 // Fetch a service by ID
 export const getById = query(({ db }, { id }: { id: string }) => {
