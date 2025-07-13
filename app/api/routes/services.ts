@@ -1,15 +1,22 @@
-import { query, mutation } from 'convex/server';
+// convex/api/services.ts (or wherever your routes live)
 
+import { query, mutation } from 'convex';
+import { v } from 'convex/values';
+
+// ✅ Get a service by ID
 export const getById = query({
-  args: { id: v.id("services") },
+  args: {
+    id: v.id('services'),
+  },
   handler: async ({ db }, { id }) => {
-    return await db.query("services").filter((q) => q.eq(q.field("_id"), id)).unique();
+    return await db.get(id);
   },
 });
 
+// ✅ Update a service
 export const update = mutation({
   args: {
-    id: v.id("services"),
+    id: v.id('services'),
     data: v.object({
       name: v.string(),
       deliveryTime: v.string(),
