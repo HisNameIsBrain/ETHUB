@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "convex:codegen": "npx convex codegen",
+    "convex:deploy": "npx convex deploy",
+    "convex:dev": "npx convex dev",
   },
   "dependencies": {
     "@blocknote/core": "^0.9.6",

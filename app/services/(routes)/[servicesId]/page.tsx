@@ -30,7 +30,7 @@ const EditServicePage = () => {
       setForm({
         name: service.name,
         deliveryTime: service.deliveryTime,
-        price: service.price.toString(),
+        price: service.price?.toString() ?? '',
       });
     }
   }, [service]);
@@ -45,14 +45,12 @@ const EditServicePage = () => {
     try {
       await updateService({
         id: servicesId,
-        data: {
-          name: form.name,
-          deliveryTime: form.deliveryTime,
-          price: parseFloat(form.price),
-        },
+        name: form.name,
+        deliveryTime: form.deliveryTime,
+        price: parseFloat(form.price),
       });
       router.push('/services');
-    } catch {
+    } catch (err) {
       setError('Failed to update service.');
     }
   };
