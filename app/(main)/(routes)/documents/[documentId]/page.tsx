@@ -1,51 +1,62 @@
-import { notFound, redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
-import { fetchQuery } from "convex/nextjs";
+"use client";
+
+import { useParams } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
+import dynamic from "next/dynamic";
+
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { Toolbar } from "@/components/toolbar";
+import { Cover } from "@/components/cover";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+// move outside
+const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
-interface PageProps {
-  params: {
-    serviceId: Id<"services">;
-  };
-}
+const DocumentIdPage = () => {
+  const params = useParams() as { documentId: Id<"documents"> };
 
-export default async function Page({ params }: PageProps): Promise<JSX.Element> {
-  const user = await currentUser();
-
-  if (!user || user.publicMetadata.role !== "admin") {
-    redirect("/unauthorized");
-  }
-
-  const service = await fetchQuery(api.services.getById, {
-    id: params.serviceId,
+  // ✅ HOOKS MUST GO HERE – before any return or if-checks
+  const document = useQuery(api.documents.getById, {
+    documentId: params.documentId,
   });
 
-  if (!service) {
-    notFound();
+  const update = useMutation(api.documents.update);
+
+  const onChange = (content: string) => {
+    update({ id: params.documentId, content });
+  };
+
+  // ✅ These checks are OK because they don’t affect the hook calls
+  if (document === undefined) {
+    return (
+      <div>
+        <Cover.Skeleton />
+        <div className="md:max-w-3xl lg:max-w-4xl mx-auto mt-10">
+          <div className="space-y-4 pl-8 pt-4">
+            <Skeleton className="h-14 w-[50%]" />
+            <Skeleton className="h-4 w-[80%]" />
+            <Skeleton className="h-4 w-[40%]" />
+            <Skeleton className="h-4 w-[60%]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (document === null) {
+    return <div>Not found</div>;
   }
 
   return (
-    <div className="max-w-xl mx-auto py-12 px-4">
-      <h1 className="text-2xl font-bold mb-6">Edit Service: {service.name}</h1>
-      <form className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Service Name</label>
-          <Input name="name" defaultValue={service.name} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Delivery Time</label>
-          <Input name="deliveryTime" defaultValue={service.deliveryTime} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Price</label>
-          <Input name="price" defaultValue={service.price} />
-        </div>
-        <Button type="submit">Update</Button>
-      </form>
+    <div className="pb-40">
+      <Cover url={document.coverImage} />
+      <div className="md:max-w-3xl lg:max-w-4xl mx-auto">
+        <Toolbar initialData={document} />
+        <Editor initialContent={document.content} onChange={onChange} />
+      </div>
     </div>
   );
-}
+};
+
+export default DocumentIdPage;
