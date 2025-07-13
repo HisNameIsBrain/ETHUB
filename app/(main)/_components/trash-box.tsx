@@ -16,7 +16,7 @@ export const TrashBox = () => {
   const [search, setSearch] = useState("");
   
   const filteredDocuments = documents?.filter(
-    (document: id < "documents" > ) => {
+    (document: Doc<"documents"> ) => {
       return document.title
         .toLowerCase()
         .includes(search.toLowerCase());
