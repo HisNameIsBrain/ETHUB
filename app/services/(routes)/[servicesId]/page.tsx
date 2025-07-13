@@ -1,51 +1,89 @@
-import { notFound, redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
-import { fetchQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+'use client';
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { useEffect, useState } from 'react';
 
-interface PageProps {
-  params: {
-    serviceId: Id < "services" > ;
-  };
-}
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/spinner';
 
-export default async function Page({ params }: PageProps): Promise < JSX.Element > {
-  const user = await currentUser();
-  
-  if (!user || user.publicMetadata.role !== "admin") {
-    redirect("/unauthorized");
-  }
-  
-  const service = await fetchQuery(api.services.getById, {
-    id: params.serviceId,
+const EditServicePage = () => {
+  const router = useRouter();
+  const { servicesId } = useParams() as { servicesId: Id<'services'> };
+
+  const service = useQuery(api.services.getById, { id: servicesId });
+  const updateService = useMutation(api.services.update);
+
+  const [form, setForm] = useState({
+    name: '',
+    deliveryTime: '',
+    price: '',
   });
-  
-  if (!service) {
-    notFound();
+
+  useEffect(() => {
+    if (service) {
+      setForm({
+        name: service.name,
+        deliveryTime: service.deliveryTime,
+        price: service.price,
+      });
+    }
+  }, [service]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    await updateService({
+      id: servicesId,
+      name: form.name,
+      deliveryTime: form.deliveryTime,
+      price: form.price,
+    });
+    router.push('/services');
+  };
+
+  if (service === undefined) {
+    return (
+      <div className="p-6">
+        <Spinner size="lg" />
+      </div>
+    );
   }
-  
+
+  if (service === null) {
+    return (
+      <div className="p-6 text-red-600">
+        Service not found.
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-xl mx-auto py-12 px-4">
-      <h1 className="text-2xl font-bold mb-6">Edit Service: {service.name}</h1>
-      <form className="space-y-4">
+      <h1 className="text-2xl font-bold mb-6">Edit Service</h1>
+      <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium">Service Name</label>
-          <Input name="name" defaultValue={service.name} />
+          <Input name="name" value={form.name} onChange={handleChange} />
         </div>
         <div>
           <label className="block text-sm font-medium">Delivery Time</label>
-          <Input name="deliveryTime" defaultValue={service.deliveryTime} />
+          <Input name="deliveryTime" value={form.deliveryTime} onChange={handleChange} />
         </div>
         <div>
           <label className="block text-sm font-medium">Price</label>
-          <Input name="price" defaultValue={service.price} />
+          <Input name="price" value={form.price} onChange={handleChange} />
         </div>
-        <Button type="submit">Update</Button>
-      </form>
+        <Button onClick={handleSubmit}>Update Service</Button>
+      </div>
     </div>
   );
-}
+};
+
+export default EditServicePage;
