@@ -1,11 +1,22 @@
 import { query, mutation } from 'convex/server';
 
-// Fetch a service by ID
-export const getById = query(({ db }, { id }: { id: string }) => {
-  return db.services.get(id);
+export const getById = query({
+  args: { id: v.id("services") },
+  handler: async ({ db }, { id }) => {
+    return await db.query("services").filter((q) => q.eq(q.field("_id"), id)).unique();
+  },
 });
 
-// Update a service by ID
-export const update = mutation(({ db }, { id, data }: { id: string; data: { name: string; deliveryTime: string; price: number } }) => {
-  return db.services.update(id, data);
+export const update = mutation({
+  args: {
+    id: v.id("services"),
+    data: v.object({
+      name: v.string(),
+      deliveryTime: v.string(),
+      price: v.number(),
+    }),
+  },
+  handler: async ({ db }, { id, data }) => {
+    await db.patch(id, data);
+  },
 });
