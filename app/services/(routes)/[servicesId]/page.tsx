@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
-import { fetchQuery } from "convex/nextjs";
+import { fetchQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
