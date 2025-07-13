@@ -34,7 +34,6 @@ export const TrashBox = () => {
         label="Trash"
         onClick={() => {}}
         level={0}
-        id="trash"
       />
       {filteredDocuments?.map((document) => (
         <Item
