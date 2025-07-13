@@ -68,31 +68,31 @@ export const DocumentList = ({
 
   return (
     <>
-      {documents.map((document) => (
-        <div key={document._id}>
-          <Item
-            id={document._id}
-            onClick={() => onRedirect(document._id)}
-            label={document.title}
-            icon={FileIcon}
-            documentIcon={
-              typeof document.icon === "string" && document.icon.trim() !== ""
-                ? document.icon
-                : undefined
-            }
-            active={params.documentId === document._id}
-            level={level}
-            onExpand={() => onExpand(document._id)}
-            expanded={!!expanded[document._id]}
-          />
-          {expanded[document._id] && (
-            <DocumentList
-              parentDocumentId={document._id}
-              level={level + 1}
-            />
-          )}
-        </div>
-      ))}
+      {documents.map((document: Doc<"documents">) => (
+  <div key={document._id}>
+    <Item
+      id={document._id}
+      onClick={() => onRedirect(document._id)}
+      label={document.title}
+      icon={FileIcon}
+      documentIcon={
+        typeof document.icon === "string" && document.icon.trim() !== ""
+          ? document.icon
+          : undefined
+      }
+      active={params.documentId === document._id}
+      level={level}
+      onExpand={() => onExpand(document._id)}
+      expanded={!!expanded[document._id]}
+    />
+    {expanded[document._id] && (
+      <DocumentList
+        parentDocumentId={document._id}
+        level={level + 1}
+      />
+    )}
+  </div>
+))}
     </>
   );
 };
