@@ -52,14 +52,17 @@ export default function EditServicePage({ params }: PageProps) {
   };
 
   const handleSubmit = async () => {
-    await updateService({
-      id: params.serviceId as any,
-      name: form.name,
-      deliveryTime: form.deliveryTime,
-      price: form.price,
-    });
-
-    router.push("/services");
+    try {
+      await updateService({
+        id: params.serviceId as any,
+        name: form.name,
+        deliveryTime: form.deliveryTime,
+        price: form.price,
+      });
+      router.push("/services");
+    } catch (error) {
+      console.error("Failed to update service:", error);
+    }
   };
 
   if (!isLoaded) return <div className="p-6"><Spinner size="lg" /></div>;
@@ -86,7 +89,7 @@ export default function EditServicePage({ params }: PageProps) {
             name="deliveryTime"
             value={form.deliveryTime}
             onChange={handleChange}
-            placeholder="e.g. Instant, 1-2 min"
+            placeholder="e.g. Instant, 1–2 min"
           />
         </div>
         <div>
