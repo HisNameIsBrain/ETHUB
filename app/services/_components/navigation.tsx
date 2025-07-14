@@ -33,7 +33,7 @@ import { useSettings } from "@/hooks/use-settings";
 
 import { UserItem } from "./user-item";
 import { Item } from "./item";
-import { DocumentList } from "./document-list";
+import { ServiceList } from "/service-list";
 import { TrashBox } from "./trash-box";
 import { Navbar } from "./navbar";
 
@@ -183,7 +183,7 @@ export const Navigation = () => {
           />
         </div>
         <div className="mt-4">
-          <DocumentList />
+          <ServiceList />
           <Item
             onClick={handleCreate}
             icon={Plus}
