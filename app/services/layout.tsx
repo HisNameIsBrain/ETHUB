@@ -4,7 +4,7 @@ import { useConvexAuth } from "convex/react";
 import { redirect } from "next/navigation";
 import { Spinner } from "@/components/spinner";
 import { SearchCommand } from "@/components/search-command";
-import { Navbar } from "@/components/admin/admin-navbar";
+import { AdminNavbar  } from "@/components/admin/admin-navbar";
 import { SiriGlow } from '@/components/siri-glow';
 
 
@@ -31,7 +31,7 @@ const ServicesLayout = ({
   return ( 
     <div className="h-screen w-full flex flex-col dark:bg-[#1F1F1F]]">
      <SiriGlow />
-      <Navbar isCollapsed={false} onResetWidth={function (): void {
+<AdminNavbar isCollapsed={false} onResetWidth={function (): void {
         throw new Error("Function not implemented.");
       } } />
       <main className="flex-1 overflow-y-auto p-6">
