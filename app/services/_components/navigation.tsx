@@ -33,7 +33,7 @@ import { useSettings } from "@/hooks/use-settings";
 
 import { UserItem } from "./user-item";
 import { Item } from "./item";
-import { ServiceList } from "/service-list";
+import { ServiceList } from "./service-list";
 import { TrashBox } from "./trash-box";
 import { Navbar } from "./navbar";
 
