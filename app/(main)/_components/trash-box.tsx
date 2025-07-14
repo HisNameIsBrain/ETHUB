@@ -12,7 +12,7 @@ import { Spinner } from "@/components/spinner";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/modals/confirm-modal";
 
-// ✅ Define the document type correctly
+// Define the document type returned by the API
 type DocumentType = {
   _id: Id < "documents" > ;
   title: string;
@@ -25,16 +25,16 @@ export const TrashBox = () => {
   
   const documents = useQuery(api.documents.getTrash) as DocumentType[] | undefined;
   
-  const filteredDocuments = documents?.filter((document: DocumentType) =>
-    document.title.toLowerCase().includes(search.toLowerCase())
-  );
-  
   const restore = useMutation(api.documents.restore);
   const remove = useMutation(api.documents.remove);
   
-  const onClick = (documentId: Id < "documents" > ) => {
-    event?.stopPropagation();
+  const onClick = (
+    documentId: Id < "documents" > ,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
     const promise = restore({ id: documentId });
+    
     toast.promise(promise, {
       loading: "Restoring note...",
       success: "Note restored!",
@@ -44,6 +44,7 @@ export const TrashBox = () => {
   
   const onRemove = (documentId: Id < "documents" > ) => {
     const promise = remove({ id: documentId });
+    
     toast.promise(promise, {
       loading: "Deleting note...",
       success: "Note deleted!",
@@ -63,6 +64,10 @@ export const TrashBox = () => {
     );
   }
   
+  const filteredDocuments = documents.filter((document) =>
+    document.title.toLowerCase().includes(search.toLowerCase())
+  );
+  
   return (
     <div className="text-sm">
       <div className="flex items-center gap-x-1 p-2">
@@ -75,14 +80,16 @@ export const TrashBox = () => {
         />
       </div>
       <div className="mt-2 px-1 pb-1">
-        <p className="hidden last:block text-xs text-center text-muted-foreground pb-2">
-          No documents found.
-        </p>
-        {filteredDocuments?.map((document: DocumentType) => (
+        {filteredDocuments.length === 0 && (
+          <p className="text-xs text-center text-muted-foreground pb-2">
+            No documents found.
+          </p>
+        )}
+        {filteredDocuments.map((document) => (
           <div
             key={document._id}
             role="button"
-            onClick={() => onClick(document._id)}
+            onClick={(e) => onClick(document._id, e)}
             className="text-sm rounded-sm w-full hover:bg-primary/5 flex items-center text-primary justify-between"
           >
             <span className="truncate pl-2">{document.title}</span>
