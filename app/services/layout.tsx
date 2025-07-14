@@ -4,7 +4,7 @@ import { useConvexAuth } from "convex/react";
 import { redirect } from "next/navigation";
 import { Spinner } from "@/components/spinner";
 import { SearchCommand } from "@/components/search-command";
-import { Navbar } from "./_components/navbar";
+import { Navbar } from "@/components/admin/admin-navbar";
 import { SiriGlow } from '@/components/siri-glow';
 
 
