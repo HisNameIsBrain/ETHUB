@@ -1,10 +1,15 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import Link from 'next/link';
+import { query } from "@/convex/_generated/server";
 
+export const getAll = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("services").collect();
+  },
+});
 type Service = {
   _id: string;
   name: string;
