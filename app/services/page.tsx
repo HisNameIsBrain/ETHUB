@@ -9,7 +9,7 @@ type Service = {
   _id: string;
   name: string;
   deliveryTime: string;
-  price: number;
+  price: string;
 };
 
 export default function ServicesPage() {
