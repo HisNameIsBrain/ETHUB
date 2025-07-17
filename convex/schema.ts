@@ -2,20 +2,21 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // Documents table (Notion-like structure)
   documents: defineTable({
     title: v.string(),
+    userId: v.string(),
+    isArchived: v.boolean(),
+    parentDocument: v.optional(v.id("documents")),
     content: v.optional(v.string()),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
-    userId: v.string(),
-    orgId: v.string(),
-    parentDocument: v.optional(v.id("documents")),
-    isArchived: v.boolean(),
     isPublished: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_parent", ["userId", "parentDocument"]),
 
+  // Services table (used by getServiceById, createService, etc.)
   services: defineTable({
     name: v.string(),
     description: v.string(),
@@ -23,15 +24,5 @@ export default defineSchema({
     deliveryTime: v.string(),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
-  }).index("by_creation_time", ["createdAt"]),
-
-  servicePermissions: defineTable({
-    userId: v.string(),
-    serviceId: v.id("services"),
-    role: v.union(
-      v.literal("viewer"),
-      v.literal("editor"),
-      v.literal("admin")
-    ),
-  }).index("by_service", ["serviceId"]),
+  }),
 });

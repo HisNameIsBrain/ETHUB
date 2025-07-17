@@ -7,14 +7,17 @@ import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Id } from "@/convex/_generated/dataModel";
 
 const EditServicePage = () => {
   const router = useRouter();
   const params = useParams();
-  const serviceId = params.serviceId as string; // ✅ matches `[serviceId]` folder name
 
-  const service = useQuery(api.services.getById, { id: serviceId });
-  const updateService = useMutation(api.services.update);
+  // Cast the serviceId string from params to Convex Id type for services
+  const serviceId = params.serviceId as Id<"services">;
+
+  const service = useQuery(api.services.getServiceById, { id: serviceId });
+  const updateService = useMutation(api.services.updateService);
 
   const [form, setForm] = useState({
     name: "",
@@ -51,7 +54,7 @@ const EditServicePage = () => {
         price: form.price,
       });
       toast.success("Service updated successfully");
-      router.push("/services"); // ✅ optional redirect after update
+      router.push("/services");
     } catch (error) {
       console.error(error);
       toast.error("Failed to update service");
@@ -60,7 +63,13 @@ const EditServicePage = () => {
     }
   };
 
-  if (!service) return <div className="p-4 text-center">Loading...</div>;
+  if (service === undefined) {
+    return <div className="p-4 text-center">Loading...</div>;
+  }
+
+  if (service === null) {
+    return <div className="p-4 text-center text-red-500">Service not found.</div>;
+  }
 
   return (
     <div className="p-4 max-w-xl mx-auto space-y-4">
