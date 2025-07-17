@@ -53,7 +53,7 @@ export const deleteService = mutation({
 
 // List all services
 export const listAllServices = query({
-  handler: async ({ db }) => {
-    return await db.query("services").collect();
-  },
+      handler: async (ctx) => {
+        return await ctx.db.query("services").collect();
+      },
 });
