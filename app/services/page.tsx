@@ -19,7 +19,7 @@ type Service = {
 
 export default function ServicesPage() {
   const { user, isLoaded } = useUser();
-  const services = useQuery(api.services.getAll);
+  const services = useQuery(api.services.listAllServices);
 
   const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
 
