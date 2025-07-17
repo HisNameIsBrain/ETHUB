@@ -1,9 +1,9 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
+import { useQuery } from 'convex/react'; // ✅ Make sure this is present
 import { api } from '@/convex/_generated/api';
 import Link from 'next/link';
-import { query } from "@/convex/_generated/server";
 
 type Service = {
   _id: string;
@@ -14,14 +14,14 @@ type Service = {
 
 export default function ServicesPage() {
   const { user, isLoaded } = useUser();
-  const services = useQuery(api.services.listAllServices);
-
+  const services = useQuery(api.services.listAllServices); // ✅ good
+  
   const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
-
+  
   if (!services) {
     return <p>Loading services...</p>;
   }
-
+  
   return (
     <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
       <main className="pt-32 px-8">
@@ -38,10 +38,7 @@ export default function ServicesPage() {
             </thead>
             <tbody>
               {services.map((service: Service) => (
-                <tr
-                  key={service._id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
+                <tr key={service._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td className="p-3 border">
                     <Link
                       href={`/services/${service._id}`}
