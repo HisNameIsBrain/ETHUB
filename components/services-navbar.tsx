@@ -1,87 +1,74 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { UserButton, useUser } from "@clerk/nextjs";
-
-import { Logo } from "@/app/(marketing)/_components/logo";
+import { SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/main/_components/logo";
+import { useRouter } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Menu } from "lucide-react";
 
 export function ServicesNavbar() {
+  const { user } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
-  const { user, isSignedIn } = useUser();
-  const [menuOpen, setMenuOpen] = useState(false);
-
+  
   const isAdmin = user?.publicMetadata?.role === "admin";
-
-  const handleNavClick = (route: string) => {
-    setMenuOpen(false);
-    router.push(route);
-  };
-
+  
   return (
-    <header className="w-full bg-white dark:bg-black shadow-md px-4 py-2 flex items-center justify-between">
-      {/* LEFT */}
+    <div className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-gray-700 bg-background z-10">
+      {/* Left side: Menu and Logo */}
       <div className="flex items-center gap-2">
-        {/* Dropdown Menu */}
-        <div className="relative">
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="text-sm font-medium border rounded px-3 py-1 dark:text-white"
-          >
-            ☰ Menu
-          </button>
-          {menuOpen && (
-            <div className="absolute mt-2 w-40 bg-white dark:bg-zinc-900 border dark:border-zinc-700 shadow-lg rounded z-50">
-              <ul className="flex flex-col text-sm">
-                <li
-                  onClick={() =>
-                    handleNavClick(!isSignedIn ? "/" : "/documents")
-                  }
-                  className="cursor-pointer px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  Home
-                </li>
-                <li
-                  onClick={() => handleNavClick("/documents")}
-                  className="cursor-pointer px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  Documents
-                </li>
-                <li
-                  onClick={() => handleNavClick("/services")}
-                  className="cursor-pointer px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  Services
-                </li>
-                <li
-                  onClick={() => handleNavClick("/order")}
-                  className="cursor-pointer px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  Order
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => router.push("/")}>
+              Home
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/services")}>
+              Services
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/order")}>
+              Order
+            </DropdownMenuItem>
+            <SignedIn>
+              <DropdownMenuItem onClick={() => router.push("/documents")}>
+                Documents
+              </DropdownMenuItem>
+            </SignedIn>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        {/* Logo (always visible) */}
         <Logo />
       </div>
 
-      {/* RIGHT */}
-      <div className="flex items-center gap-4">
-        {isSignedIn && isAdmin && (
-          <Link
-            href="/admin"
-            className="bg-red-600 text-white text-sm px-3 py-1 rounded hover:bg-red-700"
-          >
-            Admin
-          </Link>
-        )}
-        <UserButton afterSignOutUrl="/" />
+      {/* Right side: Admin + Auth */}
+      <div className="flex items-center gap-2">
+        <SignedIn>
+          {isAdmin && (
+            <Button
+              variant="destructive"
+              onClick={() => router.push("/admin")}
+            >
+              Admin
+            </Button>
+          )}
+          <UserButton afterSignOutUrl="/" />
+        </SignedIn>
+
+        <SignedOut>
+          <Button variant="outline" onClick={() => router.push("/sign-in")}>
+            Sign In
+          </Button>
+        </SignedOut>
       </div>
-    </header>
+    </div>
   );
 }
