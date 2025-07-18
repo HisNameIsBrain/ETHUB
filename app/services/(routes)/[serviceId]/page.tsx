@@ -1,28 +1,30 @@
-// app/services/[serviceId]/page.tsx
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 export default function ServiceDetailPage() {
   const { serviceId } = useParams() as { serviceId: string };
   const router = useRouter();
 
-if (!serviceId) {
-  return <div className="p-4 text-red-600">No service ID provided.</div>;
-}
-
-const service = useQuery(api.services.getServiceById, {
-  serviceId: serviceId as Id<"services">,
-});
+  // ✅ Don't conditionally call hooks
+  const service = useQuery(
+    api.services.getServiceById,
+    serviceId
+      ? { serviceId: serviceId as Id<"services"> }
+      : "skip"
+  );
 
   if (!serviceId) {
     return <div className="p-4 text-red-600">No service ID provided.</div>;
   }
+
   if (service === undefined) {
     return <div className="p-4">Loading service…</div>;
   }
+
   if (!service) {
     return <div className="p-4 text-gray-600">Service not found.</div>;
   }
