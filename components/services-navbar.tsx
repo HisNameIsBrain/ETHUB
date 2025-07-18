@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 
-import { Logo } from "@/(marketing)/_components/logo";
+import { Logo } from "./(marketing)/_components/logo";
 
 export function ServicesNavbar() {
   const router = useRouter();
