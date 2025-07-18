@@ -15,17 +15,34 @@ export default function AdminServicesPage() {
   
   const [form, setForm] = useState({ name: "", deliveryTime: "", price: "", description: "" });
   
-  const handleSubmit = async () => {
-    await createService(form);
-    setForm({ name: "", deliveryTime: "", price: "", description: "" });
-  };
+const handleSubmit = async () => {
+  if (!form.name || !form.deliveryTime || !form.price || !form.description) {
+    alert("Please fill out all fields.");
+    return;
+  }
+  
+  await createService({
+    ...form,
+    price: parseFloat(form.price),
+  });
+  
+  setForm({ name: "", deliveryTime: "", price: "", description: "" });
+};
   
   return (
     <div className="p-4">
       <h2 className="text-lg font-bold mb-4">Add New Service</h2>
       <div className="grid gap-2 mb-6">
-        <input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-        <input placeholder="Delivery Time" value={form.deliveryTime} onChange={e => setForm(f => ({ ...f, deliveryTime: e.target.value }))} />
+          <input
+            className="border px-2 py-1 rounded"
+            type="text"
+            placeholder="Name"
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+          />
+          <div className="text-sm text-gray-600">Delivery: {service.deliveryTime}</div>
+<div className="text-sm text-gray-600">Price: ${service.price}</div>
+<div className="text-sm text-gray-600 whitespace-pre-line">{service.description}</div>
         <input placeholder="Price" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
         <textarea placeholder="Description (HTML)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
         <button onClick={handleSubmit} className="bg-green-500 text-white px-4 py-2 rounded">Add Service</button>
