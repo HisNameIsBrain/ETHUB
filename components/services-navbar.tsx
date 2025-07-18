@@ -52,7 +52,7 @@ export function ServicesNavbar() {
       {/* Right side: Admin + Auth */}
       <div className="flex items-center gap-2">
         <SignedIn>
-          {isAdmin && isLoaded && user (
+          {isAdmin && isLoaded && user && (
             <Button
               variant="destructive"
               onClick={() => router.push("/admin")}
