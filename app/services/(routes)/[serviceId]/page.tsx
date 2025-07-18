@@ -9,8 +9,13 @@ export default function ServiceDetailPage() {
   const { serviceId } = useParams() as { serviceId: string };
   const router = useRouter();
 
-  // fetch client-side
-  const service = useQuery(api.services.getServiceById, { id: serviceId });
+if (!serviceId) {
+  return <div className="p-4 text-red-600">No service ID provided.</div>;
+}
+
+const service = useQuery(api.services.getServiceById, {
+  serviceId: serviceId as Id<"services">,
+});
 
   if (!serviceId) {
     return <div className="p-4 text-red-600">No service ID provided.</div>;
