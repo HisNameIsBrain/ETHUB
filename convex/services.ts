@@ -20,7 +20,7 @@ export const createService = mutation({
   args: {
     name: v.string(),
     description: v.string(),
-    price: v.string(),
+    price: v.number(),
     deliveryTime: v.string(),
   },
   handler: async (ctx, args) => {
