@@ -13,7 +13,7 @@ export default function ServiceDetailPage() {
   const service = useQuery(
     api.services.getServiceById,
     serviceId
-      ? { serviceId: serviceId as Id<"services"> }
+      ? { id: serviceId as Id<"services"> }
       : "skip"
   );
 

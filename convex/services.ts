@@ -1,13 +1,15 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// convex/services.ts
 export const getServiceById = query({
-  args: { id: v.id("services") },
+  args: {
+    id: v.id("services"),
+  },
   handler: async ({ db }, { id }) => {
     return await db.get(id);
   },
 });
-
 // Create a new service
 export const createService = mutation({
   args: {
