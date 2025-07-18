@@ -2,7 +2,7 @@
 
 import { SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/main/_components/logo";
+import { Logo } from "@/app/(marketing)/_components/logo";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
