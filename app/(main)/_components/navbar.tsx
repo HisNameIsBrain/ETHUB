@@ -29,7 +29,7 @@ export const Navbar = ({
     Id ? { documentId: Id as Id<"documents"> } : "skip"
   );
 
-  if (!rawId) {
+  if (!Id) {
     return (
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
         <span className="text-sm text-muted-foreground">Missing document ID</span>
