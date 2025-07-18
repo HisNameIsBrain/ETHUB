@@ -36,7 +36,7 @@ export const updateService = mutation({
     serviceId: v.id("services"),
     name: v.string(),
     description: v.string(),
-    price: v.string(),
+    price: v.number(),
     deliveryTime: v.string(),
   },
   handler: async (ctx, args) => {
