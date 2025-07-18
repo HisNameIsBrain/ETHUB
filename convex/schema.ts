@@ -20,7 +20,7 @@ export default defineSchema({
   services: defineTable({
     name: v.string(),
     description: v.string(),
-    price: v.string(),
+    price: v.number(),
     deliveryTime: v.string(),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
