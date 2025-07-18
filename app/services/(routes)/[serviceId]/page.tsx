@@ -1,12 +1,4 @@
-import { fetchQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-
-type Props = {
-  params: { serviceId: string };
-};
-
-export default async function ServiceDetail({ params }: Props) // app/services/[serviceId]/page.tsx
+// app/services/[serviceId]/page.tsx
 
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
