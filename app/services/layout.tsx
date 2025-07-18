@@ -23,7 +23,7 @@ const ServicesLayout = ({
   }
   
   if (!isAuthenticated) {
-    return redirect("/");
+    return redirect("/services");
   }
   
   return (
