@@ -1,6 +1,13 @@
-import { mutation, query } from "./_generated/server";
+import { query } from "convex/server";
 import { v } from "convex/values";
+import { services } from "./_generated/dataModel"; // Adjust import if needed
 
+export const getPublicServices = query({
+  args: {},
+  handler: async ({ db }) => {
+    return await db.query("services").collect();
+  },
+});
 // convex/services.ts
 export const getServiceById = query({
   args: {
