@@ -3,7 +3,7 @@
 import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { useState } from "react";
 
-import { AdminNavbar } from "@/components/admin-navbar"; // adjust path if needed
+import { AdminNavbar } from "@/components/admin/admin-navbar"; // adjust path if needed
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
