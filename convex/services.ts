@@ -3,9 +3,9 @@ import { v } from "convex/values";
 
 // Get a service by ID
 export const getServiceById = query({
-  args: { id: v.id("services") },
-  handler: async ({ db }, { id }) => {
-    return await db.get(id);
+  args: { serviceId: v.id("services") },
+  handler: async ({ db }, { serviceId }) => {
+    return await db.get(serviceId);
   },
 });
 
@@ -28,16 +28,18 @@ export const createService = mutation({
 // Update an existing service
 export const updateService = mutation({
   args: {
-    id: v.id("services"),
+    serviceId: v.id("services"),
     name: v.string(),
     description: v.string(),
     price: v.string(),
+    deliveryTime: v.string(),
   },
   handler: async ({ db }, args) => {
-    await db.patch(args.id, {
+    await db.patch(args.serviceId, {
       name: args.name,
       description: args.description,
       price: args.price,
+      deliveryTime: args.deliveryTime,
       updatedAt: Date.now(),
     });
   },
@@ -45,15 +47,16 @@ export const updateService = mutation({
 
 // Delete a service
 export const deleteService = mutation({
-  args: { id: v.id("services") },
-  handler: async ({ db }, { id }) => {
-    await db.delete(id);
+  args: { serviceId: v.id("services") },
+  handler: async ({ db }, { serviceId }) => {
+    await db.delete(serviceId);
   },
 });
 
 // List all services
 export const listAllServices = query({
-      handler: async (ctx) => {
-        return await ctx.db.query("services").collect();
-      },
+  handler: async (ctx) => {
+    return await ctx.db.query("services").collect();
+  },
 });
+

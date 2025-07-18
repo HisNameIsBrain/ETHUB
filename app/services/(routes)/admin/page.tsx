@@ -1,15 +1,43 @@
-"use client"
+// app/admin/services/page.tsx
+"use client";
+
 import { useUser } from "@clerk/nextjs";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useState } from "react";
 
-export default function AdminPage() {
+export default function AdminServicesPage() {
   const { user } = useUser();
-
+  const services = useQuery(api.services.getPublicServices);
+  const createService = useMutation(api.services.createService);
+  const deleteService = useMutation(api.services.deleteService);
+  const updateService = useMutation(api.services.updateService);
+  
+  const [form, setForm] = useState({ name: "", deliveryTime: "", price: "", description: "" });
+  
+  const handleSubmit = async () => {
+    await createService(form);
+    setForm({ name: "", deliveryTime: "", price: "", description: "" });
+  };
+  
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-      <p className="text-gray-600 dark:text-gray-300">
-        Welcome, {user?.firstName || user?.emailAddresses[0].emailAddress}
-      </p>
+    <div className="p-4">
+      <h2 className="text-lg font-bold mb-4">Add New Service</h2>
+      <div className="grid gap-2 mb-6">
+        <input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        <input placeholder="Delivery Time" value={form.deliveryTime} onChange={e => setForm(f => ({ ...f, deliveryTime: e.target.value }))} />
+        <input placeholder="Price" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
+        <textarea placeholder="Description (HTML)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        <button onClick={handleSubmit} className="bg-green-500 text-white px-4 py-2 rounded">Add Service</button>
+      </div>
+
+      <h2 className="text-lg font-bold mb-4">Existing Services</h2>
+      {services?.map(service => (
+        <div key={service._id} className="border p-3 mb-3 rounded">
+          <div className="font-semibold">{service.name}</div>
+          <button onClick={() => deleteService({ serviceId: service._id })} className="text-red-500">Delete</button>
+        </div>
+      ))}
     </div>
   );
 }
