@@ -1,6 +1,5 @@
 import { query } from "convex/server";
 import { v } from "convex/values";
-import { services } from "./_generated/dataModel"; // Adjust import if needed
 
 export const getPublicServices = query({
   args: {},
