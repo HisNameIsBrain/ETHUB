@@ -1,10 +1,9 @@
 "use client";
 
 import { useConvexAuth } from "convex/react";
-import { redirect } from "next/navigation";
 import { Spinner } from "@/components/spinner";
 import { SearchCommand } from "@/components/search-command";
-import { ServicesNavbar } from "@/components/services-navbar"; // Assuming this is the navbar you want
+import { ServicesNavbar } from "@/components/services-navbar";
 import { SiriGlow } from "@/components/siri-glow";
 
 const ServicesLayout = ({
@@ -22,14 +21,10 @@ const ServicesLayout = ({
     );
   }
   
-  if (!isAuthenticated) {
-    return redirect("/");
-  }
-  
   return (
     <div className="h-screen w-full flex flex-col dark:bg-[#1F1F1F]">
       <SiriGlow />
-      <ServicesNavbar />
+      <ServicesNavbar isAuthenticated={isAuthenticated} />
       <main className="flex-1 overflow-y-auto p-6">
         <SearchCommand />
         {children}

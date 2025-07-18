@@ -13,11 +13,11 @@ import {
 import { Menu } from "lucide-react";
 
 export function ServicesNavbar() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
-  
-  const isAdmin = user?.publicMetadata?.role === "admin";
-  
+
+  const isAdmin = isLoaded && user?.publicMetadata?.role === "admin";
+
   return (
     <div className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-gray-700 bg-background z-10">
       {/* Left side: Menu and Logo */}
