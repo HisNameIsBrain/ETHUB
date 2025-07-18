@@ -1,11 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Get a service by ID
 export const getServiceById = query({
-  args: { serviceId: v.id("services") },
-  handler: async ({ db }, { serviceId }) => {
-    return await db.get(serviceId);
+  args: { id: v.id("services") },
+  handler: async ({ db }, { id }) => {
+    return await db.get(id);
   },
 });
 
