@@ -1,23 +1,21 @@
-import { query } from "convex/server";
-import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
 
 export const getPublicServices = query({
-  args: {},
-  handler: async ({ db }) => {
-    return await db.query("services").collect();
+  handler: async (ctx) => {
+    return await ctx.db.query("services").collect();
   },
 });
-// convex/services.ts
+
 export const getServiceById = query({
   args: {
     id: v.id("services"),
   },
-  handler: async ({ db }, { id }) => {
-    return await db.get(id);
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
   },
 });
-// Create a new service
+
 export const createService = mutation({
   args: {
     name: v.string(),
@@ -25,15 +23,14 @@ export const createService = mutation({
     price: v.string(),
     deliveryTime: v.string(),
   },
-  handler: async ({ db }, args) => {
-    return await db.insert("services", {
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("services", {
       ...args,
       createdAt: Date.now(),
     });
   },
 });
 
-// Update an existing service
 export const updateService = mutation({
   args: {
     serviceId: v.id("services"),
@@ -42,8 +39,8 @@ export const updateService = mutation({
     price: v.string(),
     deliveryTime: v.string(),
   },
-  handler: async ({ db }, args) => {
-    await db.patch(args.serviceId, {
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.serviceId, {
       name: args.name,
       description: args.description,
       price: args.price,
@@ -53,18 +50,15 @@ export const updateService = mutation({
   },
 });
 
-// Delete a service
 export const deleteService = mutation({
   args: { serviceId: v.id("services") },
-  handler: async ({ db }, { serviceId }) => {
-    await db.delete(serviceId);
+  handler: async (ctx, { serviceId }) => {
+    await ctx.db.delete(serviceId);
   },
 });
 
-// List all services
 export const listAllServices = query({
   handler: async (ctx) => {
     return await ctx.db.query("services").collect();
   },
 });
-
