@@ -1,17 +1,20 @@
-// app/admin/services/page.tsx
 "use client";
 
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default function AdminServicesPage() {
   const { user } = useUser();
   const services = useQuery(api.services.getPublicServices);
   const createService = useMutation(api.services.createService);
   const deleteService = useMutation(api.services.deleteService);
-  const updateService = useMutation(api.services.updateService);
   
   const [form, setForm] = useState({
     name: "",
@@ -20,77 +23,114 @@ export default function AdminServicesPage() {
     description: "",
   });
   
+  const [bulkInput, setBulkInput] = useState("");
+  
   const handleSubmit = async () => {
-    if (!form.name || !form.deliveryTime || !form.price || !form.description) {
-      alert("Please fill out all fields.");
+    const { name, deliveryTime, price, description } = form;
+    if (!name || !deliveryTime || !price || !description) {
+      alert("Please fill in all fields.");
       return;
     }
     
-    await createService({
-      ...form,
-      price: parseFloat(form.price),
-    });
-    
+    await createService({ ...form, price: parseFloat(price) });
     setForm({ name: "", deliveryTime: "", price: "", description: "" });
   };
   
+  const handleBulkAdd = async () => {
+    const lines = bulkInput.split("\n").filter(Boolean);
+    
+    for (const line of lines) {
+      const [name, deliveryTime, price, ...desc] = line.split(",");
+      const description = desc.join(",").trim();
+      
+      if (name && deliveryTime && price && description) {
+        await createService({
+          name: name.trim(),
+          deliveryTime: deliveryTime.trim(),
+          price: parseFloat(price),
+          description,
+        });
+      }
+    }
+    
+    setBulkInput("");
+  };
+  
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold mb-4">Add New Service</h2>
-      <div className="grid gap-2 mb-6">
-        <input
-          className="border px-2 py-1 rounded"
-          type="text"
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      <h2 className="text-2xl font-semibold">Add New Service</h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input
           placeholder="Name"
           value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
-        <input
-          className="border px-2 py-1 rounded"
-          type="text"
+        <Input
           placeholder="Delivery Time"
           value={form.deliveryTime}
-          onChange={(e) => setForm((f) => ({ ...f, deliveryTime: e.target.value }))}
+          onChange={(e) => setForm({ ...form, deliveryTime: e.target.value })}
         />
-        <input
-          className="border px-2 py-1 rounded"
-          type="text"
+        <Input
           placeholder="Price"
+          type="number"
           value={form.price}
-          onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+          onChange={(e) => setForm({ ...form, price: e.target.value })}
         />
-        <textarea
-          className="border px-2 py-1 rounded"
-          placeholder="Description (HTML)"
+        <Textarea
+          placeholder="Description"
           value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          className="col-span-1 sm:col-span-2"
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
-        <div className="text-sm text-gray-600">Delivery: {form.deliveryTime}</div>
-        <div className="text-sm text-gray-600">Price: ${form.price}</div>
-        <div className="text-sm text-gray-600 whitespace-pre-line">{form.description}</div>
-        <button
-          onClick={handleSubmit}
-          className="bg-green-500 text-white px-4 py-2 rounded"
-        >
-          Add Service
-        </button>
       </div>
 
-      <h2 className="text-lg font-bold mb-4">Existing Services</h2>
-      {services?.map((service) => (
-        <div key={service._id} className="border p-3 mb-3 rounded">
-          <div className="font-semibold">{service.name}</div>
-          <div className="text-sm text-gray-600">Delivery: {service.deliveryTime}</div>
-          <div className="text-sm text-gray-600">Price: ${service.price}</div>
-          <div className="text-sm text-gray-600 whitespace-pre-line">{service.description}</div>
-          <button
-            onClick={() => deleteService({ serviceId: service._id })}
-            className="text-red-500 mt-2"
-          >
-            Delete
-          </button>
+      <Button onClick={handleSubmit}>Add Service</Button>
+
+      <Separator className="my-8" />
+
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Bulk Add Services</h2>
+        <Textarea
+          placeholder="Paste services like: Name,Delivery Time,Price,Description"
+          className="min-h-[120px]"
+          value={bulkInput}
+          onChange={(e) => setBulkInput(e.target.value)}
+        />
+        <Button variant="secondary" onClick={handleBulkAdd}>
+          Bulk Add
+        </Button>
+      </div>
+
+      <Separator className="my-8" />
+
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Existing Services</h2>
+        <div className="grid gap-4">
+          {services?.map((service) => (
+            <Card key={service._id}>
+              <CardContent className="p-4 space-y-1">
+                <div className="font-bold">{service.name}</div>
+                <div className="text-muted-foreground text-sm">
+                  Delivery: {service.deliveryTime}
+                </div>
+                <div className="text-sm">Price: ${service.price}</div>
+                <div className="text-sm text-gray-600 whitespace-pre-line">
+                  {service.description}
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteService({ serviceId: service._id })}
+                  className="mt-2"
+                >
+                  Delete
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
