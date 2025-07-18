@@ -1,40 +1,51 @@
-// app/services/[serviceId]/order/page.tsx
 "use client";
 
-import { useState } from "react";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 export default function OrderFormPage() {
   const params = useParams();
   const [imei, setImei] = useState("");
   const [email, setEmail] = useState("");
-
+  
   const handleSubmit = async () => {
     await fetch("/api/submit", {
       method: "POST",
-      body: JSON.stringify({ serviceId: params.serviceId, imei, email }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        serviceId: params.serviceId as string,
+        imei,
+        email,
+      }),
     });
     alert("Submitted!");
   };
-
+  
   return (
-    <div className="p-4">
-      <h1 className="text-xl mb-2">IMEI/SN Submission</h1>
+    <div className="p-4 max-w-xl mx-auto">
+      <h1 className="text-xl font-bold mb-4">Submit IMEI/SN</h1>
+
       <input
-        placeholder="IMEI or Serial Number"
-        className="w-full mb-2 border p-2 rounded"
+        type="text"
+        placeholder="IMEI / Serial Number"
         value={imei}
         onChange={(e) => setImei(e.target.value)}
+        className="w-full p-2 mb-3 border rounded"
       />
+
       <input
-        placeholder="Email"
-        className="w-full mb-2 border p-2 rounded"
+        type="email"
+        placeholder="Your Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        className="w-full p-2 mb-3 border rounded"
       />
+
       <button
-        className="bg-green-600 text-white px-4 py-2 rounded"
         onClick={handleSubmit}
+        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
       >
         Submit
       </button>
