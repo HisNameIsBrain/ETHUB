@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { MenuIcon } from "lucide-react";
 
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/server";
 
 import { Title } from "./title";
 import { Banner } from "./banner";
@@ -22,14 +22,14 @@ export const Navbar = ({
   onResetWidth
 }: NavbarProps) => {
   const params = useParams();
-  const rawId = params?.documentId || params?.id;
+  const Id = params?.documentId || params?.id;
 
   const document = useQuery(
     api.documents.getById,
-    rawId ? { documentId: rawId as Id<"documents"> } : "skip"
+    Id ? { documentId: Id as Id<"documents"> } : "skip"
   );
 
-  if (!rawId) {
+  if (!Id) {
     return (
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
         <span className="text-sm text-muted-foreground">Missing document ID</span>
