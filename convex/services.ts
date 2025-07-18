@@ -43,7 +43,7 @@ export const updateService = mutation({
     await ctx.db.patch(args.serviceId, {
       name: args.name,
       description: args.description,
-      price: args.price,
+      price: args.number,
       deliveryTime: args.deliveryTime,
       updatedAt: Date.now(),
     });
