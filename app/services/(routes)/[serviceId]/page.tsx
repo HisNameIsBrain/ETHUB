@@ -6,13 +6,35 @@ type Props = {
   params: { serviceId: string };
 };
 
-export default async function ServiceDetail({ params }: Props) {
-  const service = await fetchQuery(api.services.getServiceById, {
-    id: params.serviceId as Id<"services">,
-  });
+export default async function ServiceDetail({ params }: Props) // app/services/[serviceId]/page.tsx
 
-  if (!service) return <div>Service not found.</div>;
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { notFound } from "next/navigation";
 
+type PageProps = {
+  params: {
+    serviceId: string;
+  };
+};
+
+export default async function ServiceDetail({ params }: PageProps) {
+  let service;
+  
+  try {
+    service = await fetchQuery(api.services.getServiceById, {
+      id: params.serviceId as Id < "services" > ,
+    });
+  } catch (err) {
+    console.error("Failed to fetch service:", err);
+    return notFound(); // Better UX for failed fetches or bad IDs
+  }
+  
+  if (!service) {
+    return notFound();
+  }
+  
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">{service.name}</h1>

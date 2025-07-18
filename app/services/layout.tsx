@@ -31,9 +31,7 @@ const ServicesLayout = ({
   return ( 
     <div className="h-screen w-full flex flex-col dark:bg-[#1F1F1F]]">
      <SiriGlow />
-      <Navbar isCollapsed={false} onResetWidth={function (): void {
-        throw new Error("Function not implemented.");
-      } } />
+      <Navbar />
       <main className="flex-1 overflow-y-auto p-6">
       <SearchCommand />
         {children}
