@@ -2,9 +2,8 @@ import { useUser } from "@clerk/nextjs";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Banner } from "./banner";
+import { Banner } from "/app/(main)/_components/banner";
 import { Logo } from "@/app/(marketing)/_components/logo";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +29,6 @@ export default function ServicesNavbar() {
           <UserButton afterSignOutUrl="/" />
         </div>
       </div>
-      <Separator />
     </div>
   );
 }
