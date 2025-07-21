@@ -6,8 +6,8 @@ import { api } from '@/convex/_generated/api';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/spinner';
-import { ServicesNavbar } from '@/components/nav/services-navbar';
-import { SiriGlow } from '@/components/special/siri-glow'; // adjust path if needed
+import { ServicesNavbar } from '@/components/services-navbar';
+import { SiriGlow } from '@/components/siri-glow'; // adjust path if needed
 
 export default function ServiceDetailPage() {
   const { serviceId } = useParams() as { serviceId: string };
