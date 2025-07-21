@@ -3,7 +3,7 @@ import { useUser } from "@clerk/nextjs";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Banner } from "/app/(main)/_components/banner.tsx";
+import { Banner } from "/app/(main)/_components/banner";
 import { Logo } from "@/app/(marketing)/_components/logo";
 import Link from "next/link";
 
