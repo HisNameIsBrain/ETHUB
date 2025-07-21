@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { ServiceId } from '@/convex/_generated/dataModel';
 import { useEffect, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
