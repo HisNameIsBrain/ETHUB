@@ -22,21 +22,26 @@ export const Navbar = ({
   onResetWidth
 }: NavbarProps) => {
   const params = useParams();
-  const rawId = params?.documentId || params?.id;
+  const documentId = (params?.documentId || params?.id) as Id<"documents"> | undefined;
 
   const document = useQuery(
     api.documents.getById,
-    rawId ? { documentId: rawId as Id<"documents"> } : "skip"
+    documentId ? { documentId } : "skip"
   );
 
-  if (!rawId) {
+  // Optional: early return if no documentId available
+  if (!documentId) {
     return (
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Missing document ID</span>
+        <Title.Skeleton />
+        <div className="flex items-center gap-x-2">
+          <Menu.Skeleton />
+        </div>
       </nav>
     );
   }
 
+  // Loading state (document === undefined)
   if (document === undefined) {
     return (
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
@@ -48,10 +53,11 @@ export const Navbar = ({
     );
   }
 
+  // Document not found (document === null)
   if (document === null) {
     return (
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Document not found</span>
+        <span className="text-muted-foreground text-sm">Document not found</span>
       </nav>
     );
   }

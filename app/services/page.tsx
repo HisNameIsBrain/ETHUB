@@ -1,49 +1,73 @@
-// app/services/page.tsx
-"use client";
+'use client';
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import Link from "next/link";
-import { useState } from "react";
+import { useUser } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import Link from 'next/link';
+
+type Service = {
+  _id: string;
+  name: string;
+  deliveryTime: string;
+  price: number;
+};
 
 export default function ServicesPage() {
-  const [search, setSearch] = useState("");
-  const services = useQuery(api.services.getPublicServices);
-  
-  const filtered = services?.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase())
-  );
-  
+  const { user, isLoaded } = useUser();
+  const services = useQuery(api.services.getAll);
+
+  const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
+
+  if (!services) {
+    return <p>Loading services...</p>;
+  }
+
   return (
-    <div className="p-4">
-      <input
-        className="w-full border px-3 py-2 mb-4 rounded"
-        placeholder="Search service"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <table className="w-full text-left border">
-        <thead className="bg-red-600 text-white">
-          <tr>
-            <th className="p-2">Service</th>
-            <th className="p-2">Delivery</th>
-            <th className="p-2">Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered?.map((s) => (
-            <tr key={s._id} className="border-b hover:bg-gray-100">
-              <td className="p-2">
-                <Link href={`/services/${s._id}`} className="text-blue-600 underline">
-                  {s.name}
-                </Link>
-              </td>
-              <td className="p-2">{s.deliveryTime}</td>
-              <td className="p-2">${s.price}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
+      <main className="pt-32 px-8">
+        <h1 className="text-3xl font-bold mb-6">Service List</h1>
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto border border-gray-300 rounded-md">
+            <thead>
+              <tr className="bg-gray-100 text-left">
+                <th className="p-3 border">Service</th>
+                <th className="p-3 border">Delivery Time</th>
+                <th className="p-3 border">Price</th>
+                {isAdmin && <th className="p-3 border">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((service: Service) => (
+                <tr
+                  key={service._id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <td className="p-3 border">
+                    <Link
+                      href={`/services/${service._id}`}
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {service.name}
+                    </Link>
+                  </td>
+                  <td className="p-3 border">{service.deliveryTime}</td>
+                  <td className="p-3 border">${service.price}</td>
+                  {isAdmin && (
+                    <td className="p-3 border">
+                      <Link
+                        href={`/admin/services/${service._id}/edit`}
+                        className="bg-blue-500 text-white px-3 py-1 rounded"
+                      >
+                        Edit
+                      </Link>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   );
 }
