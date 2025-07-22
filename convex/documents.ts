@@ -109,6 +109,18 @@ export const create = mutation({
   }
 });
 
+export const trash = query({
+  args: {},
+  handler: async (ctx) => {
+    const docs = await ctx.db
+      .query("documents")
+      .filter((q) => q.eq(q.field("isTrash"), true))
+      .collect();
+    
+    return docs;
+  },
+});
+
 export const getTrash = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
