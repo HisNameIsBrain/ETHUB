@@ -9,7 +9,7 @@ import { Logo } from "@/app/(marketing)/_components/logo";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export const ServicesNavbar() {
+export const ServicesNavbar = () => {
   const { user } = useUser();
   const isAdmin = user?.publicMetadata?.role === "admin";
 
