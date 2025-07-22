@@ -19,7 +19,7 @@ const adminMenuItems = [
   { label: "Users", href: "/services/admin/users" },
 ];
 
-export function AdminNavbar() {
+export const AdminNavbar = () => {
   const pathname = usePathname();
   const { setTheme, theme } = useTheme();
 
