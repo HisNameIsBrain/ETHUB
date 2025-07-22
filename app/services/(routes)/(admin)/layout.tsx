@@ -3,7 +3,7 @@
 import { useUser, SignedIn, SignedOut } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import AdminNavbar  from "@/components/admin/admin-navbar";
+import { AdminNavbar }  from "@/components/admin/admin-navbar";
 import { SiriGlow } from "@/components/siri-glow";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
