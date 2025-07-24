@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { Id } from '@/convex/';
 
 export default function ServicesPage() {
   const params = useParams() as { serviceId ? : string };
