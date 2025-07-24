@@ -1,13 +1,13 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getPublic = query({
+export const listAll = query({
   handler: async (ctx) => {
     return await ctx.db.query("services").collect();
   },
 });
 
-export const getById = query({
+export const getServiceById = query({
   args: {
     id: v.id("services"),
   },
@@ -27,6 +27,7 @@ export const create = mutation({
     return await ctx.db.insert("services", {
       ...args,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
   },
 });
@@ -54,11 +55,5 @@ export const erase = mutation({
   args: { serviceId: v.id("services") },
   handler: async (ctx, { serviceId }) => {
     await ctx.db.delete(serviceId);
-  },
-});
-
-export const listAll= query({
-  handler: async (ctx) => {
-    return await ctx.db.query("services").collect();
   },
 });
