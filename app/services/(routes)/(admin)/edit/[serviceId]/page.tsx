@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/spinner';
-import { TextArea } from '@/components/ui/text-area';
+import { TextArea } from '@/components/ui/TextArea'; // Ensure file and export match
 
 const EditServicePage = () => {
   const router = useRouter();
@@ -83,30 +83,37 @@ const EditServicePage = () => {
       <h1 className="text-2xl font-bold mb-6">Edit Service</h1>
       <div className="space-y-4">
         {error && <p className="text-red-600">{error}</p>}
+        
         <div>
           <label className="block text-sm font-medium">Service Name</label>
           <Input name="name" value={form.name} onChange={handleChange} />
         </div>
+        
         <div>
           <label className="block text-sm font-medium">Delivery Time</label>
           <Input name="deliveryTime" value={form.deliveryTime} onChange={handleChange} />
         </div>
+        
         <div>
           <label className="block text-sm font-medium">Price</label>
           <Input name="price" value={form.price} onChange={handleChange} />
         </div>
+        
         <div>
           <label className="block text-sm font-medium">Category</label>
           <Input name="category" value={form.category} onChange={handleChange} />
         </div>
+        
         <div>
           <label className="block text-sm font-medium">Server Code</label>
           <Input name="server" value={form.server} onChange={handleChange} />
         </div>
+        
         <div>
           <label className="block text-sm font-medium">Description</label>
-          <Textarea name="description" value={form.description} onChange={handleChange} />
+          <TextArea name="description" value={form.description} onChange={handleChange} />
         </div>
+        
         <Button onClick={handleSubmit} disabled={updateService.isLoading}>
           {updateService.isLoading ? 'Updating...' : 'Update Service'}
         </Button>
