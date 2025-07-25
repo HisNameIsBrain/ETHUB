@@ -1,6 +1,6 @@
-import { query } from "./_generated/server";
+import { query } from "@/convex/_generated/serverd/server";
 import { v } from "convex/values";
-import type { QueryCtx } from "./_generated/server";
+import type { QueryCtx } from "@/convex/_generated/serverd/server";
 
 export const getById = query({
   args: {
