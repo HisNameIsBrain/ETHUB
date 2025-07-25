@@ -7,9 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "convex:codegen": "npx convex codegen",
-    "convex:deploy": "npx convex deploy",
-    "convex:dev": "npx convex dev"
+"convex-dev": "npx convex dev",
+"convex-codegen": "npx convex codegen"
   },
   "dependencies": {
     "@blocknote/core": "^0.9.6",
