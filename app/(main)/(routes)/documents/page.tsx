@@ -15,13 +15,22 @@ const DocumentsPage = () => {
   const router = useRouter();
   const { user } = useUser();
   const create = useMutation(api.documents.create);
-
+  
   const [isLoading, setIsLoading] = useState(false);
-
+  
   const onCreate = async () => {
     setIsLoading(true);
     try {
-      const documentId = await create({ title: "Untitled" });
+      if (!user) {
+        toast.error("User not authenticated.");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Example: Getting orgId from user metadata or a default
+      const orgId = user?.organizationId || "defaultOrgId"; // replace with your actual logic
+      
+      const documentId = await create({ title: "Untitled", orgId });
       toast.success("New note created!");
       router.push(`/documents/${documentId}`);
     } catch (error) {
@@ -30,7 +39,7 @@ const DocumentsPage = () => {
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="h-full flex flex-col items-center justify-center space-y-4">
       <Image
