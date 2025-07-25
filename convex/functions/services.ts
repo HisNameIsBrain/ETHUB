@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * Public: Get all available records
+ * Public: Get all services
  */
 export const getAll = query({
   handler: async ({ db }) => {
@@ -11,7 +11,7 @@ export const getAll = query({
 });
 
 /**
- * Public: Get record by ID
+ * Public: Get service by ID
  */
 export const getById = query({
   args: {
@@ -23,7 +23,7 @@ export const getById = query({
 });
 
 /**
- * Admin-only: Create a new record
+ * Admin-only: Create a new service
  */
 export const create = mutation({
   args: {
@@ -38,34 +38,46 @@ export const create = mutation({
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
     
-    return await db.insert("services", args);
+    const now = Date.now();
+    return await db.insert("services", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
 /**
- * Admin-only: Update existing record
+ * Admin-only: Update existing service
  */
 export const update = mutation({
   args: {
     serviceId: v.id("services"),
-    name: v.string(),
-    description: v.string(),
-    price: v.float(),
-    deliveryTime: v.string(),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    price: v.optional(v.float()),
+    deliveryTime: v.optional(v.string()),
     serverCode: v.optional(v.string()),
-    category: v.string(),
+    category: v.optional(v.string()),
   },
   handler: async ({ db, auth }, args) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
     
     const { serviceId, ...updates } = args;
-    await db.patch(serviceId, updates);
+    
+    // Add updatedAt timestamp
+    const patched = await db.patch(serviceId, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+    
+    return patched;
   },
 });
 
 /**
- * Admin-only: Delete a record
+ * Admin-only: Delete a service
  */
 export const remove = mutation({
   args: {
@@ -76,5 +88,7 @@ export const remove = mutation({
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
     
     await db.delete(serviceId);
+    
+    return { success: true };
   },
 });
