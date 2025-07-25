@@ -1,18 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-/**
- * Public: Get all services
- */
 export const getAll = query({
   handler: async ({ db }) => {
     return await db.query("services").collect();
   },
 });
 
-/**
- * Public: Get service by ID
- */
 export const getById = query({
   args: {
     serviceId: v.id("services"),
@@ -22,9 +16,6 @@ export const getById = query({
   },
 });
 
-/**
- * Admin-only: Create a new service
- */
 export const create = mutation({
   args: {
     name: v.string(),
@@ -37,7 +28,6 @@ export const create = mutation({
   handler: async ({ db, auth }, args) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
-    
     const now = Date.now();
     return await db.insert("services", {
       ...args,
@@ -47,9 +37,6 @@ export const create = mutation({
   },
 });
 
-/**
- * Admin-only: Update existing service
- */
 export const update = mutation({
   args: {
     serviceId: v.id("services"),
@@ -63,22 +50,14 @@ export const update = mutation({
   handler: async ({ db, auth }, args) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
-    
     const { serviceId, ...updates } = args;
-    
-    // Add updatedAt timestamp
-    const patched = await db.patch(serviceId, {
+    return await db.patch(serviceId, {
       ...updates,
       updatedAt: Date.now(),
     });
-    
-    return patched;
   },
 });
 
-/**
- * Admin-only: Delete a service
- */
 export const remove = mutation({
   args: {
     serviceId: v.id("services"),
@@ -86,9 +65,7 @@ export const remove = mutation({
   handler: async ({ db, auth }, { serviceId }) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
-    
     await db.delete(serviceId);
-    
     return { success: true };
   },
 });
