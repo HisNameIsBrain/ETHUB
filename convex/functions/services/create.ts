@@ -1,4 +1,5 @@
-import { mutation, v } from "../../_generated/server";
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
 
 export const create = mutation({
   args: {
@@ -12,7 +13,7 @@ export const create = mutation({
   handler: async ({ db, auth }, args) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
-
+    
     const now = Date.now();
     return await db.insert("services", {
       ...args,

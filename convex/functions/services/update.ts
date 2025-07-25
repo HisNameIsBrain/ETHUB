@@ -1,8 +1,9 @@
-import { mutation, v } from "../../_generated/server";
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
 
 export const update = mutation({
   args: {
-    serviceId: v.id("services"),
+    id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.float()),
@@ -13,10 +14,9 @@ export const update = mutation({
   handler: async ({ db, auth }, args) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
-
-    const { serviceId, ...updates } = args;
-
-    return await db.patch(serviceId, {
+    
+    const { id, ...updates } = args;
+    return await db.patch(id, {
       ...updates,
       updatedAt: Date.now(),
     });

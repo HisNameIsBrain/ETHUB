@@ -1,10 +1,11 @@
-import { query, v } from "../../_generated/server";
+import { query } from "./_generated/server";
+import { v } from "convex/values";
 
 export const getById = query({
   args: {
-    serviceId: v.id("services"),
+    id: v.id("services"),
   },
-  handler: async ({ db }, { serviceId }) => {
-    return await db.get(serviceId);
+  handler: async ({ db }, { id }) => {
+    return await db.get(id);
   },
 });
