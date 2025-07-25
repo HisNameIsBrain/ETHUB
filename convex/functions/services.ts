@@ -9,10 +9,10 @@ export const getAll = query({
 
 export const getById = query({
   args: {
-    serviceId: v.id("services"),
+    id: v.id("services"),
   },
-  handler: async ({ db }, { serviceId }) => {
-    return await db.get(serviceId);
+  handler: async ({ db }, { id }) => {
+    return await db.get(id);
   },
 });
 
@@ -25,9 +25,7 @@ export const create = mutation({
     serverCode: v.optional(v.string()),
     category: v.string(),
   },
-  handler: async ({ db, auth }, args) => {
-    const user = await auth.getUserIdentity();
-    if (!user || user.role !== "admin") throw new Error("Unauthorized");
+  handler: async ({ db }, args) => {
     const now = Date.now();
     return await db.insert("services", {
       ...args,
@@ -39,7 +37,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
-    serviceId: v.id("services"),
+    id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.float()),
@@ -47,12 +45,10 @@ export const update = mutation({
     serverCode: v.optional(v.string()),
     category: v.optional(v.string()),
   },
-  handler: async ({ db, auth }, args) => {
-    const user = await auth.getUserIdentity();
-    if (!user || user.role !== "admin") throw new Error("Unauthorized");
-    const { serviceId, ...updates } = args;
-    return await db.patch(serviceId, {
-      ...updates,
+  handler: async ({ db }, args) => {
+    const { id, ...rest } = args;
+    return await db.patch(id, {
+      ...rest,
       updatedAt: Date.now(),
     });
   },
@@ -60,12 +56,10 @@ export const update = mutation({
 
 export const remove = mutation({
   args: {
-    serviceId: v.id("services"),
+    id: v.id("services"),
   },
-  handler: async ({ db, auth }, { serviceId }) => {
-    const user = await auth.getUserIdentity();
-    if (!user || user.role !== "admin") throw new Error("Unauthorized");
-    await db.delete(serviceId);
+  handler: async ({ db }, { id }) => {
+    await db.delete(id);
     return { success: true };
   },
 });

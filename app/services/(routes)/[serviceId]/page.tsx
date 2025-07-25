@@ -1,28 +1,74 @@
-'use client';
+"use client";
 
-import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useParams, useRouter } from "next/navigation";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useEffect, useState } from "react";
 
-import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/spinner';
-import { ServicesNavbar } from '@/components/services-navbar';
-import { SiriGlow } from '@/components/siri-glow';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/spinner";
+import { TextArea } from "@/components/ui/TextArea";
 
-export default function ServiceDetailPage() {
-  const { serviceId } = useParams() as { serviceId: string };
+const EditServicePage = () => {
   const router = useRouter();
+  const { serviceId } = useParams() as { serviceId: string };
   
-  // Fetch service by ID
   const service = useQuery(api.services.getById, { serviceId });
-  // Fetch current user info
-  const user = useQuery(api.users.getCurrentUser);
+  const updateService = useMutation(api.services.update);
   
-  const isAdmin = user?.role === 'admin';
+  const [form, setForm] = useState({
+    name: "",
+    deliveryTime: "",
+    price: "",
+    category: "",
+    description: "",
+    serverCode: "",
+  });
   
-  if (service === undefined || user === undefined) {
+  const [error, setError] = useState < string | null > (null);
+  
+  useEffect(() => {
+    if (service) {
+      setForm({
+        name: service.name ?? "",
+        deliveryTime: service.deliveryTime ?? "",
+        price: service.price?.toString() ?? "",
+        category: service.category ?? "",
+        description: service.description ?? "",
+        serverCode: service.serverCode ?? "",
+      });
+    }
+  }, [service]);
+  
+  const handleChange = (
+    e: React.ChangeEvent < HTMLInputElement | HTMLTextAreaElement >
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSubmit = async () => {
+    setError(null);
+    try {
+      await updateService({
+        serviceId,
+        name: form.name,
+        deliveryTime: form.deliveryTime,
+        price: parseFloat(form.price),
+        category: form.category,
+        description: form.description,
+        serverCode: form.serverCode,
+      });
+      router.push("/services");
+    } catch (err) {
+      setError("Failed to update service.");
+    }
+  };
+  
+  if (service === undefined) {
     return (
-      <div className="p-6 flex justify-center">
+      <div className="p-6">
         <Spinner size="lg" />
       </div>
     );
@@ -32,38 +78,49 @@ export default function ServiceDetailPage() {
     return <div className="p-6 text-red-600">Service not found.</div>;
   }
   
-  if (user === null) {
-    return <div className="p-6 text-red-600">User not authenticated.</div>;
-  }
-  
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors">
-      <SiriGlow />
-      <ServicesNavbar />
-      <div className="max-w-2xl mx-auto py-12 px-4">
-        <h1 className="text-3xl font-bold mb-4">{service.name}</h1>
-        <div className="space-y-3 text-lg">
-          <p>
-            <strong>Delivery Time:</strong> {service.deliveryTime}
-          </p>
-          <p>
-            <strong>Price:</strong> ${service.price.toFixed(2)}
-          </p>
-          {service.description && (
-            <p>
-              <strong>Description:</strong> {service.description}
-            </p>
-          )}
+    <div className="max-w-xl mx-auto py-12 px-4">
+      <h1 className="text-2xl font-bold mb-6">Edit Service</h1>
+      <div className="space-y-4">
+        {error && <p className="text-red-600">{error}</p>}
+        <div>
+          <label className="block text-sm font-medium">Service Name</label>
+          <Input name="name" value={form.name} onChange={handleChange} />
         </div>
-
-        {isAdmin && (
-          <div className="mt-6">
-            <Button onClick={() => router.push(`/admin/services/${service._id}/edit`)}>
-              Edit Service
-            </Button>
-          </div>
-        )}
+        <div>
+          <label className="block text-sm font-medium">Delivery Time</label>
+          <Input
+            name="deliveryTime"
+            value={form.deliveryTime}
+            onChange={handleChange}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Price</label>
+          <Input name="price" value={form.price} onChange={handleChange} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Category</label>
+          <Input name="category" value={form.category} onChange={handleChange} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Server Code</label>
+          <Input name="serverCode" value={form.serverCode} onChange={handleChange} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Description</label>
+          <TextArea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+          />
+        </div>
+        <Button onClick={handleSubmit} disabled={updateService.isLoading}>
+          {updateService.isLoading ? "Updating..." : "Update Service"}
+        </Button>
       </div>
     </div>
   );
-}
+};
+
+export default EditServicePage;
