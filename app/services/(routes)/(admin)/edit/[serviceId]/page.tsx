@@ -3,7 +3,6 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { ServiceId } from '@/convex/_generated/dataModel';
 import { useEffect, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,7 @@ import { Spinner } from '@/components/spinner';
 
 const EditServicePage = () => {
   const router = useRouter();
-  const { servicesId } = useParams() as { servicesId: Id<'services'> };
+ const { serviceId } = useParams() as { serviceId: string };
 
   const service = useQuery(api.services.getById, { id: servicesId });
   const updateService = useMutation(api.services.update);
