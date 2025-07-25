@@ -1,6 +1,6 @@
 // components/ui/TextArea.tsx
 import * as React from "react";
-import { cn } from "@/lib/utils"; // Adjust or remove if you don't use this utility
+import { cn } from "@/lib/utils"; // Remove if you don't use class merging
 
 const TextArea = React.forwardRef<
   HTMLTextAreaElement,
