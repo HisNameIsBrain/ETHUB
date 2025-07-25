@@ -13,14 +13,16 @@ export default function ServiceDetailPage() {
   const { serviceId } = useParams() as { serviceId: string };
   const router = useRouter();
   
-  const service = useQuery(api.services.getServiceById, { id: serviceId });
+  // Fetch service by ID
+  const service = useQuery(api.services.getById, { serviceId });
+  // Fetch current user info
   const user = useQuery(api.users.getCurrentUser);
   
   const isAdmin = user?.role === 'admin';
   
   if (service === undefined || user === undefined) {
     return (
-      <div className="p-6">
+      <div className="p-6 flex justify-center">
         <Spinner size="lg" />
       </div>
     );
@@ -35,22 +37,28 @@ export default function ServiceDetailPage() {
   }
   
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground transition-colors">
       <SiriGlow />
       <ServicesNavbar />
       <div className="max-w-2xl mx-auto py-12 px-4">
         <h1 className="text-3xl font-bold mb-4">{service.name}</h1>
         <div className="space-y-3 text-lg">
-          <p><strong>Delivery Time:</strong> {service.deliveryTime}</p>
-          <p><strong>Price:</strong> ${service.price.toFixed(2)}</p>
+          <p>
+            <strong>Delivery Time:</strong> {service.deliveryTime}
+          </p>
+          <p>
+            <strong>Price:</strong> ${service.price.toFixed(2)}
+          </p>
           {service.description && (
-            <p><strong>Description:</strong> {service.description}</p>
+            <p>
+              <strong>Description:</strong> {service.description}
+            </p>
           )}
         </div>
 
         {isAdmin && (
           <div className="mt-6">
-            <Button onClick={() => router.push(`/services/edit/${service.id}`)}>
+            <Button onClick={() => router.push(`/admin/services/${service._id}/edit`)}>
               Edit Service
             </Button>
           </div>
