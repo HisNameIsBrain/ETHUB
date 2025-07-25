@@ -1,7 +1,8 @@
 import { query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 
 export const getAll = query({
-  handler: async ({ db }) => {
-    return await db.query("services").collect();
+  handler: async (ctx: QueryCtx) => {
+    return await ctx.db.query("services").collect();
   },
 });
