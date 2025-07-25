@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/spinner';
-import { Textarea } from '@/components/ui/text-area';
+import { TextArea } from '@/components/ui/text-area';
 
 const EditServicePage = () => {
   const router = useRouter();
