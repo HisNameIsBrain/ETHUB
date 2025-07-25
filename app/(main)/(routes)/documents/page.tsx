@@ -11,24 +11,30 @@ import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 
+// Import your ExtendedUser type
+import type { ExtendedUser } from "@/types/user";
+
 const DocumentsPage = () => {
   const router = useRouter();
   const { user } = useUser();
-  const create = useMutation(api.documents.create);
   
+  // Cast user to ExtendedUser to access publicMetadata.organizationId
+  const userExt = user as ExtendedUser | undefined;
+  
+  const create = useMutation(api.documents.create);
   const [isLoading, setIsLoading] = useState(false);
   
   const onCreate = async () => {
     setIsLoading(true);
     try {
-      if (!user) {
+      if (!userExt) {
         toast.error("User not authenticated.");
         setIsLoading(false);
         return;
       }
       
-      // Example: Getting orgId from user metadata or a default
-      const orgId = user?.organizationId || "defaultOrgId"; // replace with your actual logic
+      // Access orgId safely from publicMetadata
+      const orgId = userExt.publicMetadata?.organizationId || "defaultOrgId";
       
       const documentId = await create({ title: "Untitled", orgId });
       toast.success("New note created!");
