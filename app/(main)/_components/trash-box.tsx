@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react"; // ✅ this line was missing
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { Trash } from "lucide-react";
 
@@ -9,18 +9,17 @@ import { Doc } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 
 import { Item } from "./item";
+
 export const TrashBox = () => {
   const router = useRouter();
   const documents = useQuery(api.documents.trash);
   
   const [search, setSearch] = useState("");
   
+  // Explicitly type document as Doc<"documents">
   const filteredDocuments = documents?.filter(
-    (document: Doc<"documents"> ) => {
-      return document.title
-        .toLowerCase()
-        .includes(search.toLowerCase());
-    }
+    (document: Doc < "documents" > ) =>
+    document.title.toLowerCase().includes(search.toLowerCase())
   );
   
   const onRedirect = (documentId: string) => {
@@ -29,13 +28,8 @@ export const TrashBox = () => {
   
   return (
     <div className="space-y-2">
-      <Item
-        icon={Trash}
-        label="Trash"
-        onClick={() => {}}
-        level={0}
-      />
-      {filteredDocuments?.map((document) => (
+      <Item icon={Trash} label="Trash" onClick={() => {}} level={0} />
+      {filteredDocuments?.map((document: Doc<"documents">) => (
         <Item
           key={document._id}
           id={document._id}
