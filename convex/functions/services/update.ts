@@ -11,7 +11,15 @@ export const update = mutation({
     serverCode: v.optional(v.string()),
     category: v.optional(v.string()),
   },
-  handler: async ({ db, auth }, args) => {
+  handler: async ({ db, auth }, args: {
+    id: string,
+    name ? : string,
+    description ? : string,
+    price ? : number,
+    deliveryTime ? : string,
+    serverCode ? : string,
+    category ? : string,
+  }) => {
     const user = await auth.getUserIdentity();
     if (!user || user.role !== "admin") throw new Error("Unauthorized");
     

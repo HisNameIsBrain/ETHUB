@@ -5,7 +5,7 @@ export const getById = query({
   args: {
     id: v.id("services"),
   },
-  handler: async ({ db }, { id }) => {
-    return await db.get(id);
+  handler: async ({ db }, args: { id: string }) => {
+    return await db.get(args.id);
   },
 });
