@@ -18,16 +18,17 @@ export default defineSchema({
   }),
   
   documents: defineTable({
-      title: v.string(),
-      content: v.string(),
-      coverImage: v.optional(v.string()),
-      isArchived: v.boolean(),
-      parentDocument: v.optional(v.id("documents")),
-      orgId: v.optional(v.id("organizations")),
-      userId: v.string(),
-    })
-    .index("by_org", ["orgId"])
-    .index("by_user", ["userId"]),
+    title: v.string(),
+    content: v.optional(v.string()), // <-- make it optional
+    coverImage: v.optional(v.string()),
+    isArchived: v.boolean(),
+    isPublished: v.optional(v.boolean()), // <- add if used
+    parentDocument: v.optional(v.id("documents")),
+    orgId: v.optional(v.id("organizations")),
+    userId: v.string(),
+  })
+  .index("by_org", ["orgId"])
+  .index("by_user", ["userId"]),
   
   services: defineTable({
       name: v.string(),
