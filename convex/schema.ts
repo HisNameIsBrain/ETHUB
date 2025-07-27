@@ -19,10 +19,11 @@ export default defineSchema({
   
   documents: defineTable({
     title: v.string(),
-    content: v.optional(v.string()), // <-- make it optional
+    content: v.optional(v.string()),
     coverImage: v.optional(v.string()),
+    icon: v.optional(v.string()), // 👈 Add this line
     isArchived: v.boolean(),
-    isPublished: v.optional(v.boolean()), // <- add if used
+    isPublished: v.optional(v.boolean()),
     parentDocument: v.optional(v.id("documents")),
     orgId: v.optional(v.id("organizations")),
     userId: v.string(),
