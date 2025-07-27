@@ -1,12 +1,12 @@
-import { mutation } from "./_generated/server";
+import { mutation } from "@/convex/_generated/server";
 import { v } from "convex/values";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx } from "@/convex/_generated/server";
 
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.string(),
-    price: v.float(),
+    price: v.float64(),
     deliveryTime: v.string(),
     serverCode: v.optional(v.string()),
     category: v.string(),

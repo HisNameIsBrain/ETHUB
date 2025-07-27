@@ -1,6 +1,6 @@
-import { mutation, query } from "@/convex/_generated/serverd/server";
+import { mutation, query } from "@/convex/_generated/server";
 import { v } from "convex/values";
-import type { MutationCtx, QueryCtx } from "@/convex/_generated/serverd/server";
+import type { MutationCtx, QueryCtx } from "@/convex/_generated/server";
 
 export const getAll = query({
   handler: async (ctx: QueryCtx) => {
@@ -21,7 +21,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.string(),
-    price: v.float(),
+    price: v.float64(),
     deliveryTime: v.string(),
     serverCode: v.optional(v.string()),
     category: v.string(),
@@ -53,7 +53,7 @@ export const update = mutation({
     id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    price: v.optional(v.float()),
+    price: v.optional(v.float64()),
     deliveryTime: v.optional(v.string()),
     serverCode: v.optional(v.string()),
     category: v.optional(v.string()),
