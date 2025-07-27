@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "convex-dev": "npx convex dev",
-    "convex-codegen": "npx convex codegen"
+"convex-dev": "npx convex dev",
+"convex-codegen": "npx convex codegen"
   },
   "dependencies": {
     "@blocknote/core": "^0.9.6",
@@ -30,7 +30,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^0.2.0",
-    "convex": "^1.25.4",
+    "convex": "^1.4.1",
     "emoji-picker-react": "^4.5.7",
     "lucide-react": "^0.287.0",
     "next": "^15.3.4",
