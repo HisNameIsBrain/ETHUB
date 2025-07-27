@@ -1,28 +1,29 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    /* Convex-friendly strict typechecking */
     "allowJs": true,
-    "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
+
+    /* Convex-required options */
+    "target": "ESNext",
+    "lib": ["ES2021", "dom"],
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    /* Helpful for Next.js alias imports */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+
+    /* Optional: If using plugins like Next.js */
+    "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "convex"],
   "exclude": ["node_modules"]
 }
