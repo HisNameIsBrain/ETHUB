@@ -1,6 +1,7 @@
 import { mutation, query } from "@/convex/_generated/server";
 import { v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "@/convex/_generated/server";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export const getAll = query({
   handler: async (ctx: QueryCtx) => {
@@ -12,7 +13,7 @@ export const getById = query({
   args: {
     id: v.id("documents"),
   },
-  handler: async (ctx: QueryCtx, args: { id: string }) => {
+  handler: async (ctx: QueryCtx, args: { id: Id < "documents" > }) => {
     return await ctx.db.get(args.id);
   },
 });
@@ -38,7 +39,7 @@ export const create = mutation({
       icon ? : string;
       userId: string;
       orgId: string;
-      parentDocument ? : string;
+      parentDocument ? : Id < "documents" > ;
       isArchived: boolean;
       isPublished: boolean;
     }
@@ -66,14 +67,14 @@ export const update = mutation({
   handler: async (
     ctx: MutationCtx,
     args: {
-      id: string;
+      id: Id < "documents" > ;
       title ? : string;
       content ? : string;
       coverImage ? : string;
       icon ? : string;
       isArchived ? : boolean;
       isPublished ? : boolean;
-      parentDocument ? : string;
+      parentDocument ? : Id < "documents" > ;
     }
   ) => {
     const { id, ...updates } = args;
@@ -88,7 +89,7 @@ export const remove = mutation({
   args: {
     id: v.id("documents"),
   },
-  handler: async (ctx: MutationCtx, args: { id: string }) => {
+  handler: async (ctx: MutationCtx, args: { id: Id < "documents" > }) => {
     await ctx.db.delete(args.id);
     return { success: true };
   },
