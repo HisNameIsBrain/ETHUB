@@ -1,4 +1,4 @@
-import { query } from "@/convex/_generated/server";
+import { query } from "convex/server";
 import { v } from "convex/values";
 
 export const getServiceById = query({

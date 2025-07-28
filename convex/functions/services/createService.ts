@@ -1,4 +1,4 @@
-import { mutation } from "@/convex/_generated/server";
+import { mutation } from "convex/server";
 import { v } from "convex/values";
 
 export const createService = mutation({
