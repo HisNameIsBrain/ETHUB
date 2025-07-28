@@ -8,7 +8,7 @@ export const getAll = query({
   },
 });
 
-export const getById = query({
+export const getServiceById = query({
   args: {
     id: v.id("services"),
   },
@@ -17,7 +17,7 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
+export const createService = mutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -48,7 +48,7 @@ export const create = mutation({
   },
 });
 
-export const update = mutation({
+export const updateService = mutation({
   args: {
     id: v.id("services"),
     name: v.optional(v.string()),
@@ -80,7 +80,7 @@ export const update = mutation({
   },
 });
 
-export const remove = mutation({
+export const removeService = mutation({
   args: {
     id: v.id("services"),
   },
