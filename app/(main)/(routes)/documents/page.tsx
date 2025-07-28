@@ -21,7 +21,7 @@ const DocumentsPage = () => {
   // Cast user to ExtendedUser to access publicMetadata.organizationId
   const userExt = user as ExtendedUser | undefined;
   
-  const create = useMutation(api.documents.create);
+  const create = useMutation(api.documents.createDocument);
   const [isLoading, setIsLoading] = useState(false);
   
   const onCreate = async () => {
@@ -54,7 +54,6 @@ const DocumentsPage = () => {
         width={300}
         alt="Empty"
         className="dark:hidden"
-        priority
       />
       <Image
         src="/empty-dark.png"
@@ -62,7 +61,6 @@ const DocumentsPage = () => {
         width={300}
         alt="Empty"
         className="hidden dark:block"
-        priority
       />
       <h2 className="text-lg font-medium">
         Welcome {user?.firstName}, your ETECHHUB workspace is ready.
