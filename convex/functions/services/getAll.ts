@@ -1,5 +1,5 @@
-import { query } from "./_generated/server";
-import type { QueryCtx } from "./_generated/server";
+import { query } from "./_generated/api";
+import type { QueryCtx } from "./_generated/api";
 
 export const getAll = query({
   handler: async (ctx: QueryCtx) => {

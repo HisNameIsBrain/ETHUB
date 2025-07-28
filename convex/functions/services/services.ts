@@ -1,6 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/api";
 import { v } from "convex/values";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/api";
 
 export const getAll = query({
   handler: async (ctx: QueryCtx) => {
