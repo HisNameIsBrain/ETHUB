@@ -1,7 +1,7 @@
 import { mutation } from "convex/server";
 import { v } from "convex/values";
-import type { MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 
 export const create = mutation({
   args: {
