@@ -1,6 +1,7 @@
-import { query, mutation } from "convex/server";
+import { query, mutation } from "@/convex/_generated/server";
 import { v } from "convex/values";
-import type { QueryCtx, MutationCtx } from "convex/server";
+import type { MutationCtx, QueryCtx } from "@/convex/_generated/server";
+import type { Id } from "@/convex/_generated/dataModel";
 
 import type { QueryCtx } from "./_generated/api";
 
