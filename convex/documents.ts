@@ -39,12 +39,15 @@ export const updateDocument = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
     await ctx.db.patch(id, updates);
+    return await ctx.db.get(id); // Return updated document
   },
 });
 
 export const removeDocument = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.id);
     await ctx.db.delete(args.id);
+    return doc; // Return deleted document
   },
 });
