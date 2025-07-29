@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
 const DocumentIdPage = () => {
-  const params = useParams() as { id: Id < "documents" > };
+  const params = useParams() as { documentId: Id < "documents" > };
   
   // State to track update status & errors
   const [isUpdating, setIsUpdating] = useState(false);
@@ -23,9 +23,9 @@ const DocumentIdPage = () => {
   
   // Queries & Mutations must be called unconditionally at the top
   const document = useQuery(api.documents.getDocumentById, {
-    id: params.documentId,
+    id: params.documentId as Id<"documents">
   });
-  const update = useMutation(api.documents.updateDocumentDocumentDocument);
+  const update = useMutation(api.documents.updateDocument);
   
   const onChange = async (content: string) => {
     setIsUpdating(true);
