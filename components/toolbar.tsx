@@ -25,8 +25,8 @@ export const Toolbar = ({
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialData.title);
 
-  const update = useMutation(api.documents.updateDocument);
-  const removeIcon = useMutation(api.documents.removeDocumentIcon);
+  const update = useMutation(api.documents.updateDocumentDocument);
+  const removeIcon = useMutation(api.documents.removeDocumentDocumentIcon);
 
   const coverImage = useCoverImage();
 

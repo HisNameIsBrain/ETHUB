@@ -52,7 +52,7 @@ export const Item = ({
 }: ItemProps) => {
   const { user } = useUser();
   const router = useRouter();
-  const create = useMutation(api.documents.createDocument);
+  const create = useMutation(api.documents.createDocumentDocument);
   const archive = useMutation(api.documents.archive);
 
   const onArchive = (

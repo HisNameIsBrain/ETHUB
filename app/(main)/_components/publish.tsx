@@ -23,7 +23,7 @@ export const Publish = ({
   initialData
 }: PublishProps) => {
   const origin = useOrigin();
-  const update = useMutation(api.documents.updateDocument);
+  const update = useMutation(api.documents.updateDocumentDocument);
 
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
