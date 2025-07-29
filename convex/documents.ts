@@ -1,15 +1,7 @@
-import { mutation, query } from "@/convex/_generated/server";
+// convex/documents.ts
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "@/convex/_generated/dataModel";
 
-// Get All Documents
-export const getAll = query({
-  handler: async (ctx) => {
-    return await ctx.db.query("documents").collect();
-  },
-});
-
-// Get Document by ID
 export const getDocumentById = query({
   args: { id: v.id("documents") },
   handler: async (ctx, args) => {
@@ -17,30 +9,23 @@ export const getDocumentById = query({
   },
 });
 
-// Create Document
 export const createDocument = mutation({
   args: {
     title: v.string(),
     content: v.optional(v.string()),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
-    userId: v.string(),
-    orgId: v.string(),
-    parentDocument: v.optional(v.id("documents")),
     isArchived: v.boolean(),
-    isPublished: v.boolean(),
+    isPublished: v.optional(v.boolean()),
+    parentDocument: v.optional(v.id("documents")),
+    orgId: v.optional(v.id("organizations")),
+    userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    return await ctx.db.insert("documents", {
-      ...args,
-      createdAt: now,
-      updatedAt: now,
-    });
+    return await ctx.db.insert("documents", args);
   },
 });
 
-// Update Document
 export const updateDocument = mutation({
   args: {
     id: v.id("documents"),
@@ -50,22 +35,16 @@ export const updateDocument = mutation({
     icon: v.optional(v.string()),
     isArchived: v.optional(v.boolean()),
     isPublished: v.optional(v.boolean()),
-    parentDocument: v.optional(v.id("documents")),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    return await ctx.db.patch(id, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
+    await ctx.db.patch(id, updates);
   },
 });
 
-// Remove Document
 export const removeDocument = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
-    return { success: true };
   },
 });
