@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
 type Service = {
-  servicIid: Id < "serviceId" > ;
+  _id: Id < "serviceId" > ;
   name: string;
   description ? : string;
   price: number;
