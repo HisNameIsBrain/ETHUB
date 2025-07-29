@@ -15,10 +15,10 @@ type Service = {
   isArchived ? : boolean;
 };
 
-export default function ServicesPage() {
-  const services = useQuery(api.services.getAll);
+export default function EditAdminPage() {
+  const service = useQuery(api.services.getAllServices);
   
-  if (!services) {
+  if (!service) {
     return <div className="p-4">Loading services...</div>;
   }
   
@@ -26,7 +26,7 @@ export default function ServicesPage() {
     <main className="max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Service List</h1>
       <ul className="space-y-4">
-        {services.map((service: Service) => (
+        {service.map((service: Service) => (
           <li
             key={service._id}
             className="border rounded-lg p-4 shadow-sm hover:shadow-md transition"
