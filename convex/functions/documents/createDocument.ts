@@ -1,5 +1,7 @@
-import { mutation } from "convex/server";
+import { query, mutation } from "convex/server";
 import { v } from "convex/values";
+import type { QueryCtx, MutationCtx } from "convex/server";
+
 
 export const createDocument = mutation({
   args: {

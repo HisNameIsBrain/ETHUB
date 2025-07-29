@@ -1,32 +1,23 @@
 import { mutation, query } from "@/convex/_generated/server";
 import { v } from "convex/values";
-import type { MutationCtx, QueryCtx } from "@/convex/_generated/server";
 import type { Id } from "@/convex/_generated/dataModel";
 
-/**
- * Get all documents
- */
+// Get All Documents
 export const getAll = query({
-  handler: async (ctx: QueryCtx) => {
+  handler: async (ctx) => {
     return await ctx.db.query("documents").collect();
   },
 });
 
-/**
- * Get a document by ID
- */
+// Get Document by ID
 export const getDocumentById = query({
-  args: {
-    id: v.id("documents"),
-  },
-  handler: async (ctx: QueryCtx, args: { id: Id<"documents"> }) => {
+  args: { id: v.id("documents") },
+  handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
 });
 
-/**
- * Create a new document
- */
+// Create Document
 export const createDocument = mutation({
   args: {
     title: v.string(),
@@ -39,20 +30,7 @@ export const createDocument = mutation({
     isArchived: v.boolean(),
     isPublished: v.boolean(),
   },
-  handler: async (
-    ctx: MutationCtx,
-    args: {
-      title: string;
-      content?: string;
-      coverImage?: string;
-      icon?: string;
-      userId: string;
-      orgId: string;
-      parentDocument?: Id<"documents">;
-      isArchived: boolean;
-      isPublished: boolean;
-    }
-  ) => {
+  handler: async (ctx, args) => {
     const now = Date.now();
     return await ctx.db.insert("documents", {
       ...args,
@@ -62,9 +40,7 @@ export const createDocument = mutation({
   },
 });
 
-/**
- * Update a document
- */
+// Update Document
 export const updateDocument = mutation({
   args: {
     id: v.id("documents"),
@@ -76,19 +52,7 @@ export const updateDocument = mutation({
     isPublished: v.optional(v.boolean()),
     parentDocument: v.optional(v.id("documents")),
   },
-  handler: async (
-    ctx: MutationCtx,
-    args: {
-      id: Id<"documents">;
-      title?: string;
-      content?: string;
-      coverImage?: string;
-      icon?: string;
-      isArchived?: boolean;
-      isPublished?: boolean;
-      parentDocument?: Id<"documents">;
-    }
-  ) => {
+  handler: async (ctx, args) => {
     const { id, ...updates } = args;
     return await ctx.db.patch(id, {
       ...updates,
@@ -97,14 +61,10 @@ export const updateDocument = mutation({
   },
 });
 
-/**
- * Remove a document
- */
+// Remove Document
 export const removeDocument = mutation({
-  args: {
-    id: v.id("documents"),
-  },
-  handler: async (ctx: MutationCtx, args: { id: Id<"documents"> }) => {
+  args: { id: v.id("documents") },
+  handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
     return { success: true };
   },

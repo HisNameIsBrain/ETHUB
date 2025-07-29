@@ -25,7 +25,7 @@ export const Navbar = ({
   const rawId = params?.documentId || params?.id;
 
   const document = useQuery(
-    api.documents.getById,
+    api.documents.getDocumentById,
     rawId ? { documentId: rawId as Id<"documents"> } : "skip"
   );
 

@@ -21,7 +21,7 @@ const DocumentsPage = () => {
   // Cast user to ExtendedUser to access publicMetadata.organizationId
   const userExt = user as ExtendedUser | undefined;
   
-  const create = useMutation(api.documents.createDocument);
+  const create = useMutation(api.documents.createDocumentDocument);
   const [isLoading, setIsLoading] = useState(false);
   
   const onCreate = async () => {

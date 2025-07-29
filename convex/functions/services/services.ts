@@ -1,5 +1,8 @@
-import { mutation, query } from "./_generated/api";
+import { query, mutation } from "convex/server";
 import { v } from "convex/values";
+import type { QueryCtx, MutationCtx } from "convex/server";
+
+import { mutation, query } from "./_generated/api";
 import type { MutationCtx, QueryCtx } from "./_generated/api";
 
 export const getAll = query({

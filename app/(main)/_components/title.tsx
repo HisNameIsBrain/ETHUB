@@ -17,7 +17,7 @@ export const Title = ({
   initialData
 }: TitleProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const update = useMutation(api.documents.update);
+  const update = useMutation(api.documents.updateDocument);
 
   const [title, setTitle] = useState(initialData.title || "Untitled");
   const [isEditing, setIsEditing] = useState(false);

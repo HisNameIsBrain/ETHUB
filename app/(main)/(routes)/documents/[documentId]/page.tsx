@@ -25,7 +25,7 @@ const DocumentIdPage = () => {
   const document = useQuery(api.documents.getDocumentById, {
     documentId: params.documentId,
   });
-  const update = useMutation(api.documents.updateDocument);
+  const update = useMutation(api.documents.updateDocumentDocument);
   
   const onChange = async (content: string) => {
     setIsUpdating(true);

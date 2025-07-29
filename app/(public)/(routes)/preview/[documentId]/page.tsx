@@ -20,11 +20,11 @@ const DocumentIdPage = () => {
     []
   );
 
-  const document = useQuery(api.documents.getById, {
+  const document = useQuery(api.documents.getDocumentById, {
     documentId: documentId as Id<"documents">,
   });
 
-  const update = useMutation(api.documents.update);
+  const update = useMutation(api.documents.updateDocument);
 
   const onChange = (content: string) => {
     update({
