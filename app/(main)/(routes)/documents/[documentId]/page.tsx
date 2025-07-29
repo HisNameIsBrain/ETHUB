@@ -22,10 +22,10 @@ const DocumentIdPage = () => {
   const [updateError, setUpdateError] = useState < string | null > (null);
   
   // Queries & Mutations must be called unconditionally at the top
-  const document = useQuery(api.documents.getById, {
+  const document = useQuery(api.documents.getDocumentById, {
     documentId: params.documentId,
   });
-  const update = useMutation(api.documents.update);
+  const update = useMutation(api.documents.updateDocument);
   
   const onChange = async (content: string) => {
     setIsUpdating(true);
