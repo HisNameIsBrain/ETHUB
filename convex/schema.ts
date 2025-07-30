@@ -41,16 +41,15 @@ export default defineSchema({
       isArchived: v.optional(v.boolean()),
     })
     .index("by_org", ["orgId"]),
-  
+
   orders: defineTable({
-      serviceId: v.id("services"),
-      userId: v.string(),
-      imei: v.string(),
-      serial: v.optional(v.string()),
-      status: v.string(), // pending, processing, completed
-      notes: v.optional(v.string()),
-      createdAt: v.number(),
-    })
-    .index("by_user", ["userId"])
-    .index("by_service", ["serviceId"]),
+    userId: v.string(),
+    serviceId: v.id("services"),
+    imei: v.string(),
+    serial: v.optional(v.string()),
+    status: v.string(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(), // timestamp (Date.now())
+  }).index("by_user", ["userId"]),
+  
 });
