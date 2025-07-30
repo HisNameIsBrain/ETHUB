@@ -1,4 +1,5 @@
-import { defineSchema, defineTable, v } from "convex/schema";
+import { defineSchema, defineTable } from "convex/schema";
+import {  v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
@@ -39,7 +40,7 @@ export default defineSchema({
       orgId: v.optional(v.id("organizations")),
     })
     .index("by_org", ["orgId"])
-    .index("by_creation_time", ["_creationTime"]),
+    .index("by_time_created", ["createdAt"]),
   
   orders: defineTable({
       userId: v.string(),
@@ -50,5 +51,5 @@ export default defineSchema({
       notes: v.optional(v.string()),
       createdAt: v.number(), // timestamp (Date.now())
     })
-    .index("by_user", ["userId"]),
+    .index("by_service_user", ["userId"]),
 });
