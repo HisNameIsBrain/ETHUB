@@ -1,4 +1,3 @@
-// convex/orders.ts
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -17,6 +16,14 @@ export const getOrdersByUser = query({
       .query("orders")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
+  },
+});
+
+// ✅ Get order by ID
+export const getOrderById = query({
+  args: { id: v.id("orders") },
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
   },
 });
 
