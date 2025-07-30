@@ -2,10 +2,11 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel'; // ✅ make sure this is imported
 
 type ServiceDetailPageProps = {
   params: {
-    serviceId: string;
+    serviceId: Id < 'service' > ;
   };
 };
 

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -17,14 +17,13 @@ const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 const DocumentIdPage = () => {
   const params = useParams() as { documentId: Id < "documents" > };
   
-  // State to track update status & errors
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState < string | null > (null);
   
-  // Queries & Mutations must be called unconditionally at the top
   const document = useQuery(api.documents.getDocumentById, {
-    id: params.documentId as Id<"documents">
+    id: params.documentId
   });
+  
   const update = useMutation(api.documents.updateDocument);
   
   const onChange = async (content: string) => {
