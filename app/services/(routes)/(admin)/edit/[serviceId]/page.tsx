@@ -1,17 +1,13 @@
 'use client';
 
 import { useQuery } from 'convex/react';
+import { useParams } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel'; // ✅ make sure this is imported
+import { Id } from '@/convex/_generated/dataModel';
 
-type ServiceDetailPageProps = {
-  params: {
-    serviceId: Id < 'service' > ;
-  };
-};
-
-export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
-  const { serviceId } = params;
+export default function ServiceDetailPage() {
+  const params = useParams();
+  const serviceId = params.serviceId as Id < "services" > ;
   
   const service = useQuery(api.services.getServiceById, { id: serviceId });
   
