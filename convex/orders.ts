@@ -1,6 +1,12 @@
 // convex/orders.ts
-import { mutation, query } from "./_generated/server";
+import { useMutation, useQuery } from "convex/react";
 import { v } from "convex/values";
+
+export const getAll = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("orders").collect();
+  },
+});
 
 export const getOrdersByUser = query({
   args: { userId: v.string() },
