@@ -4,7 +4,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
@@ -44,7 +43,7 @@ export function BulkOrderInput() {
   return (
     <div className="space-y-4 mt-6">
       <h2 className="text-lg font-semibold">Bulk Order Input</h2>
-      <Textarea
+      <span
         placeholder="Paste lines like: IMEI, Service, Price"
         rows={8}
         value={bulkData}
