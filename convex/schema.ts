@@ -1,6 +1,5 @@
-// convex/schema.ts
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+
+import { defineSchema, defineTable, v } from "convex/schema";
 
 export default defineSchema({
   users: defineTable({
@@ -11,11 +10,6 @@ export default defineSchema({
     })
     .index("by_token", ["tokenIdentifier"])
     .index("by_email", ["email"]),
-  
-  organizations: defineTable({
-    name: v.string(),
-    createdBy: v.string(),
-  }),
   
   documents: defineTable({
     title: v.string(),
@@ -31,17 +25,24 @@ export default defineSchema({
   
   .index("by_org", ["orgId"])
   .index("by_user", ["userId"]),
-  
+
+  organizations: defineTable({
+    name: v.string(),
+  }),
+
   services: defineTable({
-  name: v.string(),
-  description: v.optional(v.string()),
-  deliveryTime: v.string(),
-  price: v.float64(),
-  type: v.optional(v.string()),
-  orgId: v.optional(v.id("organizations")),
-  isArchived: v.optional(v.boolean()),
-  createdAt: v.number(), // ← Add this
-}),
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.optional(v.string()),
+    price: v.number(),
+    deliveryTime: v.string(),
+    createdAt: v.number(),
+    isArchived: v.boolean(),
+    orgId: v.optional(v.id("organizations")),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_creation_time", ["_creationTime"]),
+})
 
   orders: defineTable({
     userId: v.string(),
@@ -51,6 +52,7 @@ export default defineSchema({
     status: v.string(),
     notes: v.optional(v.string()),
     createdAt: v.number(), // timestamp (Date.now())
-  }).index("by_user", ["userId"]),
+  })
   
-});
+  .index("by_user", ["userId"])
+  
