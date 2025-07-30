@@ -28,19 +28,20 @@ export default defineSchema({
     orgId: v.optional(v.id("organizations")),
     userId: v.string(),
   })
+  
   .index("by_org", ["orgId"])
   .index("by_user", ["userId"]),
   
   services: defineTable({
-      name: v.string(),
-      price: v.number(),
-      deliveryTime: v.string(),
-      description: v.optional(v.string()),
-      type: v.optional(v.string()),
-      orgId: v.optional(v.id("organizations")),
-      isArchived: v.optional(v.boolean()),
-    })
-    .index("by_org", ["orgId"]),
+  name: v.string(),
+  description: v.optional(v.string()),
+  deliveryTime: v.string(),
+  price: v.float64(),
+  type: v.optional(v.string()),
+  orgId: v.optional(v.id("organizations")),
+  isArchived: v.optional(v.boolean()),
+  createdAt: v.number(), // ← Add this
+}),
 
   orders: defineTable({
     userId: v.string(),
