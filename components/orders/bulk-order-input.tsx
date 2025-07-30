@@ -12,20 +12,20 @@ import { useMutation } from "convex/react";
 export function BulkOrderInput() {
   const [bulkData, setBulkData] = useState("");
   const createOrder = useMutation(api.orders.createOrder); // Adjust path accordingly
-
+  
   const handleSubmit = async () => {
     const lines = bulkData
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
-
+    
     try {
       await Promise.all(
         lines.map(async (entry) => {
           const [imei, serviceType, price] = entry.split(",").map((s) => s.trim());
-
+          
           if (!imei || !serviceType || !price) return;
-
+          
           await createOrder({
             imei,
             serviceType,
@@ -40,7 +40,7 @@ export function BulkOrderInput() {
       console.error(err);
     }
   };
-
+  
   return (
     <div className="space-y-4 mt-6">
       <h2 className="text-lg font-semibold">Bulk Order Input</h2>
