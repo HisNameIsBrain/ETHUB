@@ -32,30 +32,28 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body suppressHydrationWarning className={inter.className}>
-          <ConvexProvider>
-            <EdgeStoreProvider>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-                storageKey="eth-theme-1"
-              >
-                <Toaster position="bottom-center" />
-                <ModalProvider />
-                {children}
-              </ThemeProvider>
-            </EdgeStoreProvider>
-          </ConvexProvider>
-        </body>
-      </html>
-    </ClerkProvider>
-  )
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ConvexClientProvider>
+          <EdgeStoreProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              storageKey="zotion-theme-2"
+            >
+              <Toaster position="bottom-center" />
+              <ModalProvider />
+              {children}
+            </ThemeProvider>
+          </EdgeStoreProvider>
+        </ConvexClientProvider>
+      </body>
+    </html>
+  );
 }
