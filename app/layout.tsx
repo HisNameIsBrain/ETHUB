@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ConvexClientProvider>
+        <ConvexProvider>
           <EdgeStoreProvider>
             <ThemeProvider
               attribute="class"
@@ -52,7 +52,7 @@ export default function RootLayout({
               {children}
             </ThemeProvider>
           </EdgeStoreProvider>
-        </ConvexClientProvider>
+        </ConvexProvider>
       </body>
     </html>
   );
