@@ -18,7 +18,7 @@ export const Banner = ({
 }: BannerProps) => {
   const router = useRouter();
 
-  const remove = useMutation(api.documents.removeDocumentDocument);
+  const remove = useMutation(api.documents.remove);
   const restore = useMutation(api.documents.restore);
 
   const onRemove = () => {

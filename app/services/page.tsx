@@ -1,64 +1,49 @@
+// app/services/page.tsx
 "use client";
-import { useUser } from '@clerk/nextjs';
-import Link from 'next/link';
 
-type Service = {
-  _id: Id < "serviceId" > ;
-  name: string;
-  description ? : string;
-  price: number;
-  deliveryTime: string;
-  type ? : string;
-  orgId ? : Id < "organizations" > ;
-  isArchived ? : boolean;
-};
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import Link from "next/link";
+import { useState } from "react";
 
 export default function ServicesPage() {
-  const { user, isLoaded } = useUser();
-  const service = useQuery(api.services.getAllServices);
+  const [search, setSearch] = useState("");
+  const services = useQuery(api.services.getPublicServices);
   
-  const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
-  
-  if (!service) {
-    return <p>Loading services...</p>;
-  }
+  const filtered = services?.filter(s =>
+    s.name.toLowerCase().includes(search.toLowerCase())
+  );
   
   return (
-    <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
-      <main className="pt-32 px-8 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Service List</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {service.map((service: Service) => (
-            <div
-              key={service._id}
-              className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-md p-6 flex flex-col justify-between hover:shadow-lg transition-shadow"
-            >
-              <div>
-                <Link
-                  href={`/edit/${service._id}`}
-                  className="text-xl font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  {service.name}
+    <div className="p-4">
+      <input
+        className="w-full border px-3 py-2 mb-4 rounded"
+        placeholder="Search service"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      <table className="w-full text-left border">
+        <thead className="bg-red-600 text-white">
+          <tr>
+            <th className="p-2">Service</th>
+            <th className="p-2">Delivery</th>
+            <th className="p-2">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered?.map((s) => (
+            <tr key={s._id} className="border-b hover:bg-gray-100">
+              <td className="p-2">
+                <Link href={`/services/${s._id}`} className="text-blue-600 underline">
+                  {s.name}
                 </Link>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                  Delivery Time: {service.deliveryTime}
-                </p>
-                <p className="mt-1 text-lg font-medium">${service.price.toFixed(2)}</p>
-              </div>
-              {isAdmin && (
-                <div className="mt-4">
-                  <Link
-                    href={`/(admin)/edit/${service._id}`}
-                    className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-                  >
-                    Edit
-                  </Link>
-                </div>
-              )}
-            </div>
+              </td>
+              <td className="p-2">{s.deliveryTime}</td>
+              <td className="p-2">${s.price}</td>
+            </tr>
           ))}
-        </div>
-      </main>
+        </tbody>
+      </table>
     </div>
   );
 }

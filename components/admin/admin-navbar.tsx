@@ -8,6 +8,7 @@ import { Menu, X, Moon, Sun, ChevronDown } from "lucide-react";
 import { Disclosure } from "@headlessui/react";
 import { Button } from "@/components/ui/button"; // shadcn button
 import { cn } from "@/lib/utils"; // optional utility for class merging
+import { SiriGlow } from "@/components/siri-glow";
 
 const navItems = [
   { label: "Dashboard", href: "/services/admin" },
@@ -19,7 +20,7 @@ const adminMenuItems = [
   { label: "Users", href: "/services/admin/users" },
 ];
 
-export const AdminNavbar = () => {
+export function AdminNavbar() {
   const pathname = usePathname();
   const { setTheme, theme } = useTheme();
 
@@ -29,6 +30,7 @@ export const AdminNavbar = () => {
     <Disclosure as="nav" className="bg-white dark:bg-[#1f1f1f] border-b border-neutral-200 dark:border-neutral-800 shadow-sm fixed top-0 w-full z-50">
       {({ open }: { open: boolean }) => (
         <>
+          <SiriGlow />
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16 items-center">
               {/* Brand */}

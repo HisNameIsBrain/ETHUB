@@ -1,12 +1,13 @@
 "use client";
 
 import { useConvexAuth } from "convex/react";
+import { redirect } from "next/navigation";
 import { Spinner } from "@/components/spinner";
 import { SearchCommand } from "@/components/search-command";
-import { ServicesNavbar } from "@/components/services-navbar";
+import { AdminNavbar } from "@/components/admin/admin-navbar";
 import { SiriGlow } from "@/components/siri-glow";
 
-const ServicesLayout = ({
+const ServicesAdminLayout = ({
   children,
 }: {
   children: React.ReactNode;
@@ -21,10 +22,14 @@ const ServicesLayout = ({
     );
   }
   
+  if (!isAuthenticated) {
+    return redirect("/services");
+  }
+  
   return (
-    <div className="h-screen w-full flex flex-col dark:bg-[#1F1F1F]">
+    <div className="h-screen w-full flex flex-col bg-white dark:bg-[#1F1F1F]">
       <SiriGlow />
-      <ServicesNavbar />
+      <AdminNavbar />
       <main className="flex-1 overflow-y-auto p-6">
         <SearchCommand />
         {children}
@@ -33,4 +38,4 @@ const ServicesLayout = ({
   );
 };
 
-export default ServicesLayout;
+export default ServicesAdminLayout;

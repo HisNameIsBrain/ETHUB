@@ -5,7 +5,7 @@ import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import ConvexClientProvider from '@/components/providers/convex-provider'
+import ConvexProvider from '@/components/providers/convex-provider'
 import { ModalProvider } from "@/components/providers/modal-provider";
 import { EdgeStoreProvider } from "@/lib/edgestore";
 
@@ -39,7 +39,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body suppressHydrationWarning className={inter.className}>
-          <ConvexClientProvider>
+          <ConvexProvider>
             <EdgeStoreProvider>
               <ThemeProvider
                 attribute="class"
@@ -53,7 +53,7 @@ export default function RootLayout({
                 {children}
               </ThemeProvider>
             </EdgeStoreProvider>
-          </ConvexClientProvider>
+          </ConvexProvider>
         </body>
       </html>
     </ClerkProvider>

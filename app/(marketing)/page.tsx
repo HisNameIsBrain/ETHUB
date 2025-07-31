@@ -1,11 +1,18 @@
-import { Navbar } from "@/app/(main)/_components/navbar";
+import { Footer } from "./_components/footer";
+import { Heading } from "./_components/heading";
+import { Heroes } from "./_components/heroes";
 
-const MarketingLayout = ({ children }: { children: React.ReactNode }) => {
+const MarketingPage = () => {
   return (
-    <div className="h-full dark:bg-[#1F1F1F]">
-      <Navbar />
-      <main className="h-full pt-20">{children}</main>
+    <div className="min-h-full flex flex-col dark:bg-[#1F1F1F]">
+      <div className="flex flex-col items-center justify-center md:justify-start text-center gap-y-8 flex-1 px-6 pb-10">
+        <Heading />
+        <Heroes />
+      </div>
+      <Footer />
     </div>
   );
-};
-export default MarketingLayout;
+}
+
+export default MarketingPage;
+

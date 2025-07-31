@@ -2,22 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 
-export default function Error() {
-  return (
+const Error = () => {
+  return ( 
     <div className="h-full flex flex-col items-center justify-center space-y-4">
       <Image
         src="/error.png"
-        height={300}
-        width={300}
+        height="300"
+        width="300"
         alt="Error"
         className="dark:hidden"
       />
       <Image
         src="/error-dark.png"
-        height={300}
-        width={300}
+        height="300"
+        width="300"
         alt="Error"
         className="hidden dark:block"
       />
@@ -32,3 +33,5 @@ export default function Error() {
     </div>
   );
 }
+ 
+export default Error;

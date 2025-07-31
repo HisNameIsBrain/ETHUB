@@ -1,0 +1,25 @@
+
+// App info
+export const APP_NAME = "ETECHHUB";
+export const APP_DESCRIPTION = "Every, Electronics, for Everyone. This is ETECHHUB";
+
+// Navigation links used in Navbar or elsewhere
+export const NAV_LINKS = [
+  { href: "/documents", label: "Documents" },
+  { href: "/trash", label: "Trash" },
+  { href: "/search", label: "Search" },
+];
+
+// Theme related constants
+export const THEME_STORAGE_KEY = "eth-theme-1";
+export const DEFAULT_THEME = "system";
+
+// API related constants (adjust based on your env variables)
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.etechhub.com";
+
+// Any other app-wide constants
+export const SIDEBAR_MIN_WIDTH = 240;
+export const SIDEBAR_MAX_WIDTH = 480;
+// constants.ts
+export const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL ?? "";
+export const CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";

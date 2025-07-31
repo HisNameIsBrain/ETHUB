@@ -13,7 +13,7 @@ import Link from "next/link";
 export const Navbar = () => {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const scrolled = useScrollTop();
-  
+
   return (
     <nav
       className={cn(
@@ -29,11 +29,11 @@ export const Navbar = () => {
             <>
               <SignInButton mode="modal">
                 <Button variant="ghost" size="sm">
-                  Log In
+                  <i className="fa fa-sign-out" aria-hidden="true"></i>
                 </Button>
               </SignInButton>
               <SignInButton mode="modal">
-                <Button size="sm">Enter ETECHHUB</Button></Button>
+                <Button size="sm">Account</Button>
               </SignInButton>
             </>
           )}
@@ -41,7 +41,7 @@ export const Navbar = () => {
           {isAuthenticated && !isLoading && (
             <>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/documents"> Enter Zotion </Link>
+                <Link href="/sign-out"> <i className="fa fa-sign-out" aria-hidden="true"></i> </Link>
               </Button>
               <UserButton afterSignOutUrl="/" />
             </>

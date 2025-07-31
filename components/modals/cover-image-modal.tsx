@@ -18,7 +18,7 @@ import { SingleImageDropzone } from "../single-age-dropzone";
 
 export const CoverImageModal = () => {
   const params = useParams();
-  const update = useMutation(api.documents.updateDocumentDocument);
+  const update = useMutation(api.documents.update);
   const coverImage = useCoverImage();
   const { edgestore } = useEdgeStore();
   
