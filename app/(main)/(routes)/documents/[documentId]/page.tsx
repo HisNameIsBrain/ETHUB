@@ -15,14 +15,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
 const DocumentIdPage = () => {
-  const params = useParams() as { documentId: Id < "documents" > };
+  const { documentId } = useParams() as { documentId: string };
+  const id = documentId as Id <"documents"> ;
   
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState < string | null > (null);
   
-  const document = useQuery(api.documents.getDocumentById, {
-    id: params.documentId
-  });
+  const document = useQuery(api.documents.getDocumentById, { id });
   
   const update = useMutation(api.documents.updateDocument);
   
@@ -30,7 +29,7 @@ const DocumentIdPage = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      await update({ id: params.documentId, content });
+      await update({ id, content });
     } catch (err) {
       setUpdateError("Failed to update document content.");
     } finally {
