@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { Toolbar } from "@/components/toolbar";
 import { Cover } from "@/components/cover";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,21 +14,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
 const DocumentIdPage = () => {
-  const { documentId } = useParams() as { documentId: string };
-  const id = documentId as Id <"documents"> ;
+  const params = useParams();
+  const documentId = params.documentId as string;
   
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState < string | null > (null);
   
-  const document = useQuery(api.documents.getDocumentById, { id });
-  
+  const document = useQuery(api.documents.getDocumentById, { id: documentId });
   const update = useMutation(api.documents.updateDocument);
   
   const onChange = async (content: string) => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      await update({ id, content });
+      await update({ id: documentId, content });
     } catch (err) {
       setUpdateError("Failed to update document content.");
     } finally {
