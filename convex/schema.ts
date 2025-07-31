@@ -20,15 +20,20 @@ export default defineSchema({
     description: v.string(),
     price: v.number(),
     createdBy: v.string(),
-  }).index("by_creator", ["createdBy"]),
+    isArchived: v.boolean(), // ✅ Add this
+  })
+  .index("by_creator", ["createdBy"]),
   
-  // ✅ NEW: Add this orders table
-  orders: defineTable({
+orders: defineTable({
     serviceId: v.id("services"),
     userId: v.string(),
     imei: v.string(),
     serialNumber: v.optional(v.string()),
-    createdAt: v.string(),
-    status: v.string(), // e.g. 'pending', 'complete'
-  }).index("by_user", ["userId"]),
+    status: v.string(),
+    createdAt: v.number(),
+    notes: v.optional(v.string()),
+    isArchived: v.boolean(), // ✅ Add this
+  })
+  .index("by_user", ["userId"])
+  .index("by_user_status", ["userId", "status"]),
 });
