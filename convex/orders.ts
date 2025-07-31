@@ -1,64 +1,152 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Doc, Id } from "./_generated/dataModel";
 
-// ✅ Get all orders (for admin or global view)
-export const getAll = query({
-  handler: async (ctx) => {
-    return await ctx.db.query("orders").collect();
+// Create a new order
+export const create = mutation({
+  args: {
+    serviceId: v.id("services"),
+    imei: v.string(),
+    serialNumber: v.optional(v.string()),
+    status: v.string(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.subject;
+    
+    return await ctx.db.insert("orders", {
+      ...args,
+      userId,
+      isArchived: false,
+      createdAt: Date.now(),
+    });
   },
 });
 
-// ✅ Get orders for a specific user
-export const getOrdersByUser = query({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
+// Get all active orders for the current user
+export const getAll = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.subject;
+    
     return await ctx.db
       .query("orders")
       .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("isArchived"), false))
+      .order("desc")
       .collect();
   },
 });
 
-// ✅ Get order by ID
-export const getOrderById = query({
+// Get all archived orders (trash)
+export const getTrash = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.subject;
+    
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("isArchived"), true))
+      .order("desc")
+      .collect();
+  },
+});
+
+// Get order by ID
+export const getById = query({
   args: { id: v.id("orders") },
-  handler: async (ctx, { id }) => {
-    return await ctx.db.get(id);
-  },
-});
-
-// ✅ Create a new order
-export const createOrder = mutation({
-  args: {
-    serviceId: v.id("services"),
-    userId: v.string(),
-    imei: v.string(),
-    serial: v.optional(v.string()),
-    status: v.string(),
-    notes: v.optional(v.string()),
-    createdAt: v.number(),
-  },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("orders", args);
+    const identity = await ctx.auth.getUserIdentity();
+    
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+    
+    if (order.userId !== identity?.subject) {
+      throw new Error("Not authorized");
+    }
+    
+    return order;
   },
 });
 
-// ✅ Update status and notes of an order
-export const updateOrderStatus = mutation({
+// Update order status and notes
+export const update = mutation({
   args: {
     id: v.id("orders"),
-    status: v.string(),
+    status: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, { id, status, notes }) => {
-    await ctx.db.patch(id, { status, notes });
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Order not found");
+    
+    if (existing.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+    
+    const { id, ...updates } = args;
+    return await ctx.db.patch(id, updates);
   },
 });
 
-// ✅ Delete an order
-export const deleteOrder = mutation({
+// Archive an order (soft-delete)
+export const archive = mutation({
   args: { id: v.id("orders") },
-  handler: async (ctx, { id }) => {
-    await ctx.db.delete(id);
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+    if (order.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
+    
+    return await ctx.db.patch(args.id, { isArchived: true });
+  },
+});
+
+// Restore an archived order
+export const restore = mutation({
+  args: { id: v.id("orders") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+    if (order.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
+    
+    return await ctx.db.patch(args.id, { isArchived: false });
+  },
+});
+
+// Permanently delete an order
+export const remove = mutation({
+  args: { id: v.id("orders") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+    if (order.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
+    
+    return await ctx.db.delete(args.id);
   },
 });
