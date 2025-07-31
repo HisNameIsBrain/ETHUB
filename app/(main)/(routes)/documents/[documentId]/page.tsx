@@ -20,14 +20,17 @@ const DocumentIdPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState < string | null > (null);
   
-  const document = useQuery(api.documents.getById, { id: documentId });
+  // Fix here: pass documentId key instead of id
+  const document = useQuery(api.documents.getById, { documentId });
+  
   const update = useMutation(api.documents.update);
   
+  // Fix here too: check what update expects, assume it needs documentId and content
   const onChange = async (content: string) => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      await update({ id: documentId, content });
+      await update({ documentId, content });
     } catch (err) {
       setUpdateError("Failed to update document content.");
     } finally {
