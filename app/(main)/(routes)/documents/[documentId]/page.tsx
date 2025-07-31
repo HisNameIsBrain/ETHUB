@@ -20,8 +20,8 @@ const DocumentIdPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState < string | null > (null);
   
-  const document = useQuery(api.documents.getDocumentById, { id: documentId });
-  const update = useMutation(api.documents.updateDocument);
+  const document = useQuery(api.documents.getById, { id: documentId });
+  const update = useMutation(api.documents.update);
   
   const onChange = async (content: string) => {
     setIsUpdating(true);
