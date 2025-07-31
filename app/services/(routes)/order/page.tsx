@@ -3,7 +3,6 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Spinner } from "@/components/spinner";
-impor
 
 export default function OrdersPage() {
   const orders = useQuery(api.orders.getAll);
