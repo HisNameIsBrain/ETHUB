@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 export const SiriGlowInvert = () => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
+  
   if (!mounted) return null;
-
+  
   return (
-    <div className="fixed bottom-0 left-0 w-full h-[40px] z-[100] pointer-events-none overflow-hidden">
+    <div className="fixed bottom-0 left-0 w-full h-[30px] z-[100] pointer-events-none overflow-hidden">
       <div
         className="w-full h-full bg-siri-gradient blur-2xl opacity-100 animate-siriMove"
         style={{
@@ -35,7 +35,7 @@ export const SiriGlowInvert = () => {
 
         @keyframes siriMove {
           0% {
-            background-position: 50% 0%;
+            background-position: 0% 0%;
           }
           50% {
             background-position: 100% 0%;
