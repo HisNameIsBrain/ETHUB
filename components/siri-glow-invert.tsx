@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export const SiriGlowFooter = () => {
+export const SiriGlowInvert = () => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
