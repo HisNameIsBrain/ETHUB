@@ -1,9 +1,8 @@
 "use client";
 
 import { useConvexAuth } from "convex/react";
-import { redirect } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { SiriGlow } from "@/components/siri-glow";
 import { Navigation } from "./_components/navigation";
 import { SearchCommand } from "@/components/search-command";
 
@@ -13,7 +12,8 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
-
+  const pathname = usePathname();
+  
   if (isLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-white dark:bg-black">
@@ -21,12 +21,12 @@ export default function MainLayout({
       </div>
     );
   }
-
-  // Redirect unauthenticated users
-  if (!isAuthenticated) {
+  
+  // ✅ Prevent infinite redirect loop
+  if (!isAuthenticated && pathname !== "/documents") {
     redirect("/documents");
   }
-
+  
   return (
     <div className="h-screen w-full flex flex-col dark:bg-[#1F1F1F]">
       <Navigation />
