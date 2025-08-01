@@ -1,6 +1,6 @@
 "use client";
 
-import { SiriGlow } from "@/components/siri-glow";
+import { ClerkProvider } from "@clerk/nextjs";
 import Navbar from "@/app/(marketing)/_components/navbar";
 import React from "react";
 
@@ -10,10 +10,11 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-full dark:bg-[#1F1F1F]">
-      <SiriGlow />
-      <Navbar />
-      <main className="h-full pt-40">{children}</main>
-    </div>
+    <ClerkProvider>
+      <div className="h-full dark:bg-[#1F1F1F]">
+        <Navbar />
+        <main className="h-full pt-40">{children}</main>
+      </div>
+    </ClerkProvider>
   );
 }
