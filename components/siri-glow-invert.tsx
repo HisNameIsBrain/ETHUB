@@ -11,7 +11,7 @@ export const SiriGlowInvert = () => {
   return (
     <div className="fixed bottom-0 left-0 w-full h-[60px] z-[100] pointer-events-none overflow-hidden">
       <div
-        className="w-full h-full bg-siri-gradient blur-2xl opacity-50 animate-siriMove"
+        className="w-full h-full bg-siri-gradient blur-2xl opacity-90 animate-siriMove"
         style={{
           maskImage: "linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))",
           WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))",
@@ -20,7 +20,7 @@ export const SiriGlowInvert = () => {
       <style jsx global>{`
         .bg-siri-gradient {
           background: linear-gradient(
-            90deg,
+            180deg,
             red,
             orange,
             yellow,
@@ -30,12 +30,12 @@ export const SiriGlowInvert = () => {
             violet,
             red
           );
-          background-size: 400% 100%;
+          background-size: 100% 100%;
         }
 
         @keyframes siriMove {
           0% {
-            background-position: 50% 0%;
+            background-position: 0% 0%;
           }
           50% {
             background-position: 100% 0%;
@@ -46,7 +46,7 @@ export const SiriGlowInvert = () => {
         }
 
         .animate-siriMove {
-          animation: siriMove 5s ease-in-out infinite;
+          animation: siriMove 20s ease-in-out infinite;
         }
       `}</style>
     </div>
