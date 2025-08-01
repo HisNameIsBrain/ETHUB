@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Item } from "@/components/main/item";
+import { Item } from "./_components/item";
 import { cn } from "@/lib/utils";
 import { FileIcon } from "lucide-react";
 

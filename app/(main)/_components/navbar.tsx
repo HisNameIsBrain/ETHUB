@@ -5,10 +5,10 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { MenuIcon } from "lucide-react";
-import { Title } from "@/components/main/title";
-import { Banner } from "@/components/main/banner";
-import { Menu } from "@/components/main/menu";
-import { Publish } from "@/components/main/publish";
+import { Title } from "./_components/title";
+import { Banner } from "./_components/banner";
+import { Menu } from "./_components/menu";
+import { Publish } from "./_components/publish";
 
 interface NavbarProps {
   isCollapsed: boolean;
