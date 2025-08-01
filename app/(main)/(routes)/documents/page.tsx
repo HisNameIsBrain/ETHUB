@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 const DocumentsPage = () => {
   const { user } = useUser();
   const router = useRouter();
-  const create = useMutation(api.documents.createDocument);
+  const create = useMutation(api.documents.create);
   
   const onCreate = () => {
     const promise = create({ title: "Untitled" }).then((documentId) =>
