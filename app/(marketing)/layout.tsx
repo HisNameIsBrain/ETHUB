@@ -1,22 +1,17 @@
-"use client";
 
-import Navbar  from "./_components/navbar";
 import { SiriGlow } from "@/components/siri-glow";
+import Navbar  from "/marketing/_components/navbar";
+import React from "react";
 
-const MarketingLayout = ({
-  children
+export default function MarketingLayout({
+  children,
 }: {
   children: React.ReactNode;
-}) => {
-  return ( 
+}) {
+  return (
     <div className="h-full dark:bg-[#1F1F1F]">
-      <SiriGlow />
       <Navbar />
-      <main className="h-full pt-40">
-        {children}
-      </main>
+      <main className="h-full pt-40">{children}</main>
     </div>
-   );
+  );
 }
- 
-export default MarketingLayout;
