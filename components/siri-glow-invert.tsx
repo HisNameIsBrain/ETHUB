@@ -9,7 +9,7 @@ export const SiriGlowInvert = () => {
   if (!mounted) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 w-full h-[50px] z-[100] pointer-events-none overflow-hidden">
+    <div className="fixed bottom-0 left-0 w-full h-[40px] z-[100] pointer-events-none overflow-hidden">
       <div
         className="w-full h-full bg-siri-gradient blur-2xl opacity-100 animate-siriMove"
         style={{
@@ -20,7 +20,7 @@ export const SiriGlowInvert = () => {
       <style jsx global>{`
         .bg-siri-gradient {
           background: linear-gradient(
-            30deg,
+            90deg,
             red,
             orange,
             yellow,
@@ -30,7 +30,7 @@ export const SiriGlowInvert = () => {
             violet,
             red
           );
-          background-size: 400% 80%;
+          background-size: 200% 80%;
         }
 
         @keyframes siriMove {
