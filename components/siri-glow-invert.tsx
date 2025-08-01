@@ -30,7 +30,7 @@ export const SiriGlowInvert = () => {
             violet,
             red
           );
-          background-size: 200% 200%;
+          background-size: 400% 200%;
         }
 
         @keyframes siriMove {
@@ -46,7 +46,7 @@ export const SiriGlowInvert = () => {
         }
 
         .animate-siriMove {
-          animation: siriMove 15s ease-in-out infinite;
+          animation: siriMove 8s ease-in-out infinite;
         }
       `}</style>
     </div>
