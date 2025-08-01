@@ -1,45 +1,41 @@
-
-import { Toaster } from "sonner";
-import { ThemeProvider } from '@/components/providers/theme-provider'
-import './globals.css'
+import './globals.css';
+import { Inter } from 'next/font/google';
+import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import ConvexProvider from '@/components/providers/convex-provider'
-import { ModalProvider } from "@/components/providers/modal-provider";
-import { EdgeStoreProvider } from "@/lib/edgestore";
+import { Toaster } from 'sonner';
 
-const inter = Inter({ subsets: ['latin'] })
+import ConvexClientProvider from '@/components/providers/convex-provider';
+import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ModalProvider } from '@/components/providers/modal-provider';
+import { EdgeStoreProvider } from '@/lib/edgestore';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'ETECHHUB',
-  description: 'Every, Electronics, for Everyone. This is ETECHHUB ',
+  description: 'Every, Electronics, for Everyone. This is ETECHHUB',
   icons: {
     icon: [
       {
-        media: "(prefers-color-scheme: light)",
-        url: "/logo.svg",
-        href: "/logo.svg",
+        media: '(prefers-color-scheme: light)',
+        url: '/logo.svg',
+        href: '/logo.svg',
       },
       {
-        media: "(prefers-color-scheme: dark)",
-        url: "/logo-dark.svg",
-        href: "/logo-dark.svg",
-      }
-    ]
-  }
-}
+        media: '(prefers-color-scheme: dark)',
+        url: '/logo-dark.svg',
+        href: '/logo-dark.svg',
+      },
+    ],
+  },
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body suppressHydrationWarning className={inter.className}>
-          <ConvexProvider>
+          <ConvexClientProvider>
             <EdgeStoreProvider>
               <ThemeProvider
                 attribute="class"
@@ -53,9 +49,9 @@ export default function RootLayout({
                 {children}
               </ThemeProvider>
             </EdgeStoreProvider>
-          </ConvexProvider>
+          </ConvexClientProvider>
         </body>
       </html>
     </ClerkProvider>
-  )
+  );
 }
