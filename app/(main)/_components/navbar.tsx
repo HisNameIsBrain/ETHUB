@@ -1,41 +1,26 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
-import { MenuIcon } from "lucide-react";
-
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-
-import { Title } from "./title";
-import { Banner } from "./banner";
-import { Menu } from "./menu";
-import { Publish } from "./publish";
+import { MenuIcon } from "lucide-react";
+import { Title } from "@/components/main/title";
+import { Banner } from "@/components/main/banner";
+import { Menu } from "@/components/main/menu";
+import { Publish } from "@/components/main/publish";
 
 interface NavbarProps {
   isCollapsed: boolean;
   onResetWidth: () => void;
 }
 
-export const Navbar = ({
-  isCollapsed,
-  onResetWidth
-}: NavbarProps) => {
+export const Navbar = ({ isCollapsed, onResetWidth }: NavbarProps) => {
   const params = useParams();
-  const Id = params?.documentId || params?.id;
 
-  const document = useQuery(
-    api.documents.getById,
-    Id ? { documentId: Id as Id<"documents"> } : "skip"
-  );
-
-  if (!Id) {
-    return (
-      <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Missing document ID</span>
-      </nav>
-    );
-  }
+  const document = useQuery(api.documents.getById, {
+    documentId: params.documentId as Id<"documents">,
+  });
 
   if (document === undefined) {
     return (
@@ -48,13 +33,7 @@ export const Navbar = ({
     );
   }
 
-  if (document === null) {
-    return (
-      <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Document not found</span>
-      </nav>
-    );
-  }
+  if (document === null) return null;
 
   return (
     <>
@@ -74,10 +53,7 @@ export const Navbar = ({
           </div>
         </div>
       </nav>
-
-      {document.isArchived && (
-        <Banner documentId={document._id} />
-      )}
+      {document.isArchived && <Banner documentId={document._id} />}
     </>
   );
 };
