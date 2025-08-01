@@ -3,7 +3,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexProviderWithAuth } from "convex/react";
 import { ConvexReactClient } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { useMemo } from "react";
 
 import { useConvexAuth } from "convex/react";
