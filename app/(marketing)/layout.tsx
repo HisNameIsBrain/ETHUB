@@ -1,6 +1,6 @@
 
 import { SiriGlow } from "@/components/siri-glow";
-import Navbar  from "@/(marketing)/_components/navbar";
+import Navbar  from "@/app/(marketing)/_components/navbar";
 import React from "react";
 
 export default function MarketingLayout({
