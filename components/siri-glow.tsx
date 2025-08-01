@@ -9,7 +9,7 @@ export const SiriGlow = () => {
   if (!mounted) return null;
 
   return (
-    <div className="fixed top-0 left-0 w-full h-[80px] z-[100] pointer-events-none overflow-hidden">
+    <div className="fixed top-0 left-0 w-full h-[40px] z-[100] pointer-events-none overflow-hidden">
       <div
         className="w-full h-full bg-siri-gradient blur-2xl opacity-80 animate-siriMove"
         style={{
@@ -30,7 +30,7 @@ export const SiriGlow = () => {
             violet,
             red
           );
-          background-size: 400% 100%;
+          background-size: 200% 100%;
         }
 
         @keyframes siriMove {
@@ -46,7 +46,7 @@ export const SiriGlow = () => {
         }
 
         .animate-siriMove {
-          animation: siriMove 10s ease-in-out infinite;
+          animation: siriMove 5s ease-in-out infinite;
         }
       `}</style>
     </div>
