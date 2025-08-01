@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useConvexAuth } from "convex/react";
 import { ArrowRight } from "lucide-react";
-import { SignInButton } from "@clerk/clerk-react";
+import { SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/spinner";
@@ -11,28 +11,28 @@ import { Spinner } from "@/components/spinner";
 const headline = "Every🌎, Electronic📱, for Everyone🫂. This is ETECHHUB";
 
 const subMessages = [
-  "Intelligent databases with AI-driven insights",
-  "Guiding minds through the ever-turning wheel of learning, where skill becomes wisdom through shared experience.",
-  "Ongoing growth through alignment with evolving knowledge and innovation.",
+  "Intelligent databases with AI-driven insights.",
+  "Guiding minds through the ever-turning wheel of learning.",
+  "Ongoing growth aligned with evolving innovation.",
   "Stay legally compliant, audit skills and competencies.",
-  "Embracing change as a path to relevance, adapting to the rhythm of technology’s unfolding.",
-  "Professional-grade tools for clear, efficient communication.",
-  "Operating with integrity, where responsibility guides action and trust is the foundation of service.",
-  "Honoring the collective, where each participant contributes to a shared momentum of growth and mutual uplift.",
+  "Adapting to the rhythm of technology’s unfolding.",
+  "Professional-grade tools for efficient communication.",
+  "Operating with integrity and trust.",
+  "Honoring the collective through shared momentum.",
 ];
 
 export const Heading = () => {
   const { isAuthenticated, isLoading } = useConvexAuth();
-
+  
   const [titleText, setTitleText] = useState("");
   const [titleIndex, setTitleIndex] = useState(0);
-
+  
   const [subText, setSubText] = useState("");
   const [subIndex, setSubIndex] = useState(0);
   const [subCharIndex, setSubCharIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Typewriter for headline (h1)
+  
+  // Typewriter for headline
   useEffect(() => {
     if (titleIndex < headline.length) {
       const timeout = setTimeout(() => {
@@ -42,13 +42,13 @@ export const Heading = () => {
       return () => clearTimeout(timeout);
     }
   }, [titleIndex]);
-
-  // Typewriter for subMessages (h3)
+  
+  // Typewriter for subMessages
   useEffect(() => {
     const current = subMessages[subIndex];
     const typingSpeed = isDeleting ? 30 : 60;
     const pause = 1400;
-
+    
     const timeout = setTimeout(() => {
       if (!isDeleting && subCharIndex < current.length) {
         setSubText(current.slice(0, subCharIndex + 1));
@@ -63,10 +63,10 @@ export const Heading = () => {
         setSubIndex((prev) => (prev + 1) % subMessages.length);
       }
     }, !isDeleting && subCharIndex === current.length ? pause : typingSpeed);
-
+    
     return () => clearTimeout(timeout);
   }, [subCharIndex, isDeleting, subIndex]);
-
+  
   return (
     <div className="max-w-3xl space-y-4">
       <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold min-h-[4rem]">
