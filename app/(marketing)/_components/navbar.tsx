@@ -15,7 +15,6 @@ const Navbar = () => {
         scrolled && "border-b shadow-sm"
       )}
     >
-  <SiriGlow />
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
         <Link href="/">
           <span className="text-xl font-semibold">ETHUB</span>
