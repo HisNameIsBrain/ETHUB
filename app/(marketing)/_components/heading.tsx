@@ -7,6 +7,7 @@ import { SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/spinner";
+import { SiriGlow } from "@/components/siri-glow";
 
 const headline = "Every🌎, Electronic📱, for Everyone🫂. This is ETECHHUB";
 
@@ -66,7 +67,7 @@ export const Heading = () => {
     
     return () => clearTimeout(timeout);
   }, [subCharIndex, isDeleting, subIndex]);
-  
+  <SiriGlow />
   return (
     <div className="max-w-3xl space-y-4">
       <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold min-h-[4rem]">
