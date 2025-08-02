@@ -70,7 +70,8 @@ body,
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
   }
-  @keyframes smokeIn {
+}
+@keyframes smokeIn {
   0% {
     opacity: 0;
     filter: blur(12px);
@@ -87,9 +88,7 @@ body,
     transform: scale(1);
   }
 }
-
 .smoke-in {
   animation: smokeIn 2.5s ease-out forwards;
-}
 }
  
