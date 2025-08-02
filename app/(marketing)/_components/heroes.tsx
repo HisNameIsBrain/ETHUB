@@ -1,4 +1,5 @@
 import Image from "next/image";
+import "./globals.css"; // make sure this imports your smoke-in animation
 
 export const Heroes = () => {
   return (
@@ -8,13 +9,13 @@ export const Heroes = () => {
           <Image
             src="/documents.png"
             fill
-            className="object-contain dark:hidden"
+            className="object-contain dark:hidden smoke-in"
             alt="Documents"
           />
           <Image
             src="/documents-dark.png"
             fill
-            className="object-contain hidden dark:block"
+            className="object-contain hidden dark:block smoke-in"
             alt="Documents"
           />
         </div>
@@ -22,17 +23,17 @@ export const Heroes = () => {
           <Image
             src="/reading.png"
             fill
-            className="object-contain dark:hidden"
+            className="object-contain dark:hidden smoke-in"
             alt="Reading"
           />
           <Image
             src="/reading-dark.png"
             fill
-            className="object-contain hidden dark:block"
+            className="object-contain hidden dark:block smoke-in"
             alt="Reading"
           />
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

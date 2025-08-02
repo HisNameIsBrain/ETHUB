@@ -80,3 +80,24 @@ body,
     @apply bg-background text-foreground;
   }
 }
+@keyframes smokeIn {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform: scale(1.05);
+  }
+  70% {
+    opacity: 0.7;
+    filter: blur(4px);
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.smoke-in {
+  animation: smokeIn 2.5s ease-out forwards;
+}
