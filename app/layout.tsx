@@ -11,7 +11,7 @@ import { ModalProvider } from '@/components/providers/modal-provider';
 import { EdgeStoreProvider } from '@/lib/edgestore';
 
 // Import your SiriGlowInvert component
-import { SiriGlowInvert } from '@/components/SiriGlowInvert'; // Adjust the path
+import { SiriGlowInvert } from '@/components/siri-glow-invert'; // Adjust the path
 
 const inter = Inter({ subsets: ['latin'] });
 
