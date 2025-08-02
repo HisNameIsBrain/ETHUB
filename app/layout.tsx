@@ -11,7 +11,7 @@ import { ModalProvider } from '@/components/providers/modal-provider';
 import { EdgeStoreProvider } from '@/lib/edgestore';
 
 // Import your footer component here
-import { SiriGlowInvert } from '@/components/SiriGlowInvert'; // Adjust the import path as needed
+import { SiriGlowInvert } from '@/components/siri-glow-invert'; // Adjust the import path as needed
 
 const inter = Inter({ subsets: ['latin'] });
 
