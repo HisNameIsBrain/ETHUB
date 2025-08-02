@@ -1,5 +1,5 @@
 import Image from "next/image";
-import "./globals.css"; // make sure this imports your smoke-in animation
+import "app/globals.css"; // make sure this imports your smoke-in animation
 
 export const Heroes = () => {
   return (
