@@ -2,6 +2,7 @@
 import { Heading } from "@/app/(marketing)/_components/heading";
 import { Heroes } from"@/app/(marketing)/_components/heroes";
 import { Footer } from  "@/app/(marketing)/_components/footer";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
 
 export default function MarketingPage() {
   return (
@@ -11,6 +12,7 @@ export default function MarketingPage() {
         <Heroes />
       </div>
       <Footer />
+      <SiriGlowInvert />
     </div>
   );
 }

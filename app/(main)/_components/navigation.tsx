@@ -141,7 +141,7 @@ export const Navigation = () => {
         )}
       >
         <div
-          role="botton"
+          role="button"
           onClick={collapse}
           className={cn(
             "h-6 w-6 text-muted-foreground rounded-sm hover:bg-neutral-300 dark:hover:bg-neutral-600 absolute top-3 right-2 opacity-0 group-hover/sidebar:opacity-100 transition",

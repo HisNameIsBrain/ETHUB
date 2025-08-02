@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import { Logo } from "./logo";
 
 export const Footer = () => {
@@ -13,7 +12,6 @@ export const Footer = () => {
           <Button variant="ghost" size="sm">
             Terms & Conditions
           </Button>
-          <SiriGlowInvert />
         </div>
       </div>
   );
