@@ -2,7 +2,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { Navbar } from "@/app/(marketing)/_components/navbar";
 import { SiriGlow } from "@/components/siri-glow";
-import { SiriGloeInvert } from "@/components/siri-glow-invert";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import React from "react";
 
 export default function MarketingLayout({
