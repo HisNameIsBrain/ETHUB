@@ -1,4 +1,6 @@
 // src/app/layout.tsx
+import { StackProvider, StackTheme } from "@stackframe/stack";
+import { stackServerApp } from "../stack";
 import './globals.css';
 import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
@@ -39,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         {/* The min-h-screen class is the crucial part here. */}
-        <body suppressHydrationWarning className={`${inter.className} min-h-screen flex flex-col`}>
+        <body suppressHydrationWarning className={`${inter.className} min-h-screen flex flex-col`}><StackProvider app={stackServerApp}><StackTheme>
           <ConvexClientProvider>
             <EdgeStoreProvider>
               <ThemeProvider
@@ -58,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </ThemeProvider>
             </EdgeStoreProvider>
           </ConvexClientProvider>
-        </body>
+        </StackTheme></StackProvider></body>
       </html>
     </ClerkProvider>
   );
