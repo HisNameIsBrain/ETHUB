@@ -1,6 +1,5 @@
-import NextAuth from 'next-auth';
-import GitHub from 'next-auth/providers/github';
+// lib/auth.ts
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [GitHub]
-});
+export const auth = () => getServerSession(authOptions);
