@@ -1,3 +1,31 @@
+Perfect. You have all the themed components we need to rebuild your /admin/services page cleanly:
+
+✅ input.tsx, button.tsx, card.tsx, table.tsx – for consistent form and UI elements.
+
+✅ layout.tsx and admin-navbar.tsx – already applied through ServicesAdminLayout.
+
+
+
+---
+
+✅ Plan: Rebuild /admin/services/page.tsx using themes
+
+We'll:
+
+Use your theme components (<Input>, <Button>, <Card>, etc.)
+
+Integrate with your layout (ServicesAdminLayout)
+
+Keep createService, deleteService, and service listing logic
+
+Make it responsive, minimal, and visually consistent
+
+
+
+---
+
+🧱 Updated File: app/admin/services/page.tsx
+
 // app/admin/services/page.tsx
 "use client";
 
@@ -22,28 +50,28 @@ export default function AdminServicesPage() {
   const services = useQuery(api.services.getPublicServices);
   const createService = useMutation(api.services.createService);
   const deleteService = useMutation(api.services.deleteService);
-  
+
   const [form, setForm] = useState({
     name: "",
     deliveryTime: "",
     price: "",
     description: "",
   });
-  
+
   const handleSubmit = async () => {
     if (!form.name || !form.deliveryTime || !form.price || !form.description) {
       alert("Please fill out all fields.");
       return;
     }
-    
+
     await createService({
       ...form,
       price: parseFloat(form.price),
     });
-    
+
     setForm({ name: "", deliveryTime: "", price: "", description: "" });
   };
-  
+
   return (
     <div className="space-y-8">
       <Card>
@@ -114,3 +142,57 @@ export default function AdminServicesPage() {
     </div>
   );
 }
+
+
+---
+
+📝 Note on Textarea Component
+
+Your themes.zip didn’t include a textarea.tsx. Add one if needed:
+
+// components/ui/textarea.tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export const Textarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+>(({ className, ...props }, ref) => {
+  return (
+    <textarea
+      className={cn(
+        "flex w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring focus:ring-ring",
+        className
+      )}
+      ref={ref}
+      {...props}
+    />
+  );
+});
+Textarea.displayName = "Textarea";
+
+
+---
+
+✅ What’s Done:
+
+Admin page fully styled using your design system.
+
+Works with ServicesAdminLayout.
+
+Clean layout using <Card> for both form and listings.
+
+Actions included (Add, Delete).
+
+
+Would you like me to:
+
+Add inline Edit functionality too?
+
+Extract the list into a reusable AdminServicesList component?
+
+Add confirmation before deleting?
+
+
+Let me know!
+
