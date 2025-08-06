@@ -1,19 +1,13 @@
-// src/app/layout.tsx
-import { StackProvider, StackTheme } from "@stackframe/stack";
-import { stackServerApp } from "../stack";
 import './globals.css';
 import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
-
 import ConvexClientProvider from '@/components/providers/convex-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ModalProvider } from '@/components/providers/modal-provider';
 import { EdgeStoreProvider } from '@/lib/edgestore';
-
-// Import your SiriGlowInvert component
-import { SiriGlowInvert } from '@/components/siri-glow-invert'; // Adjust the path
+import { SiriGlowInvert } from '@/components/siri-glow-invert'; 
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -41,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         {/* The min-h-screen class is the crucial part here. */}
-        <body suppressHydrationWarning className={`${inter.className} min-h-screen flex flex-col`}><StackProvider app={stackServerApp}><StackTheme>
+        <body suppressHydrationWarning className={`${inter.className} min-h-screen flex flex-col`}>
           <ConvexClientProvider>
             <EdgeStoreProvider>
               <ThemeProvider
@@ -60,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </ThemeProvider>
             </EdgeStoreProvider>
           </ConvexClientProvider>
-        </StackTheme></StackProvider></body>
+        </body>
       </html>
     </ClerkProvider>
   );
