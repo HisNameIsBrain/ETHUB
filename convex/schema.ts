@@ -2,7 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Documents table (Notion-like structure)
   documents: defineTable({
     title: v.string(),
     userId: v.string(),
@@ -12,10 +11,11 @@ export default defineSchema({
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
     isPublished: v.boolean(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_parent", ["userId", "parentDocument"]),
-
+        })
+        .index("by_user", ["userId"])
+        .index("by_user_parent", ["userId", "parentDocument"])
+        .index("by_user_title", ["userId", "title"]), // 
+        
   // Services table (used by getServiceById, createService, etc.)
   services: defineTable({
     name: v.string(),
