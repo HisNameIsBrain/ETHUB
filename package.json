@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname localhost",
     "build": "next build",
-    "start": "next start --hostname 127.0.0.1 --port 3000",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -39,7 +39,6 @@
     "emoji-picker-react": "^4.5.7",
     "lucide-react": "^0.321.0",
     "next": "^15.3.4",
-    "next-auth": "^4.24.11",
     "next-themes": "^0.2.1",
     "nextjs": "^0.0.3",
     "react": "^18.2.0",
