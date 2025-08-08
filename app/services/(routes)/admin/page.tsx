@@ -19,9 +19,9 @@ import {
 
 export default function AdminServicesPage() {
   const { user } = useUser();
-  const services = useQuery(api.services.getPublicServices);
-  const createService = useMutation(api.services.createService);
-  const deleteService = useMutation(api.services.deleteService);
+  const services = useQuery(api.services.getPublic);
+  const create = useMutation(api.services.create);
+  const delete = useMutation(api.services.delete);
   
   const [form, setForm] = useState({
     name: "",
@@ -36,7 +36,7 @@ export default function AdminServicesPage() {
       return;
     }
     
-    await createService({
+    await create({
       ...form,
       price: parseFloat(form.price),
     });
@@ -101,7 +101,7 @@ export default function AdminServicesPage() {
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => deleteService({ serviceId: service._id })}
+                    onClick={() => delete({ serviceId: service._id })}
                   >
                     Delete
                   </Button>

@@ -16,7 +16,7 @@ Use your theme components (<Input>, <Button>, <Card>, etc.)
 
 Integrate with your layout (ServicesAdminLayout)
 
-Keep createService, deleteService, and service listing logic
+Keep create, deleteService, and service listing logic
 
 Make it responsive, minimal, and visually consistent
 
@@ -48,7 +48,7 @@ import {
 export default function AdminServicesPage() {
   const { user } = useUser();
   const services = useQuery(api.services.getPublicServices);
-  const createService = useMutation(api.services.createService);
+  const create = useMutation(api.services.create);
   const deleteService = useMutation(api.services.deleteService);
 
   const [form, setForm] = useState({
@@ -64,7 +64,7 @@ export default function AdminServicesPage() {
       return;
     }
 
-    await createService({
+    await create({
       ...form,
       price: parseFloat(form.price),
     });

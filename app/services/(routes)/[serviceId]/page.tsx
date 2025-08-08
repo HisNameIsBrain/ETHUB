@@ -11,7 +11,7 @@ export default function ServiceDetailPage() {
 
   // ✅ Don't conditionally call hooks
   const service = useQuery(
-    api.services.getServiceById,
+    api.services.getById,
     serviceId
       ? { id: serviceId as Id<"services"> }
       : "skip"

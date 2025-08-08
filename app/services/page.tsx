@@ -10,7 +10,7 @@ export default function ServicesPage() {
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
 
-  const services = useQuery(api.services.getPublicServices);
+  const services = useQuery(api.services.getPublics);
 
   if (services === undefined) {
     return (

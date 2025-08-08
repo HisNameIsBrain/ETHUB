@@ -16,7 +16,7 @@ export default defineSchema({
         .index("by_user_parent", ["userId", "parentDocument"])
         .index("by_user_title", ["userId", "title"]), // 
         
-  // Services table (used by getServiceById, createService, etc.)
+  
   services: defineTable({
     name: v.string(),
     description: v.string(),
