@@ -1,19 +1,10 @@
-// Clerk server helpers
 export { auth, currentUser } from "@clerk/nextjs/server";
 
-// Client signOut shim (so existing imports keep working)
-export const signOut = async () => {
+export async function signOut() {
   if (typeof window !== "undefined") {
-    const mod = await import("@clerk/nextjs");
-    if (typeof mod.signOut === "function") {
-      await mod.signOut();
-      return;
+    const { signOut } = await import("@clerk/nextjs");
+    if (typeof signOut === "function") {
+      await signOut();
     }
-    // Fallback if signOut isn't exported: use the hook dynamically
-    const { useClerk } = mod as any;
-    try {
-      const { signOut: hookSignOut } = useClerk?.() || {};
-      if (hookSignOut) await hookSignOut();
-    } catch {}
   }
-};
+}
