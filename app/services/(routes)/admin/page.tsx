@@ -21,7 +21,7 @@ export default function AdminServicesPage() {
   const { user } = useUser();
   const services = useQuery(api.services.getPublic);
   const create = useMutation(api.services.create);
-  const delete = useMutation(api.services.delete);
+  const remove = useMutation(api.services.remove);
   
   const [form, setForm] = useState({
     name: "",

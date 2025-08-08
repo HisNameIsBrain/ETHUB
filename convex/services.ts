@@ -50,10 +50,10 @@ export const update = mutation({
   },
 });
 
-export const deleteS = mutation({
+export const remove = mutation({
   args: { serviceId: v.id("services") },
   handler: async (ctx, { serviceId }) => {
-    await ctx.db.delete(serviceId);
+    await ctx.db.remove(serviceId);
   },
 });
 
