@@ -1,13 +1,13 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getPublicServices = query({
+export const getPublic = query({
   handler: async (ctx) => {
     return await ctx.db.query("services").collect();
   },
 });
 
-export const getServiceById = query({
+export const getById = query({
   args: {
     id: v.id("services"),
   },
@@ -16,7 +16,7 @@ export const getServiceById = query({
   },
 });
 
-export const createService = mutation({
+export const create = mutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -31,7 +31,7 @@ export const createService = mutation({
   },
 });
 
-export const updateService = mutation({
+export const update = mutation({
   args: {
     serviceId: v.id("services"),
     name: v.string(),
@@ -50,14 +50,14 @@ export const updateService = mutation({
   },
 });
 
-export const deleteService = mutation({
+export const deleteS = mutation({
   args: { serviceId: v.id("services") },
   handler: async (ctx, { serviceId }) => {
     await ctx.db.delete(serviceId);
   },
 });
 
-export const listAllServices = query({
+export const getAll = query({
   handler: async (ctx) => {
     return await ctx.db.query("services").collect();
   },
