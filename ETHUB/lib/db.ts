@@ -1,5 +1,10 @@
-// lib/db.ts - Placeholder to satisfy template imports that expected a Prisma client.
-// Migrate your data access to Convex; this exists only so the app builds.
+export type Product = { id: string; name: string; price?: number };
+
+// Placeholder; replace with Convex query in the future.
+export async function getProducts(): Promise<Product[]> {
+  return [];
+}
+
 const db: any = {};
 export default db;
 export { db };
