@@ -14,14 +14,15 @@ export const ensureUser = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
+    const now = Date.now();
     const authUserId = identity.subject; // required by your schema as `userId`
     const lowerEmail = (email ?? identity.email ?? "").toLowerCase();
 
     // 1) Try by userId (best signal that this auth user already has a row)
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_userId", q => q.eq("userId", authUserId))
-      .unique();
+      .withIndex("by_userId", (q) => q.eq("userId", authUserId))
+      .first();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -37,6 +38,7 @@ export const ensureUser = mutation({
         ...(identity.tokenIdentifier
           ? { tokenIdentifier: identity.tokenIdentifier }
           : {}),
+        updatedAt: now, // <-- add this
       });
       return existing._id;
     }
@@ -51,9 +53,10 @@ export const ensureUser = mutation({
       username,
       phoneNumber,
       tokenIdentifier: identity.tokenIdentifier ?? undefined,
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now, // <-- add this
     });
 
     return newId;
   },
-});
+}); 
