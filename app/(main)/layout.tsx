@@ -8,7 +8,17 @@ import { SearchCommand } from "@/components/search-command";
 import { Navigation } from "./_components/navigation";
 import { SiriGlow } from '@/components/siri-glow';
 
+// app/(main)/layout.tsx (or your authenticated layout)
+import { EnsureUser } from "@/components/ensure-user";
 
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <EnsureUser />
+      {children}
+    </>
+  );
+}
 
 const MainLayout = ({
   children
