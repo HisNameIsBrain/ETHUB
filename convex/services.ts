@@ -16,20 +16,6 @@ async function requireUser(ctx: any) {
   return identity;
 }
 
-async function isAdmin(ctx: any) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return false;
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
-    .first();
-  return user?.role === "admin";
-}
-
-async function assertAdmin(ctx: any) {
-  if (!(await isAdmin(ctx))) throw new Error("Admin only");
-}
-
 async function uniqueSlug(ctx: any, base: string) {
   let s = slugify(base) || "service";
   let candidate = s;
@@ -200,11 +186,6 @@ export const getTrash = query({
   },
 });
 
-<<<<<<< HEAD
-  
-=======
-/** User by tokenIdentifier */
->>>>>>> refs/remotes/origin/main
 export const getUserByToken = query({
   args: {},
   handler: async (ctx) => {
@@ -221,3 +202,26 @@ export const getUserByToken = query({
     return user ?? null;
   },
 });
+
+// Check if current user is admin
+async function isAdmin(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return false;
+  
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_userId", (q: any) => q.eq("userId", identity.subject))
+    .unique();
+  
+  return user?.role === "admin";
+}
+
+// Check if slug exists
+async function slugExists(ctx: any, candidate: string) {
+  const existing = await ctx.db
+    .query("services")
+    .withIndex("by_slug", (q: any) => q.eq("slug", candidate))
+    .first();
+  
+  return !!existing;
+}
