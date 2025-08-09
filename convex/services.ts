@@ -262,10 +262,6 @@ export const getTrash = query({
   },
 });
 
-const byToken = await ctx.db
-  .query("users")
-  .withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier!))
-  .unique();
   
 export const getUserByToken = query({
   args: {},
