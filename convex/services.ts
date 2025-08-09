@@ -266,3 +266,20 @@ const byToken = await ctx.db
   .query("users")
   .withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier!))
   .unique();
+  
+  export const getUserByToken = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.tokenIdentifier) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .first();
+
+    return user ?? null;
+  },
+});

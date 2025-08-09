@@ -17,13 +17,14 @@ export default defineSchema({
    phoneNumber: v.optional(v.string()),
    tokenIdentifier: v.optional(v.string()),
    createdAt: v.number(),
+   updatedAt: v.number(), // <-- added to keep insert/patch consistent
   })
   .index("by_userId", ["userId"])
   .index("by_role", ["role"])
   .index("by_email", ["email"])
   .index("by_username", ["username"])
   .index("by_phoneNumber", ["phoneNumber"])
-  .index("by_token", ["tokenIdentifier"]),
+  .index("by_token", ["tokenIdentifier"]), // <-- belongs on users
  
  // ------------------------------------------------------------
  // DOCUMENTS (Notion-like)
@@ -38,7 +39,6 @@ export default defineSchema({
    parentDocument: v.optional(v.id("documents")),
    isPublished: v.boolean(),
    isArchived: v.boolean(),
-   
    // IMPORTANT: your code uses userId (not createdBy)
    userId: v.string(),
    createdAt: v.number(),
@@ -48,9 +48,7 @@ export default defineSchema({
   .index("by_parent", ["parentDocument"])
   .index("by_isArchived", ["isArchived"])
   .index("by_user", ["userId"])
-  .index("by_user_parent", ["userId", "parentDocument"])
-// in convex/schema.ts -> users table
-  .index("by_token", ["tokenIdentifier"]),
+  .index("by_user_parent", ["userId", "parentDocument"]),
  
  // ------------------------------------------------------------
  // SERVICES (for your services marketplace)
