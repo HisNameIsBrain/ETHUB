@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ServicesTable } from "@/components/services/services-table";
+import { ServicesTable } from "@/components/services-table";
 import { Spinner } from "@/components/spinner";
 
 export default function ServicesIndexPage() {
