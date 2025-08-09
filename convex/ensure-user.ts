@@ -1,4 +1,3 @@
-// convex/ensure-user.tsx
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -15,7 +14,7 @@ export const ensureUser = mutation({
     if (!identity) throw new Error("Unauthorized");
     
     const now = Date.now();
-    const authUserId = identity.subject; // maps to users.userId
+    const authUserId = identity.subject;
     const lowerEmail = (email ?? identity.email ?? "").toLowerCase();
     
     // Try existing by userId
@@ -43,7 +42,6 @@ export const ensureUser = mutation({
       return existing._id;
     }
     
-    // Create new user
     const newId = await ctx.db.insert("users", {
       userId: authUserId,
       name: name ?? identity.name ?? "Anonymous",

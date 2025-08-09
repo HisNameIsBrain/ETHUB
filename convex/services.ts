@@ -1,4 +1,3 @@
-// convex/services.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
@@ -17,7 +16,6 @@ async function requireUser(ctx: any) {
   return identity;
 }
 
-/** Assumes users: { userId: string, role?: 'admin'|'user' } */
 async function isAdmin(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return false;
@@ -32,7 +30,6 @@ async function assertAdmin(ctx: any) {
   if (!(await isAdmin(ctx))) throw new Error("Admin only");
 }
 
-/** Ensure unique slug per service name */
 async function uniqueSlug(ctx: any, base: string) {
   let s = slugify(base) || "service";
   let candidate = s;
@@ -107,7 +104,7 @@ export const update = mutation({
   },
 });
 
-/** Archive / Restore */
+/** Archive / Restore / Remove */
 export const archive = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
@@ -130,7 +127,6 @@ export const restore = mutation({
   },
 });
 
-/** Remove */
 export const remove = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
@@ -150,11 +146,8 @@ export const getById = query({
   },
 });
 
-/** Public list */
 export const getPublics = query({
-  args: {
-    search: v.optional(v.string()),
-  },
+  args: { search: v.optional(v.string()) },
   handler: async (ctx, { search = "" }) => {
     const results = await ctx.db
       .query("services")
@@ -165,7 +158,6 @@ export const getPublics = query({
       .collect();
     
     if (!search) return results;
-    
     const term = search.toLowerCase();
     return results.filter(
       (s: any) =>
@@ -175,11 +167,8 @@ export const getPublics = query({
   },
 });
 
-/** Admin: all non-archived */
 export const getAll = query({
-  args: {
-    search: v.optional(v.string()),
-  },
+  args: { search: v.optional(v.string()) },
   handler: async (ctx, { search = "" }) => {
     if (!(await isAdmin(ctx))) throw new Error("Admin only");
     
@@ -190,7 +179,6 @@ export const getAll = query({
       .collect();
     
     if (!search) return results;
-    
     const term = search.toLowerCase();
     return results.filter(
       (s: any) =>
@@ -200,12 +188,10 @@ export const getAll = query({
   },
 });
 
-/** Admin: archived (trash) */
 export const getTrash = query({
   args: {},
   handler: async (ctx) => {
     if (!(await isAdmin(ctx))) throw new Error("Admin only");
-    
     return await ctx.db
       .query("services")
       .withIndex("by_archived", (q) => q.eq("archived", true))
@@ -214,7 +200,7 @@ export const getTrash = query({
   },
 });
 
-/** Helper: current user row by tokenIdentifier */
+/** User by tokenIdentifier */
 export const getUserByToken = query({
   args: {},
   handler: async (ctx) => {
