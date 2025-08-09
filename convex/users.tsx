@@ -6,10 +6,10 @@ import { v } from "convex/values";
 export const getByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
-    const [u] = await ctx.db
+    const u = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .collect();
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+      .unique();
     return u ?? null;
   },
 });
@@ -17,10 +17,21 @@ export const getByEmail = query({
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, { username }) => {
-    const [u] = await ctx.db
+    const u = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", username))
-      .collect();
+      .unique();
+    return u ?? null;
+  },
+});
+
+export const getByPhoneNumber = query({
+  args: { phoneNumber: v.string() },
+  handler: async (ctx, { phoneNumber }) => {
+    const u = await ctx.db
+      .query("users")
+      .withIndex("by_phoneNumber", (q) => q.eq("phoneNumber", phoneNumber))
+      .unique();
     return u ?? null;
   },
 });
@@ -29,10 +40,10 @@ export const getByUsername = query({
 export const getMe = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
-    const [u] = await ctx.db
+    const u = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .collect();
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+      .unique();
     return u ?? null;
   },
 });
@@ -45,15 +56,23 @@ export const ensureUser = mutation({
     email: v.string(),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
   },
-  handler: async (ctx, { email, name, username }) => {
-    const [existing] = await ctx.db
+  handler: async (ctx, { email, name, username, phoneNumber }) => {
+    const lower = email.toLowerCase();
+    const existing = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .collect();
+      .withIndex("by_email", (q) => q.eq("email", lower))
+      .unique();
+    
     if (existing) return existing._id;
-
-    const id = await ctx.db.insert("users", { email, name, username });
+    
+    const id = await ctx.db.insert("users", {
+      email: lower,
+      name,
+      username,
+      phoneNumber,
+    });
     return id;
   },
 });
@@ -64,17 +83,20 @@ export const updateByEmail = mutation({
     email: v.string(),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
   },
-  handler: async (ctx, { email, name, username }) => {
-    const [u] = await ctx.db
+  handler: async (ctx, { email, name, username, phoneNumber }) => {
+    const lower = email.toLowerCase();
+    const u = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .collect();
+      .withIndex("by_email", (q) => q.eq("email", lower))
+      .unique();
     if (!u) return null;
-
+    
     await ctx.db.patch(u._id, {
       ...(name !== undefined ? { name } : {}),
       ...(username !== undefined ? { username } : {}),
+      ...(phoneNumber !== undefined ? { phoneNumber } : {}),
     });
     return u._id;
   },

@@ -20,9 +20,12 @@ export default defineSchema({
       email: v.string(), // required
       name: v.optional(v.string()), // optional
       username: v.optional(v.string()), // optional
-    })
-    .index("by_email", ["email"])
-    .index("by_username", ["username"]),
+    phoneNumber: v.optional(v.string()),
+})
+  .index("by_email", ["email"])
+  .index("by_username", ["username"])
+  .index("by_phoneNumber", ["phoneNumber"]),
+
   
   services: defineTable({
     name: v.string(),

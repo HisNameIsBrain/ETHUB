@@ -1,4 +1,4 @@
-export { auth, currentUser } from "@clerk/nextjs/server";
+export { auth, currentUser } from "@clerk/server";
 
 export async function signOut() {
   if (typeof window === "undefined") return;
