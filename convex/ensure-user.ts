@@ -1,4 +1,3 @@
-// convex/ensure-user.tsx
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -13,37 +12,36 @@ export const ensureUser = mutation({
   async handler(ctx, { name, email, imageUrl, username, phoneNumber }) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
-
+    
     const now = Date.now();
-    const authUserId = identity.subject; // required by your schema as `userId`
+    const authUserId = identity.subject;
     const lowerEmail = (email ?? identity.email ?? "").toLowerCase();
-
-    // 1) Try by userId (best signal that this auth user already has a row)
+    
+    // Try existing by userId
     const existing = await ctx.db
       .query("users")
       .withIndex("by_userId", (q) => q.eq("userId", authUserId))
       .first();
-
+    
     if (existing) {
       await ctx.db.patch(existing._id, {
         ...(name !== undefined ? { name } : {}),
         ...(lowerEmail ? { email: lowerEmail } : {}),
         ...(username !== undefined ? { username } : {}),
         ...(phoneNumber !== undefined ? { phoneNumber } : {}),
-        ...(imageUrl !== undefined
-          ? { imageUrl }
-          : identity.pictureUrl
-          ? { imageUrl: identity.pictureUrl }
-          : {}),
-        ...(identity.tokenIdentifier
-          ? { tokenIdentifier: identity.tokenIdentifier }
-          : {}),
-        updatedAt: now, // <-- add this
+        ...(imageUrl !== undefined ?
+          { imageUrl } :
+          identity.pictureUrl ?
+          { imageUrl: identity.pictureUrl } :
+          {}),
+        ...(identity.tokenIdentifier ?
+          { tokenIdentifier: identity.tokenIdentifier } :
+          {}),
+        updatedAt: now,
       });
       return existing._id;
     }
-
-    // 2) Create new
+    
     const newId = await ctx.db.insert("users", {
       userId: authUserId,
       name: name ?? identity.name ?? "Anonymous",
@@ -54,9 +52,9 @@ export const ensureUser = mutation({
       phoneNumber,
       tokenIdentifier: identity.tokenIdentifier ?? undefined,
       createdAt: now,
-      updatedAt: now, // <-- add this
+      updatedAt: now,
     });
-
+    
     return newId;
   },
-}); 
+});
