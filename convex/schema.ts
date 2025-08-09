@@ -41,7 +41,6 @@ export default defineSchema({
    
    // IMPORTANT: your code uses userId (not createdBy)
    userId: v.string(),
-   
    createdAt: v.number(),
    updatedAt: v.number(),
   })
@@ -49,7 +48,9 @@ export default defineSchema({
   .index("by_parent", ["parentDocument"])
   .index("by_isArchived", ["isArchived"])
   .index("by_user", ["userId"])
-  .index("by_user_parent", ["userId", "parentDocument"]),
+  .index("by_user_parent", ["userId", "parentDocument"])
+// in convex/schema.ts -> users table
+  .index("by_token", ["tokenIdentifier"]),
  
  // ------------------------------------------------------------
  // SERVICES (for your services marketplace)
