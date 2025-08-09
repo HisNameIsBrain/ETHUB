@@ -270,3 +270,27 @@ export const removeCoverImage = mutation({
     return document;
   },
 });
+
+export const backfillDocumentsTimestamps = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    let patched = 0;
+
+    const docs = await ctx.db.query("documents").collect();
+    for (const d of docs) {
+      const needsCreated = (d as any).createdAt === undefined;
+      const needsUpdated = (d as any).updatedAt === undefined;
+
+      if (needsCreated || needsUpdated) {
+        await ctx.db.patch(d._id, {
+          createdAt: needsCreated ? now : (d as any).createdAt,
+          updatedAt: needsUpdated ? now : (d as any).updatedAt,
+        });
+        patched++;
+      }
+    }
+
+    return { patched };
+  },
+});
