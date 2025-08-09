@@ -1,3 +1,4 @@
+// components/ensure-user.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -8,15 +9,16 @@ import { api } from "@/convex/_generated/api";
 export function EnsureUser() {
   const { user, isSignedIn } = useUser();
   const ensureUser = useMutation(api.users.ensureUser);
-
+  
   useEffect(() => {
     if (!isSignedIn || !user?.primaryEmailAddress?.emailAddress) return;
-    const email = user.primaryEmailAddress.emailAddress;
-    const name = user.fullName ?? undefined;
-    // You can store Clerk username or craft one; optional:
-    const username = user.username ?? undefined;
-    ensureUser({ email, name, username }).catch(console.error);
+    ensureUser({
+      email: user.primaryEmailAddress.emailAddress.toLowerCase(),
+      name: user.fullName ?? undefined,
+      username: user.username ?? undefined,
+      phoneNumber: user.phoneNumbers?.[0]?.phoneNumber ?? undefined,
+    }).catch(console.error);
   }, [isSignedIn, user, ensureUser]);
-
+  
   return null;
 }
