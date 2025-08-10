@@ -62,7 +62,9 @@ export default defineSchema({
    slug: v.string(),
    createdAt: v.number(),
    updatedAt: v.number(),
-   createdBy: v.string(), // creator’s userId
+   createdBy: v.string(),
+   createdAt: v.float64(),
+   updatedAt: v.float64(),
   })
   .index("by_slug", ["slug"])
   .index("by_isPublic_archived", ["isPublic", "archived"])
