@@ -19,21 +19,21 @@ import React, {
 import { useMediaQuery } from "usehooks-ts";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserItem } from "@/app/(main)/_components//user-item";
+import { UserItem } from "@/app/(main)/_components/user-item";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Item } from "@/app/(main)/_components//item";
+import { Item } from "@/app/(main)/_components/item";
 import { toast } from "sonner";
-import { DocumentList } from "@/app/(main)/_components//document-list";
+import { DocumentList } from "@/app/(main)/_components/document-list";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { TrashBox } from "@/app/(main)/_components//trash-box";
+import { TrashBox } from "@/app/(main)/_components/trash-box";
 import { useSearch } from "@/hooks/use-search";
 import { useSettings } from "@/hooks/use-settings";
-import { Navbar } from "@/app/(main)/_components//navbar";
+import { Navbar } from "@/app/(main)/_components/navbar";
 
 export const Navigation = () => {
   const router = useRouter();
