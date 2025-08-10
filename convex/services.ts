@@ -242,3 +242,15 @@ export const getUserByToken = query({
     return user ?? null;
   },
 });
+
+await ctx.db.insert("services", {
+  name,
+  description,
+  price,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  isPublic: true,
+  archived: false,
+  slug: slugify(name),
+  createdBy: identity.subject, // <-- matches schema
+});
