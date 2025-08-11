@@ -13,6 +13,8 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as backfill_documents from "../backfill-documents.js";
+import type * as backfill_documents from "../backfill_documents.js";
 import type * as documents from "../documents.js";
 import type * as ensure_user from "../ensure-user.js";
 import type * as services from "../services.js";
@@ -27,6 +29,8 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "backfill-documents": typeof backfill_documents;
+  backfill_documents: typeof backfill_documents;
   documents: typeof documents;
   "ensure-user": typeof ensure_user;
   services: typeof services;
