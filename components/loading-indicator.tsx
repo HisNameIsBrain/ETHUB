@@ -1,0 +1,30 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Router from "next/router";
+import { SiriGlow } from "@/components/siri-glow";
+
+export default function LoadingIndicator() {
+ const [loading, setLoading] = useState(false);
+ 
+ useEffect(() => {
+  const start = () => setLoading(true);
+  const done = () => setTimeout(() => setLoading(false), 300); // smooth fade
+  
+  Router.events.on("routeChangeStart", start);
+  Router.events.on("routeChangeComplete", done);
+  Router.events.on("routeChangeError", done);
+  
+  return () => {
+   Router.events.off("routeChangeStart", start);
+   Router.events.off("routeChangeComplete", done);
+   Router.events.off("routeChangeError", done);
+  };
+ }, []);
+ 
+ return loading ? (
+  <div className="fixed top-0 left-0 w-full h-[4px] z-[9999] overflow-hidden">
+   <SiriGlow height="4px" />
+    </div>
+ ) : null;
+}

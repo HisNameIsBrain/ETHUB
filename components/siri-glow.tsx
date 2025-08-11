@@ -1,54 +1,25 @@
+// siri-glow.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
-export const SiriGlow = () => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null;
-
+export function SiriGlow({ height = "100%" }: { height ? : string }) {
   return (
-    <div className="fixed top-0 left-0 w-full h-[40px] z-[100] pointer-events-none overflow-hidden">
-      <div
-        className="w-full h-full bg-siri-gradient blur-2xl opacity-80 animate-siriMove"
-        style={{
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0))",
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0))",
-        }}
-      />
-      <style jsx global>{`
-        .bg-siri-gradient {
-          background: linear-gradient(
-            90deg,
-            red,
-            orange,
-            yellow,
-            green,
-            blue,
-            indigo,
-            violet,
-            red
-          );
-          background-size: 200% 100%;
-        }
-
-        @keyframes siriMove {
-          0% {
-            background-position: 0% 0%;
-          }
-          50% {
-            background-position: 100% 0%;
-          }
-          100% {
-            background-position: 0% 0%;
-          }
-        }
-
-        .animate-siriMove {
-          animation: siriMove 5s ease-in-out infinite;
-        }
-      `}</style>
-    </div>
+    <motion.div
+      className="w-full"
+      style={{
+        height,
+        background: "linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #00ffff, #0000ff, #8b00ff)",
+        backgroundSize: "400% 100%",
+      }}
+      animate={{
+        backgroundPosition: ["0% 50%", "100% 50%"],
+      }}
+      transition={{
+        repeat: Infinity,
+        duration: 2,
+        ease: "linear",
+      }}
+    />
   );
-};
+}
