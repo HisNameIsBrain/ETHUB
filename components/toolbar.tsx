@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { ElementRef, useRef, useState } from "react";
@@ -141,3 +142,28 @@ export const Toolbar = ({
     </div>
   )
 }
+=======
+\
+"use client";
+import React from "react";
+
+export type ToolbarProps = React.HTMLAttributes<HTMLDivElement> & {
+  left?: React.ReactNode;
+  right?: React.ReactNode;
+  title?: React.ReactNode;
+};
+
+export function Toolbar({ className = "", left, right, title, children, ...props }: ToolbarProps) {
+  return (
+    <div className={`w-full border-b bg-background ${className}`} {...props}>
+      <div className="mx-auto flex max-w-6xl items-center justify-between p-2 gap-2">
+        <div className="flex items-center gap-2">{left}</div>
+        <div className="text-sm font-medium truncate">{title}</div>
+        <div className="flex items-center gap-2">{right}</div>
+      </div>
+      {children ? <div className="mx-auto max-w-6xl p-2">{children}</div> : null}
+    </div>
+  );
+}
+export default Toolbar;
+>>>>>>> a2a5ad9 (convex)

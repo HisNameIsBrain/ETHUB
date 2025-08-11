@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { useEffect, useState } from "react";
@@ -59,4 +60,42 @@ const Editor = ({ onChange, initialContent, editable }: EditorProps) => {
   );
 };
 
+=======
+\
+"use client";
+import React from "react";
+
+export type EditorProps = {
+  value?: string;
+  onChange?: (val: string) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+  className?: string;
+};
+
+// Minimal controlled editor stub. Replace later with TipTap/Slate/etc.
+export function Editor({
+  value = "",
+  onChange,
+  placeholder = "Start typing…",
+  readOnly = false,
+  className = "",
+}: EditorProps) {
+  if (readOnly) {
+    return (
+      <div className={`prose dark:prose-invert max-w-none ${className}`}>
+        {value || <span className="text-muted-foreground">{placeholder}</span>}
+      </div>
+    );
+  }
+  return (
+    <textarea
+      className={`w-full min-h-[300px] resize-y rounded-md border bg-background p-3 outline-none ${className}`}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  );
+}
+>>>>>>> a2a5ad9 (convex)
 export default Editor;

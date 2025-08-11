@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client"
 
 import * as React from "react"
@@ -120,3 +121,17 @@ export {
   DialogTitle,
   DialogDescription,
 }
+=======
+\
+"use client";
+import * as React from "react";
+
+export const Dialog = ({ open, onOpenChange, children }:{ open?:boolean; onOpenChange?:(o:boolean)=>void; children:React.ReactNode }) => (
+  <div data-open={open ? "true":"false"} className="relative">{children}</div>
+);
+export const DialogContent = ({ children }:{ children:React.ReactNode }) =>
+  <div className="fixed inset-0 grid place-items-center"><div className="w-full max-w-md rounded-xl border bg-background p-4 shadow-lg">{children}</div></div>;
+export const DialogHeader = ({ children }:{ children:React.ReactNode }) => <div className="mb-2">{children}</div>;
+export const DialogTitle = ({ children }:{ children:React.ReactNode }) => <h3 className="text-lg font-semibold">{children}</h3>;
+export const DialogFooter = ({ children }:{ children:React.ReactNode }) => <div className="mt-4 flex justify-end gap-2">{children}</div>;
+>>>>>>> a2a5ad9 (convex)

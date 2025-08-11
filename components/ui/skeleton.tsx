@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -17,3 +18,13 @@ export function Skeleton({
     />
   );
 }
+=======
+\
+"use client";
+import React from "react";
+
+export function Skeleton({ className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={`animate-pulse rounded-md bg-muted ${className}`} {...props} />;
+}
+export default Skeleton;
+>>>>>>> a2a5ad9 (convex)

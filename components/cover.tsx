@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import Image from "next/image";
@@ -83,3 +84,48 @@ Cover.Skeleton = function CoverSkeleton() {
     <Skeleton className="w-full h-[12vh]" />
   )
 }
+=======
+\
+"use client";
+import React from "react";
+
+export type CoverProps = {
+  src?: string | null;
+  height?: number;
+  onChange?: (src: string | null) => void;
+  children?: React.ReactNode;
+  className?: string;
+};
+
+export function Cover({ src, height = 180, onChange, children, className = "" }: CoverProps) {
+  return (
+    <div
+      className={`relative w-full overflow-hidden rounded-xl bg-muted ${className}`}
+      style={{ height }}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="Cover" className="h-full w-full object-cover" />
+      ) : (
+        <div className="h-full w-full grid place-items-center text-muted-foreground text-sm">
+          No cover
+        </div>
+      )}
+      {children ? <div className="absolute inset-0">{children}</div> : null}
+      {/* Optional change handler hook */}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file || !onChange) return;
+          const url = URL.createObjectURL(file);
+          onChange(url);
+        }}
+      />
+    </div>
+  );
+}
+export default Cover;
+>>>>>>> a2a5ad9 (convex)
