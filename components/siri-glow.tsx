@@ -1,16 +1,15 @@
 // components/siri-glow.tsx
 "use client";
 import { motion } from "framer-motion";
-import * as React from "react";
 
 type SiriGlowProps = {
-  height ? : string; // e.g., "4px", "6px"
-  position ? : "top" | "bottom";
-  className ? : string;
+  height?: string;              // e.g. "4px"
+  position?: "top" | "bottom";
+  className?: string;
 };
 
 export function SiriGlow({
-  height = "4px",
+  height = "8px",
   position = "top",
   className = "",
 }: SiriGlowProps) {
