@@ -11,7 +11,7 @@ export default defineSchema({
       pictureUrl: v.optional(v.string()),
       imageUrl: v.optional(v.string()),
       username: v.optional(v.string()),
-      phoneNumber: v.optional(v.string()), // ⬅ add this
+      phoneNumber: v.optional(v.string()),
       role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
       createdAt: v.float64(),
       updatedAt: v.optional(v.float64()),
@@ -27,7 +27,7 @@ export default defineSchema({
       isPublished: v.boolean(),
       isArchived: v.boolean(),
       userId: v.string(),
-      organizationId: v.optional(v.string()), // ⬅ add this
+      organizationId: v.optional(v.string()),
       parentDocument: v.optional(v.id("documents")),
       createdAt: v.float64(),
       updatedAt: v.float64(),
@@ -35,25 +35,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_parent", ["userId", "parentDocument"]),
   
-  // ...services unchanged from earlier fix
-});
-  // ---------- DOCUMENTS ----------
-  documents: defineTable({
-      title: v.string(),
-      content: v.optional(v.string()),
-      icon: v.optional(v.string()),
-      coverImage: v.optional(v.string()),
-      isPublished: v.boolean(),
-      isArchived: v.boolean(),
-      userId: v.string(), // used by your queries
-      parentDocument: v.optional(v.id("documents")), // nesting
-      createdAt: v.float64(),
-      updatedAt: v.float64(),
-    })
-    .index("by_user", ["userId"]) // q.eq("userId", ...)
-    .index("by_user_parent", ["userId", "parentDocument"]) // q.eq(...).eq(...)
-  
-  // ---------- SERVICES ----------
+  // 👇 ADD THIS (exact names)
   services: defineTable({
       name: v.string(),
       description: v.optional(v.string()),
@@ -61,9 +43,10 @@ export default defineSchema({
       slug: v.string(),
       isPublic: v.boolean(),
       archived: v.boolean(),
-      createdBy: v.string(), // your code reads/compares this
+      createdBy: v.string(),
       createdAt: v.float64(),
       updatedAt: v.float64(),
     })
-    .index("by_slug", ["slug"]) // q.eq("slug", slug)
-    .index("by_isPublic", ["isPublic"]) // q.eq("isPublic", true)
+    .index("by_slug", ["slug"])
+    .index("by_isPublic", ["isPublic"]),
+});
