@@ -1,15 +1,18 @@
-import "./globals.css";
-import { Inter } from "next/font/google";
-import Providers from "@/app/dashboard/_components/providers";
+"use client";
 
-const inter = Inter({ subsets: ["latin"] });
+import { ReactNode, useMemo } from "react";
+import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ClerkProvider } from "@clerk/nextjs";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: { children: ReactNode }) {
+  const convex = useMemo(
+    () => new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!),
+    []
+  );
+  
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
-      </body>
-    </html>
+    <ClerkProvider>
+      <ConvexProvider client={convex}>{children}</ConvexProvider>
+    </ClerkProvider>
   );
 }
