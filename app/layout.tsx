@@ -2,15 +2,10 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Providers from "./providers";
-import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import TopSiriLoader from "@/components/top-siri-loader";
 
 const inter = Inter({ subsets: ["latin"] });
-
-// client-only loader so it doesn’t run on SSR
-const TopSiriLoader = dynamic(() => import("@/components/top-siri-loader"), {
-  ssr: false,
-});
 
 export const metadata: Metadata = {
   title: "ETHUB",
@@ -23,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <Providers>
           <TopSiriLoader />
-          <Suspense fallback={<TopSiriLoader />}>{children}</Suspense>
+          <Suspense fallback={<TopSiriLoader />}>
+            {children}
+          </Suspense>
         </Providers>
       </body>
     </html>
