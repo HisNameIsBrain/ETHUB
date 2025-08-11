@@ -39,7 +39,7 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
       createdBy: args.createdBy,
-    });
+    });args.name
     return id;
   },
 });
