@@ -26,11 +26,11 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import { Analytics } from '@vercel/analytics/react';
-import { User } from './user';
-import { VercelLogo } from '@/components/icons';
-import Providers from './providers';
-import { NavItem } from './nav-item';
-import { SearchInput } from './search';
+import { User } from '../_components/user';
+import { VercelLogo } from '../_components/icons';
+import Providers from '../_components/providers';
+import { NavItem } from '../_components/nav-item';
+import { SearchInput } from '../_components/search';
 
 export default function DashboardLayout({
   children
