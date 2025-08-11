@@ -1,11 +1,22 @@
 // components/siri-glow.tsx
 "use client";
 import { motion } from "framer-motion";
+import * as React from "react";
 
-export function SiriGlow({ height = "100%" }: { height ? : string }) {
+type SiriGlowProps = {
+  height ? : string; // e.g., "4px", "6px"
+  position ? : "top" | "bottom";
+  className ? : string;
+};
+
+export function SiriGlow({
+  height = "4px",
+  position = "top",
+  className = "",
+}: SiriGlowProps) {
   return (
     <motion.div
-      className="w-full"
+      className={`fixed ${position}-0 left-0 w-full z-50 ${className}`}
       style={{
         height,
         background:
@@ -17,3 +28,5 @@ export function SiriGlow({ height = "100%" }: { height ? : string }) {
     />
   );
 }
+
+export default SiriGlow;
