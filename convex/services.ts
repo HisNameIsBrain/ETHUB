@@ -7,27 +7,31 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+// convex/services.ts
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
     price: v.optional(v.float64()),
-    deliveryTime: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()), // <-- include here too
     isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
-    createdBy: v.string(), // pass Clerk/Convex user id string
   },
-  handler: async ({ db }, args) => {
-    const now = Date.now();
-    const slug = slugify(args.name);
-    
-    // Optional: ensure slug uniqueness by suffixing if needed
-    let finalSlug = slug || "service";
-    let i = 1;
-    while (await db.query("services").withIndex("by_slug", q => q.eq("slug", finalSlug)).first()) {
-      finalSlug = `${slug}-${i++}`;
-    }
-    
+  async handler(ctx, args) {
+    // ...
+    await ctx.db.insert("services", {
+      name: args.name,
+      description: args.description,
+      price: args.price,
+      deliveryTime: args.deliveryTime ?? "", // <-- now valid
+      slug: finalSlug,
+      isPublic: args.isPublic ?? true,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: identity.subject,
+    });
+  },
+});
     const id = await db.insert("services", {
       name: args.name,
       description: args.description ?? "",
