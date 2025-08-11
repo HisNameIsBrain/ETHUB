@@ -1,54 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import * as React from "react";
 
-export const SiriGlowInvert = () => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  
-  if (!mounted) return null;
-  
+type Props = { className?: string; show?: boolean };
+
+export function SiriGlowInvert({ className = "", show = true }: Props) {
+  if (!show) return null;
   return (
-    <div className="fixed bottom-0 left-0 w-full h-[30px] z-[100] pointer-events-none overflow-hidden">
-      <div
-        className="w-full h-full bg-siri-gradient blur-2xl opacity-100 animate-siriMove"
-        style={{
-          maskImage: "linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))",
-          WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))",
-        }}
-      />
+    <div
+      className={`pointer-events-none fixed inset-x-0 top-0 z-10 mix-blend-difference ${className}`}
+      aria-hidden="true"
+    >
+      <div className="mx-auto h-1 w-full overflow-hidden">
+        <div className="h-full w-[200%] animate-[siriInvert_1.8s_ease-in-out_infinite] bg-gradient-to-r from-emerald-400 via-sky-500 to-fuchsia-500" />
+      </div>
       <style jsx global>{`
-        .bg-siri-gradient {
-          background: linear-gradient(
-            90deg,
-            red,
-            orange,
-            yellow,
-            green,
-            blue,
-            indigo,
-            violet,
-            red
-          );
-          background-size: 300% 100%;
-        }
-
-        @keyframes siriMove {
-          0% {
-            background-position: 0% 0%;
-          }
-          50% {
-            background-position: 100% 0%;
-          }
-          100% {
-            background-position: 0% 0%;
-          }
-        }
-
-        .animate-siriMove {
-          animation: siriMove 5s ease-in-out infinite;
+        @keyframes siriInvert {
+          0%   { transform: translateX(50%); }
+          50%  { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
         }
       `}</style>
     </div>
   );
-};
+}
+export default SiriGlowInvert;

@@ -1,25 +1,24 @@
-// siri-glow.tsx
 "use client";
 
-import { motion } from "framer-motion";
+import * as React from "react";
 
-export function SiriGlow({ height = "100%" }: { height ? : string }) {
+type Props = { className?: string; show?: boolean };
+
+export function SiriGlow({ className = "", show = true }: Props) {
+  if (!show) return null;
   return (
-    <motion.div
-      className="w-full"
-      style={{
-        height,
-        background: "linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #00ffff, #0000ff, #8b00ff)",
-        backgroundSize: "400% 100%",
-      }}
-      animate={{
-        backgroundPosition: ["0% 50%", "100% 50%"],
-      }}
-      transition={{
-        repeat: Infinity,
-        duration: 2,
-        ease: "linear",
-      }}
-    />
+    <div className={`pointer-events-none fixed inset-x-0 top-0 z-10 ${className}`}>
+      <div className="mx-auto h-1 w-full overflow-hidden">
+        <div className="h-full w-[200%] animate-[siri_1.8s_ease-in-out_infinite] bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-400" />
+      </div>
+      <style jsx global>{`
+        @keyframes siri {
+          0%   { transform: translateX(-50%); }
+          50%  { transform: translateX(0%); }
+          100% { transform: translateX(50%); }
+        }
+      `}</style>
+    </div>
   );
 }
+export default SiriGlow;
