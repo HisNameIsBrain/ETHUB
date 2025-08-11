@@ -1,15 +1,19 @@
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-function Skeleton({
+export function Skeleton({
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes < HTMLDivElement > ) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-primary/5", className)}
+      className={cn(
+        "animate-pulse rounded-md bg-muted",
+        // If you don't use shadcn theme tokens, swap to:
+        // "animate-pulse rounded-md bg-neutral-200 dark:bg-neutral-800",
+        className
+      )}
       {...props}
     />
-  )
+  );
 }
-
-export { Skeleton }
