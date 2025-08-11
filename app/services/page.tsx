@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ServicesTable } from "@/components/services-table";
+import { ServicesTable } from "@/components/services/services-table";
 
 export default function ServicesPage() {
   const [search, setSearch] = useState("");
