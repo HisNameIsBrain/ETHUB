@@ -1,78 +1,45 @@
-// convex/services.ts
-import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
 
-/** -------------------------------------------------------------
- * Helpers
- * ------------------------------------------------------------*/
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .trim()
+function slugify(name: string) {
+  return name.trim().toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
+    .replace(/(^-|-$)/g, "");
 }
 
-async function requireIdentity(ctx: any) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-  return identity;
-}
-
-/** -------------------------------------------------------------
- * Queries
- * ------------------------------------------------------------*/
-export const getPublicServices = query({
-  args: {},
-  handler: async (ctx) => {
-    // Use an index for performance; filter archived in JS (or add a compound index if needed)
-    const items = await ctx.db
-      .query("services")
-      .withIndex("by_isPublic", (q: any) => q.eq("isPublic", true))
-      .collect();
-    
-    return items.filter((s: any) => !s.archived);
-  },
-});
-
-/** -------------------------------------------------------------
- * Mutations
- * ------------------------------------------------------------*/
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),
+    price: v.optional(v.float64()),
+    deliveryTime: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
+    createdBy: v.string(), // pass Clerk/Convex user id string
   },
-  handler: async (ctx, { name, description, price, isPublic }) => {
-    const identity = await requireIdentity(ctx);
-    
+  handler: async ({ db }, args) => {
     const now = Date.now();
-    const slug = slugify(name);
+    const slug = slugify(args.name);
     
-    // (Optional) ensure slug uniqueness per user
-    const existing = await ctx.db
-      .query("services")
-      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
-      .first();
-    const finalSlug =
-      existing && existing.createdBy === identity.subject ?
-      `${slug}-${now}` :
-      slug;
+    // Optional: ensure slug uniqueness by suffixing if needed
+    let finalSlug = slug || "service";
+    let i = 1;
+    while (await db.query("services").withIndex("by_slug", q => q.eq("slug", finalSlug)).first()) {
+      finalSlug = `${slug}-${i++}`;
+    }
     
-    const id = await ctx.db.insert("services", {
-      name,
-      description,
-      price,
+    const id = await db.insert("services", {
+      name: args.name,
+      description: args.description ?? "",
+      price: args.price ?? 0,
+      deliveryTime: args.deliveryTime ?? "",
+      isPublic: args.isPublic ?? true,
+      archived: args.archived ?? false,
+      slug: finalSlug,
       createdAt: now,
       updatedAt: now,
-      isPublic: isPublic ?? false,
-      archived: false,
-      slug: finalSlug,
-      createdBy: identity.subject,
+      createdBy: args.createdBy,
     });
-    
     return id;
   },
 });
@@ -82,37 +49,23 @@ export const update = mutation({
     id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),
+    price: v.optional(v.float64()),
+    deliveryTime: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
     archived: v.optional(v.boolean()),
   },
-  handler: async (ctx, { id, name, description, price, isPublic, archived }) => {
-    const identity = await requireIdentity(ctx);
-    const svc = await ctx.db.get(id);
+  handler: async ({ db }, { id, ...patch }) => {
+    const svc = await db.get(id);
     if (!svc) throw new Error("Service not found");
-    if (svc.createdBy !== identity.subject) throw new Error("Forbidden");
-    
-    const patch: any = { updatedAt: Date.now() };
-    if (name !== undefined) {
-      patch.name = name;
-      patch.slug = slugify(name);
-    }
-    if (description !== undefined) patch.description = description;
-    if (price !== undefined) patch.price = price;
-    if (isPublic !== undefined) patch.isPublic = isPublic;
-    if (archived !== undefined) patch.archived = archived;
-    
-    await ctx.db.patch(id, patch);
+    const next: any = { ...patch, updatedAt: Date.now() };
+    if (patch.name) next.slug = slugify(patch.name);
+    await db.patch(id, next);
   },
 });
 
-export const remove = mutation({
-  args: { id: v.id("services") },
-  handler: async (ctx, { id }) => {
-    const identity = await requireIdentity(ctx);
-    const svc = await ctx.db.get(id);
-    if (!svc) return;
-    if (svc.createdBy !== identity.subject) throw new Error("Forbidden");
-    await ctx.db.delete(id);
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async ({ db }, { slug }) => {
+    return db.query("services").withIndex("by_slug", q => q.eq("slug", slug)).first();
   },
 });
