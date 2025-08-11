@@ -1,8 +1,7 @@
-// convex/services.ts
-import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
 
-/** Helpers */
+// Simple slugify
 function slugify(input: string) {
   return input
     .toLowerCase()
@@ -10,13 +9,20 @@ function slugify(input: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
 }
-async function requireIdentity(ctx: any) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-  return identity;
+
+async function uniqueSlug(ctx: any, name: string) {
+  const base = slugify(name) || "service";
+  let slug = base;
+  let i = 1;
+  // requires index("by_slug", ["slug"])
+  while (
+    await ctx.db.query("services").withIndex("by_slug", (q: any) => q.eq("slug", slug)).first()
+  ) {
+    slug = `${base}-${i++}`;
+  }
+  return slug;
 }
 
-/** Create */
 export const create = mutation({
   args: {
     name: v.string(),
@@ -26,34 +32,29 @@ export const create = mutation({
     isPublic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    
     const now = Date.now();
-    const baseSlug = slugify(args.name);
+    const slug = await uniqueSlug(ctx, args.name);
     
-    const existing = await ctx.db
-      .query("services")
-      .withIndex("by_slug", (q: any) => q.eq("slug", baseSlug))
-      .first();
-    
-    const slug =
-      existing ? `${baseSlug}-${Math.random().toString(36).slice(2, 7)}` : baseSlug;
-    
-    return await ctx.db.insert("services", {
+    await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
       price: args.price,
-      deliveryTime: args.deliveryTime ?? "",
+      deliveryTime: args.deliveryTime,
+      
       slug,
-      isPublic: args.isPublic ?? true,
-      archived: false,
       createdAt: now,
       updatedAt: now,
+      isPublic: args.isPublic ?? true,
+      archived: false,
       createdBy: identity.subject,
     });
   },
 });
 
-/** Update */
+// (optional) update to always refresh updatedAt
 export const update = mutation({
   args: {
     id: v.id("services"),
@@ -64,18 +65,15 @@ export const update = mutation({
     isPublic: v.optional(v.boolean()),
     archived: v.optional(v.boolean()),
   },
-  handler: async ({ db }, { id, ...rest }) => {
-    await db.patch(id, { ...rest, updatedAt: Date.now() });
-  },
-});
-
-/** Public list */
-export const getPublicServices = query({
-  args: {},
-  handler: async ({ db }) => {
-    return await db
-      .query("services")
-      .withIndex("by_isPublic", (q: any) => q.eq("isPublic", true))
-      .collect();
+  handler: async (ctx, args) => {
+    const { id, ...rest } = args;
+    const patch: any = { updatedAt: Date.now() };
+    for (const [k, v_] of Object.entries(rest)) {
+      if (v_ !== undefined) patch[k] = v_;
+    }
+    if (patch.name) {
+      patch.slug = await uniqueSlug(ctx, patch.name);
+    }
+    await ctx.db.patch(id, patch);
   },
 });
