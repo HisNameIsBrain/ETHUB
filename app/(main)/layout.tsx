@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { useConvexAuth } from "convex/react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { Spinner } from "@/components/spinner";
 import { SearchCommand } from "@/components/search-command";
@@ -11,6 +12,13 @@ import { EnsureUser } from "@/components/ensure-user";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const router = useRouter();
+  
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/");
+    }
+  }, [isLoading, isAuthenticated, router]);
   
   if (isLoading) {
     return (
@@ -20,9 +28,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
   
-  if (!isAuthenticated) {
-    return redirect("/");
-  }
+  // Block rendering until we know auth state or after redirect
+  if (!isAuthenticated) return null;
   
   return (
     <>
