@@ -37,22 +37,17 @@ export default defineSchema({
     })
     .index("by_user", ["userId"])
     .index("by_user_parent", ["userId", "parentDocument"]),
-
+    
   services: defineTable({
-      name: v.string(),
-      description: v.optional(v.string()),
-      price: v.optional(v.float64()),
-      deliveryTime: v.optional(v.string()),
-      
-      // REQUIRED fields
-      slug: v.string(),
-      createdAt: v.float64(),
-      updatedAt: v.float64(),
-      isPublic: v.boolean(),
-      archived: v.boolean(),
-      createdBy: v.string(),
-    })
-    .index("by_slug", ["slug"])
-    .index("by_createdBy", ["createdBy"]),
-  // ...other tables
+    name: v.string(),
+    description: v.optional(v.string()),
+    price: v.optional(v.float64()),   // ← double
+    deliveryTime: v.optional(v.string()),
+    isPublic: v.boolean(),
+    archived: v.boolean(),
+    slug: v.string(),
+    createdAt: v.float64(),
+    updatedAt: v.float64(),
+  }).index("by_public", ["isPublic"])
+    .index("by_slug", ["slug"]),
 });
