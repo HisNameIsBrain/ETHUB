@@ -31,6 +31,9 @@ export default defineSchema({
       parentDocument: v.optional(v.id("documents")),
       createdAt: v.float64(),
       updatedAt: v.float64(),
+      deliveryTime: v.optional(""),
+      name: v.string(),
+      price: v.optional("")
     })
     .index("by_user", ["userId"])
     .index("by_user_parent", ["userId", "parentDocument"]),
