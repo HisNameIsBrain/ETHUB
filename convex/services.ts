@@ -29,31 +29,24 @@ export const create = mutation({
     description: v.optional(v.string()),
     price: v.optional(v.float64()),
     deliveryTime: v.optional(v.string()),
-    isPublic: v.optional(v.boolean()),
+    isPublic: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
     const now = Date.now();
-    const slug = await uniqueSlug(ctx, args.name);
-    
-    await ctx.db.insert("services", {
+    const slug = args.name.trim().toLowerCase().replace(/\s+/g, "-"); "-"
+    const identity = await ctx.auth.getUserIdentity();
+    return await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
       price: args.price,
-      deliveryTime: args.deliveryTime,
-      
+      isPublic: args.isPublic,
+      archived: false,
       slug,
       createdAt: now,
       updatedAt: now,
-      isPublic: args.isPublic ?? true,
-      archived: false,
-      createdBy: identity.subject,
     });
   },
 });
-
 // (optional) update to always refresh updatedAt
 export const update = mutation({
   args: {
@@ -61,7 +54,6 @@ export const update = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.float64()),
-    deliveryTime: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
     archived: v.optional(v.boolean()),
   },
