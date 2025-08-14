@@ -1,30 +1,32 @@
 // middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Public routes (expand as needed)
+// Define which routes should be public
 const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/edgestore/(.*)", // if you have public upload init; remove if not
+ "/",
+ "/sign-in(.*)",
+ "/sign-up(.*)",
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  // Allow public routes
-  if (isPublicRoute(req)) return;
-  
-  // Older Clerk versions: no .protect(); do a userId check
-  const { userId } = auth();
-  if (!userId) {
-    const signInUrl = new URL("/sign-in", req.url);
-    signInUrl.searchParams.set("redirect_url", req.url);
-    return Response.redirect(signInUrl);
-  }
+ // Allow public routes through without checks
+ if (isPublicRoute(req)) return;
+ 
+ // Clerk v4+ safe approach:
+ const { userId } = auth();
+ if (!userId) {
+  const signInUrl = new URL("/sign-in", req.url);
+  signInUrl.searchParams.set("redirect_url", req.url);
+  return Response.redirect(signInUrl);
+ }
+ 
+ // If you're on Clerk v5+, you could replace the above with:
+ // return auth().protect();
 });
 
-// Run on everything except Next static files & common assets
+// Ensure it runs only on relevant routes (exclude static/assets)
 export const config = {
-  matcher: [
-    "/((?!_next|.*\\.(?:ico|png|jpg|jpeg|svg|gif|webp|txt|xml|mp4|mp3|css|js|map)).*)",
-  ],
+ matcher: [
+  "/((?!_next|.*\\.(?:ico|png|jpg|jpeg|svg|gif|webp|txt|xml|css|js|map|mp4|mp3)).*)",
+ ],
 };
