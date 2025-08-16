@@ -1,12 +1,14 @@
+// middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// Public routes (no auth)
 const isPublicRoute = createRouteMatcher([
-  "/",
+  "/",                           // marketing home
   "/services",
   "/services/:path*",
-  "/sign-in(.*)",
+  "/sign-in(.*)",                // Clerk auth pages must be public
   "/sign-up(.*)",
-  "/sso-callback",
+  "/sso-callback",               // if you use AuthenticateWithRedirectCallback
   "/api/public/:path*",
   "/favicon.ico",
   "/robots.txt",
@@ -19,10 +21,14 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware((auth, req) => {
   if (isPublicRoute(req)) return;
+
   const { userId, redirectToSignIn } = auth();
-  if (!userId) return redirectToSignIn({ returnBackUrl: req.url });
+  if (!userId) {
+    return redirectToSignIn({ returnBackUrl: req.url });
+  }
 });
 
+// Protect everything except static files & internals
 export const config = {
   matcher: [
     "/((?!_next|.*\\.(?:ico|png|jpg|jpeg|svg|gif|webp|txt|xml|css|js|map|mp4|mp3)).*)",
