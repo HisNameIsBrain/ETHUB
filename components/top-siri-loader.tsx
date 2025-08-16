@@ -94,7 +94,7 @@ function RainbowSweep() {
   return (
     <div className="relative h-full overflow-hidden">
       <div
-        className="absolute top-0 h-full w-[35%] shadow-[0_0_16px_6px_rgba(255,255,255,0.8)]"
+        className="absolute top-0 h-full w-[35%]"
         style={{
           animation: `sweep ${SWEEP_ONCE_MS}ms linear 0s 2 both, hueShift ${
             SWEEP_ONCE_MS * 2
@@ -102,8 +102,10 @@ function RainbowSweep() {
           background:
             "linear-gradient(90deg,#ff0080,#ff8c00,#ffee00,#00ff85,#00cfff,#7a5cff,#ff0080)",
           backgroundSize: "200% 100%",
-          filter: "saturate(1.7) contrast(1.25)",
-          borderRadius: 0,
+          filter: "saturate(2) contrast(1.35) brightness(1.3)",
+          boxShadow:
+            "0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,0,128,0.6), 0 0 60px rgba(0,207,255,0.5)",
+          borderRadius: 2,
         }}
       />
       {/* subtle base line to lift brightness */}
@@ -111,59 +113,50 @@ function RainbowSweep() {
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.22),rgba(255,255,255,0.12))",
+            "linear-gradient(90deg,rgba(255,255,255,0.2),rgba(255,255,255,0.35),rgba(255,255,255,0.2))",
         }}
       />
     </div>
   );
 }
 
-/** Bottom “ink / aurora borealis” pool: blurred, semi-transparent, fades to transparent */
+/** Bottom “ink / aurora borealis” pool */
 function AuroraPool() {
   return (
     <div className="absolute left-0 right-0 top-[6px] h-[48px] overflow-visible">
-      {/* Layer 1: broad soft bloom that fades out toward the bottom */}
+      {/* Layer 1: bright bloom */}
       <div
-        className="
-          absolute inset-x-0 top-0 h-full
-          blur-[22px] opacity-70
-          will-change-transform
-        "
+        className="absolute inset-x-0 top-0 h-full blur-[28px] opacity-80 will-change-transform"
         style={{
           background:
-            "radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.0) 70%)",
+            "radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.0) 70%)",
           WebkitMaskImage:
             "linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0.05))",
           maskImage:
             "linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0.05))",
-          backdropFilter: "blur(2px)",
         }}
       />
 
-      {/* Layer 2: aurora color ribbons with soft transparency and drift */}
+      {/* Layer 2: aurora color ribbons with shimmer */}
       <div
-        className="absolute inset-x-0 top-0 h-full opacity-65 blur-[18px] mix-blend-screen"
+        className="absolute inset-x-0 top-0 h-full opacity-80 blur-[22px] mix-blend-screen"
         style={{
           background:
-            "conic-gradient(from 210deg at 50% -10%, rgba(255,0,128,0.6), rgba(255,140,0,0.6), rgba(255,238,0,0.5), rgba(0,255,133,0.55), rgba(0,207,255,0.55), rgba(122,92,255,0.55), rgba(255,0,128,0.6))",
+            "conic-gradient(from 210deg at 50% -10%, rgba(255,0,128,0.7), rgba(255,140,0,0.65), rgba(255,238,0,0.55), rgba(0,255,133,0.6), rgba(0,207,255,0.65), rgba(122,92,255,0.65), rgba(255,0,128,0.7))",
           WebkitMaskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0))",
+            "linear-gradient(to bottom, rgba(0,0,0,0.95), rgba(0,0,0,0))",
           maskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0))",
-          animation: "auroraDrift 2.4s ease-in-out 0s 1 alternate",
+            "linear-gradient(to bottom, rgba(0,0,0,0.95), rgba(0,0,0,0))",
+          animation: "auroraDrift 4s ease-in-out infinite alternate",
         }}
       />
 
-      {/* Layer 3: a gentle vertical fade so the pool feels “ink-like” and transparent */}
+      {/* Layer 3: extra shimmer fade */}
       <div
         className="absolute inset-x-0 top-0 h-full pointer-events-none"
         style={{
           background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.25), rgba(255,255,255,0.08), rgba(255,255,255,0))",
-          WebkitMaskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0))",
-          maskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0))",
+            "linear-gradient(to bottom, rgba(255,255,255,0.3), rgba(255,255,255,0.1), rgba(255,255,255,0))",
         }}
       />
     </div>

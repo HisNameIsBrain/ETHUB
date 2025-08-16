@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Simple slugify
+// --- utils ---
 function slugify(input: string) {
   return input
     .toLowerCase()
@@ -15,14 +15,14 @@ async function uniqueSlug(ctx: any, name: string) {
   let slug = base;
   let i = 1;
   // requires index("by_slug", ["slug"])
-  while (
-    await ctx.db.query("services").withIndex("by_slug", (q: any) => q.eq("slug", slug)).first()
-  ) {
+  // eslint-disable-next-line no-await-in-loop
+  while (await ctx.db.query("services").withIndex("by_slug", (q: any) => q.eq("slug", slug)).first()) {
     slug = `${base}-${i++}`;
   }
   return slug;
 }
 
+// --- mutations ---
 export const create = mutation({
   args: {
     name: v.string(),
@@ -33,39 +33,60 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const slug = args.name.trim().toLowerCase().replace(/\s+/g, "-"); "-"
-    const identity = await ctx.auth.getUserIdentity();
+    const slug = await uniqueSlug(ctx, args.name);
+    
     return await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
       price: args.price,
+      deliveryTime: args.deliveryTime,
       isPublic: args.isPublic,
-      archived: false,
       slug,
       createdAt: now,
       updatedAt: now,
     });
   },
 });
-// (optional) update to always refresh updatedAt
+
 export const update = mutation({
   args: {
     id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.float64()),
+    deliveryTime: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...rest } = args;
-    const patch: any = { updatedAt: Date.now() };
+    const patch: Record < string, unknown > = { updatedAt: Date.now() };
+    
     for (const [k, v_] of Object.entries(rest)) {
       if (v_ !== undefined) patch[k] = v_;
     }
-    if (patch.name) {
+    if (patch.name && typeof patch.name === "string") {
       patch.slug = await uniqueSlug(ctx, patch.name);
     }
+    
     await ctx.db.patch(id, patch);
+  },
+});
+
+// delete a specific service by id (use to remove the bad row)
+export const removeById = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+
+// --- queries ---
+export const getPublics = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("services").collect();
+    return all
+      .filter((s) => s.isPublic)
+      .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
   },
 });
