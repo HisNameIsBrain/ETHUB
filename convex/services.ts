@@ -1,28 +1,8 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 
-// Simple slugify
-function slugify(input: string) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
-
-async function uniqueSlug(ctx: any, name: string) {
-  const base = slugify(name) || "service";
-  let slug = base;
-  let i = 1;
-  // requires index("by_slug", ["slug"])
-  while (
-    await ctx.db.query("services").withIndex("by_slug", (q: any) => q.eq("slug", slug)).first()
-  ) {
-    slug = `${base}-${i++}`;
-  }
-  return slug;
-}
-
+// Create a new service
 export const create = mutation({
   args: {
     name: v.string(),
@@ -30,42 +10,99 @@ export const create = mutation({
     price: v.optional(v.float64()),
     deliveryTime: v.optional(v.string()),
     isPublic: v.boolean(),
+    slug: v.string(),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    const slug = args.name.trim().toLowerCase().replace(/\s+/g, "-"); "-"
     const identity = await ctx.auth.getUserIdentity();
-    return await ctx.db.insert("services", {
-      name: args.name,
-      description: args.description,
-      price: args.price,
-      isPublic: args.isPublic,
+    if (!identity) throw new Error("Not authenticated");
+
+    const service = await ctx.db.insert("services", {
+      ...args,
       archived: false,
-      slug,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return service;
+  },
+});
+
+// Get all services (non-archived)
+export const getAll = query({
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("services").collect();
+
+    return rows
+      .filter((r) => !r.archived)
+      .sort((a, b) => a.createdAt! - b.createdAt!); // ✅ non-null assertion
+  },
+});
+
+// Get a single service by ID
+export const getById = query({
+  args: { id: v.id("services") },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.id);
+    if (!service) throw new Error("Service not found");
+    return service;
+  },
+});
+
+// Archive (soft-delete) a service
+export const archive = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.id);
+    if (!service) throw new Error("Service not found");
+
+    await ctx.db.patch(args.id, {
+      archived: true,
+      updatedAt: Date.now(),
     });
   },
 });
-// (optional) update to always refresh updatedAt
+
+// Restore an archived service
+export const restore = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.id);
+    if (!service) throw new Error("Service not found");
+
+    await ctx.db.patch(args.id, {
+      archived: false,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Permanently delete a service
+export const remove = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
+// Update a service
 export const update = mutation({
   args: {
     id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     price: v.optional(v.float64()),
+    deliveryTime: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
+    slug: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...rest } = args;
-    const patch: any = { updatedAt: Date.now() };
-    for (const [k, v_] of Object.entries(rest)) {
-      if (v_ !== undefined) patch[k] = v_;
-    }
-    if (patch.name) {
-      patch.slug = await uniqueSlug(ctx, patch.name);
-    }
-    await ctx.db.patch(id, patch);
+    const { id, ...fields } = args;
+    const service = await ctx.db.get(id);
+    if (!service) throw new Error("Service not found");
+
+    await ctx.db.patch(id, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
   },
 });

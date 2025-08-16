@@ -1,9 +1,3 @@
 {
-  "project": "https://dashboard.convex.dev/t/hisnameisbrain/notion-clone-72e81/graceful-camel-886,
-  "functions": "convex/",
-  "adminKey": "prod:graceful-camel-886|eyJ2MiI6ImI2NDgzYTUyZGNmZjQ4MjJhMzg3ZDUwMzZhOThhODdlIn0=",
-  "localDevConfig": {
-    "port": 3210,
-    "browserOpen": true
-  }
+  "deployment": "dev:graceful-camel-887"
 }

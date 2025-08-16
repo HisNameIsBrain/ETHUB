@@ -1,28 +1,71 @@
-import { mutation } from "./_generated/server";
+// convex/users.ts
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-export const ensureUser = mutation({
+export const upsertCurrentUser = mutation({
   args: {
-    tokenIdentifier: v.string(),
+    email: v.string(),
     name: v.optional(v.string()),
-    email: v.optional(v.string()),
-    pictureUrl: v.optional(v.string()),
-    userId: v.string(),
+    username: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
   },
-  handler: async ({ db }, args) => {
-    const existing = await db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", args.tokenIdentifier))
-      .first();
-    if (existing) return existing._id;
+  handler: async (ctx, { email, name, username, phoneNumber, imageUrl }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
 
-    return await db.insert("users", {
-      tokenIdentifier: args.tokenIdentifier,
-      name: args.name,
-      email: args.email,
-      pictureUrl: args.pictureUrl,
-      userId: args.userId,
-      createdAt: Date.now(),
+    const userId = identity.subject;
+    const tokenIdentifier = identity.tokenIdentifier ?? undefined;
+    const now = Date.now();
+    const lower = email.toLowerCase();
+
+    // Look up existing user by userId
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        email: lower, // always safe
+        // Only include required fields if we have values; otherwise keep existing
+        ...(name !== undefined ? { name } : {}),
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
+        // Optionals
+        ...(username !== undefined ? { username } : {}),
+        ...(phoneNumber !== undefined ? { phoneNumber } : {}),
+        ...(tokenIdentifier ? { tokenIdentifier } : {}),
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    // Insert new user (provide required fields explicitly)
+    const id = await ctx.db.insert("users", {
+      userId,
+      role: "user", // required by your types
+      name: name ?? identity.name ?? "Anonymous",
+      email: lower,
+      imageUrl: imageUrl ?? identity.pictureUrl ?? "",
+      username,
+      phoneNumber,
+      tokenIdentifier,
+      createdAt: now,
+      updatedAt: now,
     });
+
+    return id;
+  },
+});
+
+export const getMe = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    return await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .first();
   },
 });

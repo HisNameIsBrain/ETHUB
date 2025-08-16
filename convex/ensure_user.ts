@@ -1,3 +1,4 @@
+// convex/ensure_users.ts
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -12,36 +13,37 @@ export const ensureUser = mutation({
   async handler(ctx, { name, email, imageUrl, username, phoneNumber }) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
-    
+
     const now = Date.now();
     const authUserId = identity.subject;
     const lowerEmail = (email ?? identity.email ?? "").toLowerCase();
-    
-    // Try existing by userId
+
+    // Look for an existing user by userId
     const existing = await ctx.db
       .query("users")
       .withIndex("by_userId", (q) => q.eq("userId", authUserId))
       .first();
-    
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         ...(name !== undefined ? { name } : {}),
         ...(lowerEmail ? { email: lowerEmail } : {}),
         ...(username !== undefined ? { username } : {}),
         ...(phoneNumber !== undefined ? { phoneNumber } : {}),
-        ...(imageUrl !== undefined ?
-          { imageUrl } :
-          identity.pictureUrl ?
-          { imageUrl: identity.pictureUrl } :
-          {}),
-        ...(identity.tokenIdentifier ?
-          { tokenIdentifier: identity.tokenIdentifier } :
-          {}),
+        ...(imageUrl !== undefined
+          ? { imageUrl }
+          : identity.pictureUrl
+          ? { imageUrl: identity.pictureUrl }
+          : {}),
+        ...(identity.tokenIdentifier
+          ? { tokenIdentifier: identity.tokenIdentifier }
+          : {}),
         updatedAt: now,
       });
       return existing._id;
     }
-    
+
+    // Otherwise, create new user
     const newId = await ctx.db.insert("users", {
       userId: authUserId,
       name: name ?? identity.name ?? "Anonymous",
@@ -54,7 +56,7 @@ export const ensureUser = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    
+
     return newId;
   },
 });
