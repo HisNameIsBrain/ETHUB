@@ -90,6 +90,7 @@ export default function TopSiriLoader() {
 }
 
 /** Bright rainbow segment that sweeps exactly twice */
+/** Bright rainbow segment that sweeps exactly twice */
 function RainbowSweep() {
   return (
     <div className="relative h-full overflow-hidden">
