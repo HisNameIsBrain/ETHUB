@@ -1,27 +1,20 @@
-import "./globals.css";
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import Providers from "./providers";
-import { Suspense } from "react";
-import TopSiriLoader from "@/components/top-siri-loader";
+// app/layout.tsx
+"use client";
 
-const inter = Inter({ subsets: ["latin"] });
+import { ClerkProvider } from "@clerk/nextjs";
+import type { ReactNode } from "react";
 
-export const metadata: Metadata = {
-  title: "ETHUB",
-  description: "Tech Hub app",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <Providers>
-          <TopSiriLoader />
-          <Suspense fallback={<TopSiriLoader />}>
-            {children}
-          </Suspense>
-        </Providers>
+      <body>
+        <ClerkProvider
+          // keep these only if you really need them; otherwise omit
+          // signInUrl="/sign-in"
+          // signUpUrl="/sign-up"
+        >
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

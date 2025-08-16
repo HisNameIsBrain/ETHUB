@@ -1,24 +1,34 @@
+// middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
+const isPublic = createRouteMatcher([
+  "/documents",
+  "/",                       // marketing home
+  "/services",               // services index
+  "/services/:path*",        // any nested services pages
+  "/sign-in(.*)",            // auth pages must be public
   "/sign-up(.*)",
-  "/api/webhook(.*)",
-  "/api/edgestore/(.*)",
-  "/_next/(.*)",
+  "/api/public/:path*",      // any public APIs you expose
   "/favicon.ico",
-  "/images/(.*)",
-  "/fonts/(.*)",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/_next/:path*",
+  "/images/:path*",
+  "/icons/:path*",
+  "/public/:path*",
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  if (isPublicRoute(req)) return;
-  // Require auth for everything else
-  auth().protect();
+  if (isPublic(req)) return;
+
+  const { userId, redirectToSignIn } = auth();
+  if (!userId) {
+    // This preserves the original URL so Clerk can send users back after login
+    return redirectToSignIn({ returnBackUrl: req.url });
+  }
 });
 
+// Exclude static assets; protect everything else
 export const config = {
-  // Protect everything except the public routes above
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: ["/((?!.*\\..*|_next).*)", "/"],
 };

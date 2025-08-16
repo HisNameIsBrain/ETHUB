@@ -32,7 +32,6 @@ export default defineSchema({
       createdAt: v.float64(),
       updatedAt: v.float64(),
       deliveryTime: v.optional(v.string()),
-      deliveryTime: v.optional(v.string()),
       price: v.optional(v.float64()),
     })
     .index("by_user", ["userId"])
