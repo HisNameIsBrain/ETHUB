@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+// components/toolbar.tsx
 "use client";
 
 import { ElementRef, useRef, useState } from "react";
@@ -16,12 +16,9 @@ import { IconPicker } from "./icon-picker";
 interface ToolbarProps {
   initialData: Doc<"documents">;
   preview?: boolean;
-};
+}
 
-export const Toolbar = ({
-  initialData,
-  preview
-}: ToolbarProps) => {
+export const Toolbar = ({ initialData, preview }: ToolbarProps) => {
   const inputRef = useRef<ElementRef<"textarea">>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialData.title);
@@ -33,7 +30,6 @@ export const Toolbar = ({
 
   const enableInput = () => {
     if (preview) return;
-
     setIsEditing(true);
     setTimeout(() => {
       setValue(initialData.title);
@@ -43,17 +39,15 @@ export const Toolbar = ({
 
   const disableInput = () => setIsEditing(false);
 
-  const onInput = (value: string) => {
-    setValue(value);
+  const onInput = (next: string) => {
+    setValue(next);
     update({
       id: initialData._id,
-      title: value || "Untitled"
+      title: next || "Untitled",
     });
   };
 
-  const onKeyDown = (
-    event: React.KeyboardEvent<HTMLTextAreaElement>
-  ) => {
+  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
       disableInput();
@@ -61,17 +55,12 @@ export const Toolbar = ({
   };
 
   const onIconSelect = (icon: string) => {
-    update({
-      id: initialData._id,
-      icon,
-    });
+    update({ id: initialData._id, icon });
   };
 
   const onRemoveIcon = () => {
-    removeIcon({
-      id: initialData._id
-    })
-  }
+    removeIcon({ id: initialData._id });
+  };
 
   return (
     <div className="pl-[54px] group relative">
@@ -87,16 +76,17 @@ export const Toolbar = ({
             className="rounded-full opacity-0 group-hover/icon:opacity-100 transition text-muted-foreground text-xs"
             variant="outline"
             size="icon"
+            aria-label="Remove icon"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       )}
+
       {!!initialData.icon && preview && (
-        <p className="text-6xl pt-6">
-          {initialData.icon}
-        </p>
+        <p className="text-6xl pt-6">{initialData.icon}</p>
       )}
+
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-x-1 py-4">
         {!initialData.icon && !preview && (
           <IconPicker asChild onChange={onIconSelect}>
@@ -122,6 +112,7 @@ export const Toolbar = ({
           </Button>
         )}
       </div>
+
       {isEditing && !preview ? (
         <TextareaAutosize
           ref={inputRef}
@@ -140,30 +131,7 @@ export const Toolbar = ({
         </div>
       )}
     </div>
-  )
-}
-=======
-\
-"use client";
-import React from "react";
-
-export type ToolbarProps = React.HTMLAttributes<HTMLDivElement> & {
-  left?: React.ReactNode;
-  right?: React.ReactNode;
-  title?: React.ReactNode;
+  );
 };
 
-export function Toolbar({ className = "", left, right, title, children, ...props }: ToolbarProps) {
-  return (
-    <div className={`w-full border-b bg-background ${className}`} {...props}>
-      <div className="mx-auto flex max-w-6xl items-center justify-between p-2 gap-2">
-        <div className="flex items-center gap-2">{left}</div>
-        <div className="text-sm font-medium truncate">{title}</div>
-        <div className="flex items-center gap-2">{right}</div>
-      </div>
-      {children ? <div className="mx-auto max-w-6xl p-2">{children}</div> : null}
-    </div>
-  );
-}
 export default Toolbar;
->>>>>>> a2a5ad9 (convex)

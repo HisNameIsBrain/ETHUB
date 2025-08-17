@@ -1,101 +1,86 @@
-<<<<<<< HEAD
+// components/cover.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
-import {
-  BlockNoteEditor,
-  PartialBlock,
-} from "@blocknote/core";
-import {
-  BlockNoteView,
-  useBlockNote,
-} from "@blocknote/react";
-import "@blocknote/core/style.css";
+import Image from "next/image";
+import { ImageIcon, X } from "lucide-react";
+import { useMutation } from "convex/react";
+import { useParams } from "next/navigation";
 
-import { useEdgeStore } from "../lib/edgestore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useCoverImage } from "@/hooks/use-cover-image";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useEdgeStore } from "@/lib/edgestore";
 
-interface EditorProps {
-  onChange: (value: string) => void;
-  initialContent?: string;
-  editable?: boolean;
+interface CoverImageProps {
+  url?: string;
+  preview?: boolean;
+  className?: string;
 }
 
-const Editor = ({ onChange, initialContent, editable }: EditorProps) => {
-  const { resolvedTheme } = useTheme();
+export const Cover = ({ url, preview, className }: CoverImageProps) => {
   const { edgestore } = useEdgeStore();
+  const params = useParams();
+  const coverImage = useCoverImage();
+  const removeCoverImage = useMutation(api.documents.removeCoverImage);
 
-  const handleUpload = async (file: File) => {
-    const response = await edgestore.publicFiles.upload({ file });
-    return response.url;
+  const onRemove = async () => {
+    if (url) {
+      await edgestore.publicFiles.delete({ url });
+    }
+    removeCoverImage({ id: params.documentId as Id<"documents"> });
   };
 
-  // ✅ Call hook unconditionally
-  const editor: BlockNoteEditor = useBlockNote({
-    editable,
-    initialContent: initialContent
-      ? (JSON.parse(initialContent) as PartialBlock[])
-      : undefined,
-    onEditorContentChange: (editor) => {
-      onChange(JSON.stringify(editor.topLevelBlocks, null, 2));
-    },
-    uploadFile: handleUpload,
-  });
-
-  // ✅ Guard rendering (not hook calls) until mounted
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) return null;
-
   return (
-    <div>
-      <BlockNoteView
-        editor={editor}
-        theme={resolvedTheme === "dark" ? "dark" : "light"}
-      />
+    <div
+      className={cn(
+        "relative w-full h-[35vh] group",
+        !url && "h-[12vh]",
+        url && "bg-muted",
+        className
+      )}
+    >
+      {!!url && (
+        <Image
+          src={url}
+          fill
+          alt="Cover"
+          className="object-cover"
+          priority
+          sizes="100vw"
+        />
+      )}
+
+      {url && !preview && (
+        <div className="opacity-0 group-hover:opacity-100 absolute bottom-5 right-5 flex items-center gap-x-2">
+          <Button
+            onClick={() => coverImage.onReplace(url)}
+            className="text-muted-foreground text-xs"
+            variant="outline"
+            size="sm"
+          >
+            <ImageIcon className="h-4 w-4 mr-2" />
+            Change cover
+          </Button>
+          <Button
+            onClick={onRemove}
+            className="text-muted-foreground text-xs"
+            variant="outline"
+            size="sm"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Remove
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
 
-=======
-\
-"use client";
-import React from "react";
-
-export type EditorProps = {
-  value?: string;
-  onChange?: (val: string) => void;
-  placeholder?: string;
-  readOnly?: boolean;
-  className?: string;
+Cover.Skeleton = function CoverSkeleton() {
+  return <Skeleton className="w-full h-[12vh]" />;
 };
 
-// Minimal controlled editor stub. Replace later with TipTap/Slate/etc.
-export function Editor({
-  value = "",
-  onChange,
-  placeholder = "Start typing…",
-  readOnly = false,
-  className = "",
-}: EditorProps) {
-  if (readOnly) {
-    return (
-      <div className={`prose dark:prose-invert max-w-none ${className}`}>
-        {value || <span className="text-muted-foreground">{placeholder}</span>}
-      </div>
-    );
-  }
-  return (
-    <textarea
-      className={`w-full min-h-[300px] resize-y rounded-md border bg-background p-3 outline-none ${className}`}
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  );
-}
->>>>>>> a2a5ad9 (convex)
-export default Editor;
+export default Cover;

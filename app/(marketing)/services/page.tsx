@@ -1,9 +1,11 @@
+// app/(marketing)/services/page.tsx
 "use client";
 
 import * as React from "react";
 import { useQuery } from "convex/react";
-// If you use codegen, you can instead:
+// (optional) If you use codegen instead, switch to:
 // import { api } from "@/convex/_generated/api";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,30 +15,35 @@ import {
 const PAGE_SIZE = 10;
 
 export default function ServicesPage() {
-  // If you use codegen: const raw = useQuery(api.services.getPublics) ?? [];
-  const raw = useQuery("services:getPublics") ?? undefined; // undefined while loading
+  // String form works if your function name is exactly "services:getPublic"
+  const raw = useQuery("services:getPublic") ?? undefined;
+  // If using codegen:
+  // const raw = useQuery(api.services.getPublic) ?? undefined;
+
   const [q, setQ] = React.useState("");
   const [page, setPage] = React.useState(1);
 
-  // Filter & stable data array
+  // Normalize & filter
   const services = React.useMemo(() => {
     const list = Array.isArray(raw) ? raw : [];
     const term = q.trim().toLowerCase();
     if (!term) return list;
     return list.filter((s: any) =>
       (s.name ?? "").toLowerCase().includes(term) ||
-      (s.description ?? "").toLowerCase().includes(term)
+      (s.description ?? "").toLowerCase().includes(term) ||
+      (s.slug ?? "").toLowerCase().includes(term)
     );
   }, [raw, q]);
 
+  // Paging math
   const total = services.length;
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(Math.max(1, page), lastPage);
   const startIndex = total > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0;
   const endIndex = total > 0 ? Math.min(safePage * PAGE_SIZE, total) : 0;
 
+  // Clamp page when filters/data change
   React.useEffect(() => {
-    // if data changes or search term changes, clamp page back into range
     setPage((p) => Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE))));
   }, [q, services.length]);
 
@@ -59,9 +66,7 @@ export default function ServicesPage() {
       </div>
 
       <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-      <p className="mt-2 text-muted-foreground">
-        Browse available services.
-      </p>
+      <p className="mt-2 text-muted-foreground">Browse available services.</p>
 
       {/* Loading */}
       {isLoading && (
@@ -70,79 +75,71 @@ export default function ServicesPage() {
 
       {/* Empty */}
       {!isLoading && total === 0 && (
-        <div className="mt-6 rounded-lg border p-6">
-          <div className="text-base font-medium">No services found</div>
-          <div className="text-sm text-muted-foreground">
-            Try clearing your search or add some services in the admin panel.
-          </div>
+        <div className="mt-6 text-sm text-muted-foreground">
+          No services found{q ? " for your search." : "."}
         </div>
       )}
 
       {/* Table */}
       {!isLoading && total > 0 && (
-        <>
-          <div className="mt-6 overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40%]">Title</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-[140px]">Actions</TableHead>
+        <div className="mt-6 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[30%]">Title</TableHead>
+                <TableHead className="w-[45%]">Description</TableHead>
+                <TableHead className="w-[15%]">Price</TableHead>
+                <TableHead className="w-[10%] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageItems.map((s: any) => (
+                <TableRow key={s._id}>
+                  <TableCell className="font-medium">{s.name ?? "Untitled"}</TableCell>
+                  <TableCell className="truncate">
+                    {(s.description ?? "").trim() || "—"}
+                  </TableCell>
+                  <TableCell>
+                    {typeof s.price === "number" ? `$${s.price.toFixed(2)}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {/* Hook up real actions later */}
+                    <Button variant="outline" size="sm">View</Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pageItems.map((s: any) => (
-                  <TableRow key={s._id}>
-                    <TableCell className="font-medium">{s.name ?? "Untitled"}</TableCell>
-                    <TableCell className="truncate max-w-[420px]">
-                      {s.description ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          // TODO: push to details page when you have one
-                          // router.push(`/services/${s.slug ?? s._id}`);
-                          alert(`Selected: ${s.name ?? s._id}`);
-                        }}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
 
           {/* Pagination */}
           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
             <div>
-              Showing <span className="font-medium">{startIndex}</span>–
-              <span className="font-medium">{endIndex}</span> of{" "}
-              <span className="font-medium">{total}</span>
+              {startIndex > 0 ? (
+                <>Showing {startIndex}–{endIndex} of {total}</>
+              ) : (
+                <>0 results</>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button
-                size="sm"
                 variant="outline"
+                size="sm"
                 disabled={safePage <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                ‹ Prev
+                ‹
               </Button>
               <Button
-                size="sm"
                 variant="outline"
+                size="sm"
                 disabled={safePage >= lastPage}
                 onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
               >
-                Next ›
+                ›
               </Button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

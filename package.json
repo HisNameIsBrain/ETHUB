@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.15",
     "@blocknote/core": "^0.9.6",
     "@blocknote/react": "^0.9.6",
     "@clerk/nextjs": "^6.31.1",
