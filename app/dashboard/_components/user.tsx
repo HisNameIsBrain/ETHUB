@@ -19,7 +19,7 @@ import {
   SignOutButton,
 } from "@clerk/nextjs";
 
-export default function User() {
+export function User() {
   const { user } = useUser();
   const avatar = user?.imageUrl ?? "/placeholder-user.jpg";
 

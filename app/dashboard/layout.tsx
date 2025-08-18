@@ -26,14 +26,13 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import { Analytics } from '@vercel/analytics/react';
-import { User } from '../_components/user';
-import { VercelLogo } from '../_components/icons';
-import Providers from '../_components/providers';
-import { NavItem } from '../_components/nav-item';
-import { SearchInput } from '../_components/search';
+import { User } from '@/app/dashboard/_components/user';
+import { VercelLogo } from '@/components/icons';
+import Providers from '@/app/providers';
+import { NavItem } from '@/app/dashboard/_components/nav-item';
+import { SearchInput } from '@/app/dashboard/_components/search';
 
-export default function DashboardLayout({
-  children
+export default function DashboardLayout({ children
 }: {
   children: React.ReactNode;
 }) {
@@ -190,3 +189,4 @@ function DashboardBreadcrumb() {
     </Breadcrumb>
   );
 }
+
