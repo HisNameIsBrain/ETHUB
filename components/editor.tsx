@@ -1,86 +1,31 @@
-// components/cover.tsx
+// components/editor.tsx
 "use client";
 
-import Image from "next/image";
-import { ImageIcon, X } from "lucide-react";
-import { useMutation } from "convex/react";
-import { useParams } from "next/navigation";
+import * as React from "react";
+import { Textarea } from "@/components/ui/textarea";
 
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { useCoverImage } from "@/hooks/use-cover-image";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useEdgeStore } from "@/lib/edgestore";
+export type EditorProps = {
+  initialContent?: string;
+  onChange: (content: string) => void;
+};
 
-interface CoverImageProps {
-  url?: string;
-  preview?: boolean;
-  className?: string;
-}
+export default function Editor({ initialContent = "", onChange }: EditorProps) {
+  const [value, setValue] = React.useState(initialContent);
 
-export const Cover = ({ url, preview, className }: CoverImageProps) => {
-  const { edgestore } = useEdgeStore();
-  const params = useParams();
-  const coverImage = useCoverImage();
-  const removeCoverImage = useMutation(api.documents.removeCoverImage);
-
-  const onRemove = async () => {
-    if (url) {
-      await edgestore.publicFiles.delete({ url });
-    }
-    removeCoverImage({ id: params.documentId as Id<"documents"> });
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    setValue(next);
+    onChange(next);
   };
 
   return (
-    <div
-      className={cn(
-        "relative w-full h-[35vh] group",
-        !url && "h-[12vh]",
-        url && "bg-muted",
-        className
-      )}
-    >
-      {!!url && (
-        <Image
-          src={url}
-          fill
-          alt="Cover"
-          className="object-cover"
-          priority
-          sizes="100vw"
-        />
-      )}
-
-      {url && !preview && (
-        <div className="opacity-0 group-hover:opacity-100 absolute bottom-5 right-5 flex items-center gap-x-2">
-          <Button
-            onClick={() => coverImage.onReplace(url)}
-            className="text-muted-foreground text-xs"
-            variant="outline"
-            size="sm"
-          >
-            <ImageIcon className="h-4 w-4 mr-2" />
-            Change cover
-          </Button>
-          <Button
-            onClick={onRemove}
-            className="text-muted-foreground text-xs"
-            variant="outline"
-            size="sm"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Remove
-          </Button>
-        </div>
-      )}
+    <div className="w-full mt-4">
+      <Textarea
+        className="w-full min-h-[200px] resize-y"
+        value={value}
+        onChange={handleChange}
+        placeholder="Start typing your document..."
+      />
     </div>
   );
-};
-
-Cover.Skeleton = function CoverSkeleton() {
-  return <Skeleton className="w-full h-[12vh]" />;
-};
-
-export default Cover;
+}

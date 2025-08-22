@@ -1,161 +1,247 @@
 // convex/documents.ts
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 
-/* ------------------------------ Create ------------------------------ */
+// Require an authenticated user
+async function requireUserId(ctx: any): Promise<string> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+  return identity.subject;
+}
+
+// Descendants helpers (type q as any to avoid implicit any)
+async function archiveDescendants(ctx: any, ownerId: string, parentId: Id<"documents">) {
+  const children = await ctx.db
+    .query("documents")
+    .withIndex("by_parent", (q: any) => q.eq("parentDocument", parentId))
+    .collect();
+  for (const child of children) {
+    if (child.userId !== ownerId) continue;
+    await ctx.db.patch(child._id, { isArchived: true, updatedAt: Date.now() });
+    await archiveDescendants(ctx, ownerId, child._id);
+  }
+}
+
+async function restoreDescendants(ctx: any, ownerId: string, parentId: Id<"documents">) {
+  const children = await ctx.db
+    .query("documents")
+    .withIndex("by_parent", (q: any) => q.eq("parentDocument", parentId))
+    .collect();
+  for (const child of children) {
+    if (child.userId !== ownerId) continue;
+    await ctx.db.patch(child._id, { isArchived: false, updatedAt: Date.now() });
+    await restoreDescendants(ctx, ownerId, child._id);
+  }
+}
+
+// ----------------- Mutations -----------------
+
 export const create = mutation({
   args: {
-    title: v.optional(v.string()),
-    content: v.optional(v.string()),
-    organizationId: v.optional(v.string()),
+    title: v.string(),
     parentDocument: v.optional(v.id("documents")),
+    content: v.optional(v.string()),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
+    organizationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const userId = await requireUserId(ctx);
+
+    if (args.parentDocument) {
+      const parent = await ctx.db.get(args.parentDocument);
+      if (!parent || parent.userId !== userId) throw new Error("Invalid parent document");
+    }
 
     const now = Date.now();
-    return await ctx.db.insert("documents", {
-      title: args.title ?? "Untitled",
-      content: args.content ?? "",
-      organizationId: args.organizationId,
+    const id = await ctx.db.insert("documents", {
+      title: args.title,
+      content: args.content,
       coverImage: args.coverImage,
-      icon: args.icon,
+      icon: args.icon ?? undefined,
+      organizationId: args.organizationId,
       parentDocument: args.parentDocument,
-      isPublished: false,
+      userId,
       isArchived: false,
-      userId: identity.subject,
+      isPublished: false,
       createdAt: now,
       updatedAt: now,
     });
+    return id;
   },
 });
 
-/* ------------------------------ Update ------------------------------ */
 export const update = mutation({
   args: {
     id: v.id("documents"),
     title: v.optional(v.string()),
     content: v.optional(v.string()),
-    organizationId: v.optional(v.string()),
-    parentDocument: v.optional(v.id("documents")),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
     isPublished: v.optional(v.boolean()),
-    isArchived: v.optional(v.boolean()),
+    organizationId: v.optional(v.string()),
+    parentDocument: v.optional(v.id("documents")),
   },
-  handler: async (ctx, { id, ...patch }) => {
-    const existing = await ctx.db.get(id);
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error("Document not found");
+    if (existing.userId !== userId) throw new Error("Unauthorized");
 
-    await ctx.db.patch(id, {
-      ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(patch.content !== undefined ? { content: patch.content } : {}),
-      ...(patch.organizationId !== undefined
-        ? { organizationId: patch.organizationId }
-        : {}),
-      ...(patch.parentDocument !== undefined
-        ? { parentDocument: patch.parentDocument }
-        : {}),
-      ...(patch.coverImage !== undefined ? { coverImage: patch.coverImage } : {}),
-      ...(patch.icon !== undefined ? { icon: patch.icon } : {}),
-      ...(patch.isPublished !== undefined ? { isPublished: patch.isPublished } : {}),
-      ...(patch.isArchived !== undefined ? { isArchived: patch.isArchived } : {}),
-      updatedAt: Date.now(),
-    });
+    if (args.parentDocument) {
+      const parent = await ctx.db.get(args.parentDocument);
+      if (!parent || parent.userId !== userId) throw new Error("Invalid parent document");
+    }
 
-    return { id };
+    const { id, ...rest } = args;
+    const toPatch: Partial<Doc<"documents">> = { updatedAt: Date.now() };
+    for (const [k, v_] of Object.entries(rest)) {
+      if (v_ !== undefined) (toPatch as any)[k] = v_;
+    }
+    return await ctx.db.patch(id, toPatch);
   },
 });
 
-/* --------------------------- Archive / Restore --------------------------- */
 export const archive = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, { id }) => {
-    const existing = await ctx.db.get(id);
-    if (!existing) throw new Error("Document not found");
-    await ctx.db.patch(id, { isArchived: true, updatedAt: Date.now() });
-    return { id, isArchived: true };
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(id);
+    if (!doc) throw new Error("Document not found");
+    if (doc.userId !== userId) throw new Error("Not authorized");
+
+    const patched = await ctx.db.patch(id, { isArchived: true, updatedAt: Date.now() });
+    await archiveDescendants(ctx, userId, id);
+    return patched;
   },
 });
 
 export const restore = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, { id }) => {
+    const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Document not found");
-    await ctx.db.patch(id, { isArchived: false, updatedAt: Date.now() });
-    return { id, isArchived: false };
+    if (existing.userId !== userId) throw new Error("Not authorized");
+
+    const patch: Partial<Doc<"documents">> = { isArchived: false, updatedAt: Date.now() };
+    if (existing.parentDocument) {
+      const parent = await ctx.db.get(existing.parentDocument);
+      if (parent?.isArchived) patch.parentDocument = undefined;
+    }
+
+    const updated = await ctx.db.patch(id, patch);
+    await restoreDescendants(ctx, userId, id);
+    return updated;
   },
 });
 
-/* ------------------------------- Remove ------------------------------- */
 export const remove = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, { id }) => {
-    const existing = await ctx.db.get(id);
-    if (!existing) throw new Error("Document not found");
-    await ctx.db.delete(id);
-    return { id };
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(id);
+    if (!doc) throw new Error("Document not found");
+    if (doc.userId !== userId) throw new Error("Not authorized");
+    return await ctx.db.delete(id);
   },
 });
 
-/* -------------------------------- Reads -------------------------------- */
-export const getById = query({
+export const removeIcon = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, { id }) => {
-    return await ctx.db.get(id);
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(id);
+    if (!doc) throw new Error("Document not found");
+    if (doc.userId !== userId) throw new Error("Unauthorized");
+    return await ctx.db.patch(id, { icon: undefined, updatedAt: Date.now() });
   },
 });
 
-/** Children for current user (not archived) */
-export const getChildren = query({
-  args: { parentDocument: v.optional(v.id("documents")) },
-  handler: async (ctx, { parentDocument }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    const rows = await ctx.db
-      .query("documents")
-      .withIndex("by_user_parent", (q) =>
-        q.eq("userId", identity.subject).eq("parentDocument", parentDocument ?? undefined)
-      )
-      .collect();
-
-    return rows.filter((d) => !d.isArchived);
+export const removeCoverImage = mutation({
+  args: { id: v.id("documents") },
+  handler: async (ctx, { id }) => {
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(id);
+    if (!doc) throw new Error("Document not found");
+    if (doc.userId !== userId) throw new Error("Unauthorized");
+    return await ctx.db.patch(id, { coverImage: undefined, updatedAt: Date.now() });
   },
 });
 
-/** Sidebar: top-level docs (no parent) for current user */
+// ----------------- Queries -----------------
+
 export const getSidebar = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+  args: { parentDocument: v.optional(v.id("documents")) },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+
+    if (args.parentDocument) {
+      const rows = await ctx.db
+        .query("documents")
+        .withIndex("by_parent", (q: any) => q.eq("parentDocument", args.parentDocument!))
+        .collect();
+
+      return rows
+        .filter(r => r.userId === userId && r.isArchived === false)
+        .sort((a, b) => b._creationTime - a._creationTime);
+    }
 
     const rows = await ctx.db
       .query("documents")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user", (q: any) => q.eq("userId", userId)) // <-- fixed
       .collect();
 
-    return rows.filter((d) => !d.isArchived && d.parentDocument === undefined);
+    return rows
+      .filter(r => r.isArchived === false && r.parentDocument === undefined)
+      .sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 
-/** Trash: archived docs for current user */
 export const getTrash = query({
-  args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const userId = await requireUserId(ctx);
 
-    const archivedRows = await ctx.db
+    const rows = await ctx.db
       .query("documents")
-      .withIndex("by_isArchived", (q) => q.eq("isArchived", true))
+      .withIndex("by_isArchived", (q: any) => q.eq("isArchived", true))
       .collect();
 
-    return archivedRows.filter((d) => d.userId === identity.subject);
+    return rows
+      .filter(r => r.userId === userId)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+export const getSearch = query({
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx);
+
+    const rows = await ctx.db
+      .query("documents")
+      .withIndex("by_user", (q: any) => q.eq("userId", userId)) // <-- fixed
+      .collect();
+
+    return rows
+      .filter(r => r.isArchived === false)
+      .sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("documents") }, // <-- renamed to match client
+  handler: async (ctx, { id }) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    const doc = await ctx.db.get(id);
+    if (!doc) throw new Error("Document not found");
+
+    if (doc.isPublished && !doc.isArchived) return doc;
+
+    if (!identity) throw new Error("Not authenticated");
+    if (doc.userId !== identity.subject) throw new Error("Not authorized");
+
+    return doc;
   },
 });
