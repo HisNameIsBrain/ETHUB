@@ -190,7 +190,7 @@ export const getSidebar = query({
 
     const rows = await ctx.db
       .query("documents")
-      .withIndex("by_user", (q: any) => q.eq("userId", userId))
+      .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .collect();
 
     return rows
@@ -224,7 +224,7 @@ export const getSearch = query({
 
     const rows = await ctx.db
       .query("documents")
-      .withIndex("by_user", (q: any) => q.eq("userId", userId))
+      .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .collect();
 
     return rows

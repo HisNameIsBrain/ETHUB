@@ -1,113 +1,63 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mkdir -p lib
+FILE="convex/documents.ts"
 
-cat > lib/db.ts <<'TS'
-/**
- * Lightweight, build-safe data helpers.
- * No external DB imports; swap the in-memory arrays with real fetch/DB calls when ready.
- */
+if [[ ! -f "$FILE" ]]; then
+  echo "❌ $FILE not found. Run this from your project root."
+  exit 1
+fi
 
-export type Service = {
-  id: string;
-  name: string;
-  description?: string;
-  price?: number;
-  imageUrl?: string;
-  deliveryTime?: string;
-  slug?: string;
-  isPublic?: boolean;
-  archived?: boolean;
-  createdAt: number;
-  updatedAt: number;
-};
+echo "🔧 Backing up $FILE -> ${FILE}.bak"
+cp "$FILE" "${FILE}.bak"
 
-export type Product = {
-  id: string;
-  name: string;
-  description?: string;
-  price?: number;
-  imageUrl?: string;
-  slug?: string;
-  isPublic?: boolean;
-  archived?: boolean;
-  createdAt: number;
-  updatedAt: number;
-};
+echo "🔁 Replacing .withIndex(\"by_userId\", ...) -> .withIndex(\"by_user\", ...)"
+# Replace all occurrences safely (handles spaces/newlines)
+perl -0777 -pe 's/\.withIndex\(\s*"by_userId"\s*,/\.withIndex("by_user",/g' "${FILE}.bak" > "$FILE"
 
-const PAGE_SIZE = 10;
+echo "✅ Replacement done."
+echo
 
-/** ---- TEMP DATA (replace with real queries) ---- */
-const __services__: Service[] = [];
-const __products__: Product[] = [];
+# Optional: gentle check that schema likely has the needed index
+SCHEMA="convex/schema.ts"
+if [[ -f "$SCHEMA" ]]; then
+  if grep -qE '\.index\(\s*"by_user"\s*,\s*\[\s*"userId"\s*\]\s*\)' "$SCHEMA"; then
+    echo "📄 Schema check: found index by_user on userId in $SCHEMA"
+  else
+    echo "⚠️  Schema check: could not find '.index(\"by_user\", [\"userId\"])' in $SCHEMA"
+    echo "    If you see query perf/type errors, add this to your documents table indexes:"
+    echo '      .index("by_user", ["userId"])'
+  fi
+else
+  echo "ℹ️  $SCHEMA not found; skipping schema check."
+fi
 
-/** ---- helpers ---- */
-function norm(s: unknown) {
-  return (typeof s === "string" ? s : "").trim().toLowerCase();
-}
-function matches(q: string, ...fields: Array<string | undefined>) {
-  if (!q) return true;
-  const n = norm(q);
-  return fields.some((f) => norm(f).includes(n));
-}
-function paginate<T>(items: T[], offset: number, limit: number) {
-  const start = Math.max(0, Number.isFinite(offset) ? offset : 0);
-  const end = start + limit;
-  const slice = items.slice(start, end);
-  const newOffset = end < items.length ? end : null;
-  return { slice, newOffset };
-}
+# Run codegen and typecheck with whatever you use (pnpm/npm/yarn)
+RUNNER=""
+if command -v pnpm >/dev/null 2>&1; then
+  RUNNER="pnpm"
+elif command -v npm >/dev/null 2>&1; then
+  RUNNER="npm run"
+elif command -v yarn >/dev/null 2>&1; then
+  RUNNER="yarn"
+fi
 
-/** ---- public API ---- */
-export async function getServices(search: string, offset: number) {
-  // TODO: replace the source array with your real data fetch.
-  // Example (Convex): call your public query and map to Service[].
-  // Example (Prisma): const rows = await prisma.service.findMany({ ... });
-
-  const list = __services__.filter((s) =>
-    matches(search, s.name, s.description, s.slug)
-  );
-
-  const totalServices = list.length;
-  const { slice, newOffset } = paginate<Service>(list, offset, PAGE_SIZE);
-
-  return {
-    services: slice,
-    newOffset,
-    totalServices,
-  };
-}
-
-export async function getServiceById(serviceId: string) {
-  // TODO: wire to your real DB call
-  const found = __services__.find((s) => s.id === serviceId || s.slug === serviceId);
-  return found ?? null;
-}
-
-export async function getProducts(search: string, offset: number) {
-  // Back-compat for any pages/components still using products.
-  const list = __products__.filter((p) =>
-    matches(search, p.name, p.description, p.slug)
-  );
-
-  const totalProducts = list.length;
-  const { slice, newOffset } = paginate<Product>(list, offset, PAGE_SIZE);
-
-  return {
-    products: slice,
-    newOffset,
-    totalProducts,
-  };
-}
-
-/** ---- notes for wiring real data ----
- * 1) Replace __services__/__products__ with actual fetch/DB results.
- * 2) Keep return shapes stable:
- *    - getServices: { services, newOffset, totalServices }
- *    - getProducts: { products, newOffset, totalProducts }
- * 3) Keep PAGE_SIZE consistent with your UI (or make it a param).
- */
-TS
-
-echo "✓ Wrote lib/db.ts"
+if [[ -n "$RUNNER" ]]; then
+  echo
+  echo "🚀 Running convex codegen + typecheck..."
+  if [[ "$RUNNER" == "pnpm" ]]; then
+    pnpm convex codegen || true
+    pnpm typecheck || true
+  elif [[ "$RUNNER" == "npm run" ]]; then
+    npm run convex:codegen || true
+    npm run typecheck || true
+  else
+    yarn convex codegen || true
+    yarn typecheck || true
+  fi
+  echo "✅ Done. Review any remaining errors above."
+else
+  echo
+  echo "⚠️  pnpm/npm/yarn not found. Skipping codegen/typecheck."
+  echo "    Manually run your codegen/typecheck after this."
+fi
