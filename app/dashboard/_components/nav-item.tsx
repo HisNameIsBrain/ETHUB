@@ -1,24 +1,28 @@
 'use client';
 
+import * as React from 'react';
+import type { Route } from 'next';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import clsx from 'clsx';
 import {
   Tooltip,
   TooltipContent,
-  TooltipTrigger
+  TooltipTrigger,
 } from '@/components/ui/tooltip';
-import clsx from 'clsx';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
-export function NavItem({
-  href,
-  label,
-  children
-}: {
-  href: string;
+type NavItemProps = {
+  href: Route; // <-- key change: use Next's typed Route
   label: string;
   children: React.ReactNode;
-}) {
-  const pathname = usePathname();
+};
+
+export function NavItem({ href, label, children }: NavItemProps) {
+  const pathname = usePathname(); // can be null on first render
+
+  const isActive =
+    typeof pathname === 'string' &&
+    (pathname === href || pathname.startsWith(href));
 
   return (
     <Tooltip>
@@ -27,9 +31,7 @@ export function NavItem({
           href={href}
           className={clsx(
             'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
-            {
-              'bg-accent text-black': pathname === href
-            }
+            isActive && 'bg-accent text-accent-foreground'
           )}
         >
           {children}

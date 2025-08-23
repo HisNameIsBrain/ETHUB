@@ -1,20 +1,25 @@
-import Providers from "@/app/providers";              // ✅ matches app/providers.tsx
-import { Navbar } from "@/app/(marketing)/_components/navbar";
-import { SiriGlow } from "@/components/siri-glow";
-import React from "react";
+// app/(marketing)/layout.tsx
+import type { ReactNode } from "react";
+import "../globals.css"; // adjust if your globals are elsewhere
 
-export default function MarketingLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// These can be client components; importing them here is fine.
+import { Navbar } from "./_components/navbar";        // <-- ensure this path exists
+import { Footer } from "./_components/footer";        // <-- or remove if you don't use a footer
+
+export const metadata = {
+  title: "ETHUB — Services & Info",
+  description: "Learn about our services, pricing, and company info.",
+};
+
+export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <Providers>
-      <div className="h-full dark:bg-[#1F1F1F]">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        {/* No ClerkProvider here — it already wraps at app/layout.tsx */}
         <Navbar />
-        <SiriGlow />
-        <main className="h-full pt-40">{children}</main>
-      </div>
-    </Providers>
+        <main className="min-h-[70vh]">{children}</main>
+        <Footer />
+      </body>
+    </html>
   );
 }

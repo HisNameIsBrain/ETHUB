@@ -1,10 +1,9 @@
-'use server';
+"use server";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { fetchMutation } from "convex/nextjs";
 
-import { deleteProductById } from '@/lib/db';
-import { revalidatePath } from 'next/cache';
-
-export async function deleteProduct(formData: FormData) {
-  // let id = Number(formData.get('id'));
-  // await deleteProductById(id);
-  // revalidatePath('/');
+export async function deleteService(id: Id<"services">) {
+  await fetchMutation(api.services.remove, { id });
+  return { ok: true };
 }
