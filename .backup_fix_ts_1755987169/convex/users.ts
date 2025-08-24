@@ -11,7 +11,7 @@ export const ensureByToken = mutation({
     userId: v.string(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
-    imageUrl: v.optional(v.string()), // we’ll map to imageUrl
+    pictureUrl: v.optional(v.string()), // we’ll map to imageUrl
     username: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
@@ -28,7 +28,7 @@ export const ensureByToken = mutation({
       userId: args.userId,
       name: args.name ?? "",
       email: args.email ?? "",
-      imageUrl: args.imageUrl ?? "", // schema field is imageUrl
+      imageUrl: args.pictureUrl ?? "", // schema field is imageUrl
       username: args.username,
       phoneNumber: args.phoneNumber,
       role: args.role ?? "user" as const,

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 function slugify(input: string) {
   return (input || "")
@@ -9,8 +10,14 @@ function slugify(input: string) {
     .replace(/(^-|-$)+/g, "");
 }
 
-async function uniqueSlug(ctx: any, baseName: string) {
-  const base = slugify(baseName) || "service";
+async function requireUserId(ctx: any): Promise<string> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+  return identity.subject;
+}
+
+async function uniqueSlug(ctx: any, name: string): Promise<string> {
+  const base = slugify(name) || "service";
   let slug = base;
   let i = 1;
   while (true) {
@@ -23,30 +30,30 @@ async function uniqueSlug(ctx: any, baseName: string) {
   }
 }
 
-// --------- mutations ---------
+// --- mutations ---
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.float64()),
-    deliveryTime: v.optional(v.string()),
+    price: v.optional(v.number()),
     isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
     const now = Date.now();
     const slug = await uniqueSlug(ctx, args.name);
-    return await ctx.db.insert("services", {
+    const id = await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
       price: args.price,
-      deliveryTime: args.deliveryTime,
-      isPublic: args.isPublic ?? true,    // ✅ default public
-      archived: args.archived ?? false,
+      isPublic: args.isPublic ?? true,
+      archived: false,
       slug,
       createdAt: now,
       updatedAt: now,
+      createdBy: userId,
     });
+    return id;
   },
 });
 
@@ -55,22 +62,20 @@ export const update = mutation({
     id: v.id("services"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    price: v.optional(v.float64()),
-    deliveryTime: v.optional(v.string()),
+    price: v.optional(v.number()),
     isPublic: v.optional(v.boolean()),
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const patch: any = { updatedAt: Date.now() };
-    if (args.name !== undefined) {
-      patch.name = args.name;
-      patch.slug = await uniqueSlug(ctx, args.name);
-    }
+    if (args.name !== undefined) patch.name = args.name;
     if (args.description !== undefined) patch.description = args.description;
     if (args.price !== undefined) patch.price = args.price;
-    if (args.deliveryTime !== undefined) patch.deliveryTime = args.deliveryTime;
     if (args.isPublic !== undefined) patch.isPublic = args.isPublic;
     if (args.archived !== undefined) patch.archived = args.archived;
+    if (args.name !== undefined) {
+      patch.slug = await uniqueSlug(ctx, args.name);
+    }
     await ctx.db.patch(args.id, patch);
   },
 });
@@ -82,17 +87,15 @@ export const remove = mutation({
   },
 });
 
-// --------- queries ---------
+// --- queries ---
 export const getPublics = query({
   args: {},
   handler: async (ctx) => {
-    const items = await ctx.db
+    const all = await ctx.db
       .query("services")
-      .withIndex("by_isPublic", (q: any) => q.eq("isPublic", true))
+      .withIndex("by_isPublic_archived", (q: any) => q.eq("isPublic", true).eq("archived", false))
       .collect();
-    return items
-      .filter((s: any) => !s.archived)
-      .sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return all.sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   },
 });
 
@@ -100,15 +103,5 @@ export const getById = query({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
     return await ctx.db.get(id);
-  },
-});
-
-export const getArchived = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("services")
-      .withIndex("by_archived", (q: any) => q.eq("archived", true))
-      .collect();
   },
 });

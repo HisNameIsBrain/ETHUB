@@ -1,28 +1,36 @@
-// app/(main)/(routes)/documents/[documentId]/page.tsx
+"use client";
 
-import { Id } from "@/convex/_generated/dataModel";
+import { useParams } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
+import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { useQuery, useMutation } from "convex/react";
 
-export default function DocumentPage({ params }: { params: { documentId: string } }) {
+export default function DocumentIdPage() {
+  const params = useParams<{ documentId: string }>();
   const id = params.documentId as Id<"documents">;
 
-  // ✅ pass the correct arg name
-  const document = useQuery(api.documents.getById, { documentId: id });
-
+  const document = useQuery(api.documents.getById, { id });
   const update = useMutation(api.documents.update);
 
-  const onChange = (content: string) => {
-    if (!id) return;
-    void update({ id, content }); // update expects { id, ... }
-  };
-
-  if (document === undefined) return <div>Loading...</div>;
-  if (document === null) return <div>Not found</div>;
+  if (document === undefined) {
+    return <div className="p-6">Loading...</div>;
+  }
+  if (document === null) {
+    return <div className="p-6">Not found.</div>;
+  }
 
   return (
-    <div>
-      {/* your editor/view using `document` */}
+    <div className="max-w-3xl mx-auto p-6">
+      <input
+        className="w-full text-2xl font-semibold bg-transparent outline-none border-b pb-2"
+        defaultValue={document.title}
+        onBlur={(e) => update({ id, title: e.currentTarget.value || "Untitled" })}
+      />
+      <textarea
+        className="mt-4 w-full min-h-[40vh] bg-transparent outline-none"
+        defaultValue={document.content ?? ""}
+        onBlur={(e) => update({ id, content: e.currentTarget.value })}
+      />
     </div>
   );
 }
