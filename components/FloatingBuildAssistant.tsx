@@ -1,93 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-# ============================================================
-# Setup: Ollama Build Assistant (Next.js + Vercel AI SDK)
-# - Adds component: components/FloatingBuildAssistant.tsx
-# - Adds API route: app/api/ai/chat/route.ts (Ollama)
-# - Installs deps: ai, @ai-sdk/ollama, lucide-react
-# - Injects assistant into app/layout.tsx (backup made)
-# - Creates and commits on a new git branch for testing
-# ============================================================
-
-MODEL="llama3.1"
-OLLAMA_URL="http://127.0.0.1:11434"
-BRANCH="feat/ollama-assistant"
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --model=*) MODEL="${1#*=}"; shift;;
-    --ollama-url=*) OLLAMA_URL="${1#*=}"; shift;;
-    --branch=*) BRANCH="${1#*=}"; shift;;
-    *)
-      echo "Unknown option: $1"
-      echo "Usage: bash $0 [--model=llama3.1] [--ollama-url=http://127.0.0.1:11434] [--branch=feat/ollama-assistant]"
-      exit 1;;
-  esac
-done
-
-echo "➡️  Ollama model: $MODEL"
-echo "➡️  OLLAMA_URL:  $OLLAMA_URL"
-echo "➡️  Git branch:  $BRANCH"
-
-# ----------------------------
-# Git: create branch (if in repo)
-# ----------------------------
-in_git_repo() { git rev-parse --is-inside-work-tree >/dev/null 2>&1; }
-if in_git_repo; then
-  current_branch="$(git rev-parse --abbrev-ref HEAD)"
-  echo "📂 Git repo detected (current: $current_branch)"
-  # create branch if not already on it
-  if [[ "$current_branch" != "$BRANCH" ]]; then
-    git fetch --all --quiet || true
-    if git rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
-      echo "↪️  Branch $BRANCH already exists; checking it out"
-      git checkout "$BRANCH"
-    else
-      echo "🌿 Creating branch: $BRANCH"
-      git checkout -b "$BRANCH"
-    fi
-  fi
-else
-  echo "ℹ️  No git repo detected. Skipping branch creation."
-fi
-
-# ----------------------------
-# Detect package manager
-# ----------------------------
-if command -v pnpm >/dev/null 2>&1; then
-  PKG="pnpm"
-elif command -v yarn >/dev/null 2>&1; then
-  PKG="yarn"
-else
-  PKG="npm"
-fi
-echo "➡️  Using package manager: $PKG"
-
-# ----------------------------
-# Ensure folders
-# ----------------------------
-mkdir -p app/api/ai/chat
-mkdir -p components
-
-# ----------------------------
-# Install deps
-# ----------------------------
-DEPS="ai @ai-sdk/ollama lucide-react"
-echo "📦 Installing deps: $DEPS"
-if [[ "$PKG" == "pnpm" ]]; then
-  pnpm add $DEPS
-elif [[ "$PKG" == "yarn" ]]; then
-  yarn add $DEPS
-else
-  npm i $DEPS
-fi
-
-# ----------------------------
-# Component: FloatingBuildAssistant.tsx
-# ----------------------------
-COMP="components/FloatingBuildAssistant.tsx"
-cat > "$COMP" <<'TSX'
 "use client";
 
 import * as React from "react";
@@ -95,6 +5,7 @@ import { useRef, useEffect, useState } from "react";
 import { useChat } from "ai/react";
 import { MessageSquareText, X, Mic, MicOff, Send, Loader2 } from "lucide-react";
 
+// Small speech-recognition helper (Web Speech API)
 function useSpeechInput(onTranscript: (text: string, isFinal: boolean) => void) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [listening, setListening] = useState(false);
@@ -122,7 +33,12 @@ function useSpeechInput(onTranscript: (text: string, isFinal: boolean) => void) 
 
   const start = React.useCallback(() => {
     if (!recognitionRef.current) return;
-    try { recognitionRef.current.start(); setListening(true); } catch {}
+    try {
+      recognitionRef.current.start();
+      setListening(true);
+    } catch {
+      // already started
+    }
   }, []);
   const stop = React.useCallback(() => {
     recognitionRef.current?.stop();
@@ -133,16 +49,13 @@ function useSpeechInput(onTranscript: (text: string, isFinal: boolean) => void) 
 }
 
 type Props = {
+  /** Optional: change API endpoint used by useChat */
   api?: string;
+  /** Optional: default open on first load */
   defaultOpen?: boolean;
-  placeholder?: string;
 };
 
-export default function FloatingBuildAssistant({
-  api = "/api/ai/chat",
-  defaultOpen = false,
-  placeholder = "Ask the assistant to create services, explain errors, scaffold code…",
-}: Props) {
+export default function FloatingBuildAssistant({ api = "/api/ai/chat", defaultOpen = false }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const [draftFromMic, setDraftFromMic] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -153,6 +66,7 @@ export default function FloatingBuildAssistant({
   });
 
   const { listening, supported, start, stop: stopMic } = useSpeechInput((text, isFinal) => {
+    // Merge mic transcript into the input field
     setDraftFromMic(text);
     if (isFinal) {
       const merged = `${input}${input && text ? " " : ""}${text}`.trim();
@@ -161,6 +75,7 @@ export default function FloatingBuildAssistant({
     }
   });
 
+  // Close on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -173,6 +88,7 @@ export default function FloatingBuildAssistant({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Minimal focus trap when opening
   useEffect(() => {
     if (!open) return;
     const el = containerRef.current?.querySelector<HTMLTextAreaElement>("textarea");
@@ -181,6 +97,7 @@ export default function FloatingBuildAssistant({
 
   return (
     <>
+      {/* Floating trigger button (top-right) */}
       <button
         onClick={() => setOpen(o => !o)}
         className="fixed top-4 right-4 z-[60] inline-flex items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-md hover:shadow-lg transition"
@@ -190,8 +107,10 @@ export default function FloatingBuildAssistant({
         <span className="hidden sm:inline">Assistant</span>
       </button>
 
+      {/* Overlay + Card */}
       {open && (
         <div className="fixed inset-0 z-[59]">
+          {/* backdrop */}
           <div
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
@@ -201,19 +120,22 @@ export default function FloatingBuildAssistant({
             ref={containerRef}
             className="absolute top-4 right-4 w-[min(720px,calc(100vw-2rem))] h-[min(70vh,calc(100vh-2rem))] rounded-2xl border bg-background shadow-2xl flex flex-col overflow-hidden"
           >
+            {/* Header */}
             <div className="flex items-center justify-between border-b px-4 py-3">
               <div className="font-semibold">Build Assistant</div>
               <div className="flex items-center gap-2">
+                {/* Mic */}
                 <button
                   onClick={() => (listening ? stopMic() : start())}
                   className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm ${listening ? "bg-red-50" : ""}`}
-                  title={supported ? (listening ? "Stop voice" : "Voice") : "Voice not supported"}
+                  title={supported ? (listening ? "Stop voice" : "Start voice") : "Voice not supported"}
                   disabled={!supported}
                 >
                   {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   <span className="hidden sm:inline">{listening ? "Stop" : "Voice"}</span>
                 </button>
 
+                {/* Stop generation */}
                 <button
                   onClick={() => stop()}
                   className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
@@ -224,6 +146,7 @@ export default function FloatingBuildAssistant({
                   <span className="hidden sm:inline">Stop</span>
                 </button>
 
+                {/* Close */}
                 <button
                   onClick={() => setOpen(false)}
                   className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
@@ -235,6 +158,7 @@ export default function FloatingBuildAssistant({
               </div>
             </div>
 
+            {/* Messages */}
             <div className="flex-1 overflow-auto p-4 space-y-3">
               {messages.length === 0 && (
                 <div className="text-sm text-muted-foreground">
@@ -255,17 +179,21 @@ export default function FloatingBuildAssistant({
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="border-t p-3 flex items-end gap-2">
+            {/* Composer */}
+            <form
+              onSubmit={handleSubmit}
+              className="border-t p-3 flex items-end gap-2"
+            >
               <textarea
                 value={draftFromMic ? `${input}${input ? " " : ""}${draftFromMic}` : input}
                 onChange={handleInputChange}
                 rows={2}
-                placeholder={placeholder}
+                placeholder="Ask to add a public service 'Screen Repair' for $89…"
                 className="flex-1 resize-none rounded-xl border px-3 py-2 focus:outline-none"
               />
               <button
                 type="submit"
-                disabled={!input && !draftFromMic}
+                disabled={isLoading || (!input && !draftFromMic)}
                 className="inline-flex items-center gap-2 rounded-xl border px-4 py-2"
                 aria-label="Send"
               >
@@ -279,97 +207,3 @@ export default function FloatingBuildAssistant({
     </>
   );
 }
-TSX
-echo "✅ Wrote $COMP"
-
-# ----------------------------
-# API Route: app/api/ai/chat/route.ts (Ollama)
-# ----------------------------
-ROUTE="app/api/ai/chat/route.ts"
-cat > "$ROUTE" <<TS
-import { streamText } from "ai";
-import { createOllama } from "@ai-sdk/ollama";
-
-const ollama = createOllama({
-  baseURL: process.env.OLLAMA_URL ?? "${OLLAMA_URL}",
-});
-
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const result = await streamText({
-    model: ollama("${MODEL}"),
-    messages,
-  });
-  return result.toAIStreamResponse();
-}
-TS
-echo "✅ Wrote $ROUTE"
-
-# ----------------------------
-# Ensure .env.local has OLLAMA_URL
-# ----------------------------
-if [[ -f ".env.local" ]]; then
-  if ! grep -q "^OLLAMA_URL=" .env.local; then
-    echo "OLLAMA_URL=${OLLAMA_URL}" >> .env.local
-    echo "✅ Added OLLAMA_URL to .env.local"
-  else
-    echo "↪️  OLLAMA_URL already set in .env.local"
-  fi
-else
-  echo "OLLAMA_URL=${OLLAMA_URL}" > .env.local
-  echo "✅ Created .env.local with OLLAMA_URL"
-fi
-
-# ----------------------------
-# Inject assistant into app/layout.tsx
-# ----------------------------
-LAYOUT="app/layout.tsx"
-if [[ ! -f "$LAYOUT" ]]; then
-  echo "❌ $LAYOUT not found. Create it first (with your providers) and re-run."
-  exit 1
-fi
-
-BACKUP="app/layout.tsx.bak.$(date +%s)"
-cp "$LAYOUT" "$BACKUP"
-echo "📦 Backed up layout to $BACKUP"
-
-# Add import if missing
-if ! grep -q 'FloatingBuildAssistant' "$LAYOUT"; then
-  awk '
-    BEGIN { inserted=0 }
-    /^import / { print; next }
-    inserted==0 {
-      print "import FloatingBuildAssistant from \"@/components/FloatingBuildAssistant\";";
-      print $0; inserted=1; next
-    }
-    { print }
-  ' "$LAYOUT" > "$LAYOUT.tmp" && mv "$LAYOUT.tmp" "$LAYOUT"
-  echo "✅ Injected import for FloatingBuildAssistant"
-else
-  echo "↪️  Import already present, skipping"
-fi
-
-# Insert component before </body> if not present
-if ! grep -q '<FloatingBuildAssistant' "$LAYOUT"; then
-  sed -E 's#</body>#  <FloatingBuildAssistant />\n      </body>#' "$LAYOUT" > "$LAYOUT.tmp" && mv "$LAYOUT.tmp" "$LAYOUT"
-  echo "✅ Added <FloatingBuildAssistant /> into layout"
-else
-  echo "↪️  Component already in layout, skipping"
-fi
-
-# ----------------------------
-# Git commit on branch
-# ----------------------------
-if in_git_repo; then
-  git add -A
-  git commit -m "chore(assistant): add Ollama-powered floating build assistant (model: ${MODEL})" || echo "ℹ️  Nothing to commit"
-  echo "✅ Changes committed on branch: $BRANCH"
-fi
-
-echo ""
-echo "🎉 Done!"
-echo "1) Ensure Ollama is running and the model is pulled:"
-echo "   ollama serve   # in a terminal"
-echo "   ollama pull ${MODEL}"
-echo "2) Start your dev server (pnpm dev | npm run dev | yarn dev)"
-echo "3) Click the top-right 'Assistant' button and chat away."
