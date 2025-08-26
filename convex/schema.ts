@@ -3,46 +3,59 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // USERS
+  documents: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    content: v.optional(v.string()),
+    parentDocument: v.optional(v.id("documents")),
+    isArchived: v.boolean(),
+    isPublished: v.optional(v.boolean()),
+    createdAt: v.optional(v.number()),
+    updatedAt:v.optional(v.number()),
+    // ⬇️ add this so create/update with coverImage is valid
+    coverImage: v.optional(v.string()),
+    icon: v.optional(v.string()),
+  })
+    // keep existing indexes, plus ensure these exact names:
+    .index("by_userId", ["userId"])
+    .index("by_parent", ["parentDocument"])
+    .index("by_isArchived", ["isArchived"]),
+
   users: defineTable({
     userId: v.string(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
-    role: v.optional(v.string()), // "admin" | "user"
+    role: v.optional(v.string()),
     username: v.optional(v.string()),
+    // ⬇️ add these so your ensure_* code compiles
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+    phoneNumber: v.optional(v.string()),
+    // ⬇️ add if you query by tokenIdentifier
+    tokenIdentifier: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    // ⬇️ enable .withIndex("by_token", q => q.eq("tokenIdentifier", ...))
+    .index("by_token", ["tokenIdentifier"]),
 
-  // DOCUMENTS (notes)
-  documents: defineTable({
-    title: v.string(),
-    content: v.optional(v.string()),
-    userId: v.string(),
-    parentDocument: v.optional(v.id("documents")),
-    isArchived: v.boolean(),
-    createdAt: v.number(), // Date.now()
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_parent", ["parentDocument"])
-    .index("by_isArchived", ["isArchived"]),
-
-  // SERVICES (public directory)
   services: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
     price: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
     isPublic: v.boolean(),
     archived: v.boolean(),
     slug: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
     createdBy: v.string(),
+    // ⬇️ add this so create/update with deliveryTime is valid
+    deliveryTime: v.optional(v.string()),
   })
     .index("by_slug", ["slug"])
-    .index("by_isPublic_archived", ["isPublic", "archived"])
     .index("by_archived", ["archived"])
-    .index("by_createdBy", ["createdBy"]),
+    .index("by_createdBy", ["createdBy"])
+    // ⬇️ use this combined index instead of plain "by_isPublic"
+    .index("by_isPublic_archived", ["isPublic", "archived"]),
 });

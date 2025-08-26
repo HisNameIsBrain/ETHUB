@@ -28,28 +28,32 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.float64()),
+    price: v.optional(v.number()),
     deliveryTime: v.optional(v.string()),
-    isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
+    isPublic: v.boolean(),
+    slug: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const userId = identity.subject;
+
     const now = Date.now();
-    const slug = await uniqueSlug(ctx, args.name);
+
     return await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
       price: args.price,
       deliveryTime: args.deliveryTime,
-      isPublic: args.isPublic ?? true,    // ✅ default public
-      archived: args.archived ?? false,
-      slug,
+      isPublic: args.isPublic,
+      archived: false,
+      slug: args.slug,
       createdAt: now,
       updatedAt: now,
+      createdBy: userId,
     });
   },
-});
-
+}); 
 export const update = mutation({
   args: {
     id: v.id("services"),
@@ -83,12 +87,12 @@ export const remove = mutation({
 });
 
 // --------- queries ---------
-export const getPublics = query({
+export const getPublic = query({
   args: {},
   handler: async (ctx) => {
     const items = await ctx.db
       .query("services")
-      .withIndex("by_isPublic", (q: any) => q.eq("isPublic", true))
+      .withIndex("by_isPublic_archived", (q: any) => q.eq("isPublic", true))
       .collect();
     return items
       .filter((s: any) => !s.archived)

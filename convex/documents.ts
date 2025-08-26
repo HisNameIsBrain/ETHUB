@@ -33,7 +33,6 @@ export const create = mutation({
     parentDocument: v.optional(v.id("documents")),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
-    organizationId: v.optional(v.string()),
     isPublished: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -46,7 +45,6 @@ export const create = mutation({
       icon: args.icon,
       isArchived: false,
       isPublished: args.isPublished ?? true,   // ✅ default public
-      organizationId: args.organizationId,
       parentDocument: args.parentDocument,
       userId,
       createdAt: now,
@@ -65,7 +63,6 @@ export const update = mutation({
     icon: v.optional(v.string()),
     isArchived: v.optional(v.boolean()),
     isPublished: v.optional(v.boolean()),
-    organizationId: v.optional(v.string()),
     parentDocument: v.optional(v.id("documents")),
   },
   handler: async (ctx, args) => {
@@ -76,7 +73,6 @@ export const update = mutation({
     if (args.icon !== undefined) patch.icon = args.icon;
     if (args.isArchived !== undefined) patch.isArchived = args.isArchived;
     if (args.isPublished !== undefined) patch.isPublished = args.isPublished;
-    if (args.organizationId !== undefined) patch.organizationId = args.organizationId;
     if (args.parentDocument !== undefined) patch.parentDocument = args.parentDocument;
     await ctx.db.patch(args.id, patch);
   },

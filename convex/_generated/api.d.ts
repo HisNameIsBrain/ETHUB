@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as admin from "../admin.js";
 import type * as backfill_documents from "../backfill_documents.js";
 import type * as backfill_services from "../backfill_services.js";
 import type * as convex__generated_api from "../convex/_generated/api.js";
@@ -35,6 +36,7 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   backfill_documents: typeof backfill_documents;
   backfill_services: typeof backfill_services;
   "convex/_generated/api": typeof convex__generated_api;
