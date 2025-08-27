@@ -101,7 +101,7 @@ export const getPublic = query({
 });
 
 export const getById = query({
-  args: { id: v.id("services") },
+  args: { _id: v.id("services") },
   handler: async (ctx, { id }) => {
     return await ctx.db.get(id);
   },
@@ -114,5 +114,64 @@ export const getArchived = query({
       .query("services")
       .withIndex("by_archived", (q: any) => q.eq("archived", true))
       .collect();
+  },
+});
+
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+
+    // Return serializable, public fields
+    return rows.map(r => ({
+      id: r._id,
+      title: r.title,
+      slug: r.slug,
+      price: r.price ?? null,
+      coverImage: r.coverImage ?? null,
+      updatedAt: r.updatedAt ?? r._creationTime,
+    }));
+  },
+});
+
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+export const getPublics = query({
+  args: { search: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    let q = ctx.db.query("services").withIndex("by_isPublished", x =>
+      x.eq("isPublished", true)
+    );
+
+    let rows = await q.collect();
+
+    // Filter archived safely
+    rows = rows.filter(r => !r.archived);
+
+    // Optional search
+    if (args.search && args.search.trim()) {
+      const s = args.search.trim().toLowerCase();
+      rows = rows.filter(r =>
+        (r.title?.toLowerCase() ?? "").includes(s) ||
+        (r.slug?.toLowerCase() ?? "").includes(s)
+      );
+    }
+
+    // Sort by updatedAt fallback to _creationTime
+    rows.sort((a, b) => {
+      const bu = (b.updatedAt ?? b._creationTime ?? 0);
+      const au = (a.updatedAt ?? a._creationTime ?? 0);
+      return bu - au;
+    });
+
+    // Return serializable, public fields
+    return rows.map(r => ({
+      id: r._id,
+      title: r.title,
+      slug: r.slug,
+      price: r.price ?? null,
+      coverImage: r.coverImage ?? null,
+      updatedAt: r.updatedAt ?? r._creationTime,
+    }));
   },
 });
