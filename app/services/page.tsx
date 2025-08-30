@@ -1,119 +1,143 @@
+// app/(main)/dashboard/services/page.tsx
 "use client";
+
 import * as React from "react";
 import { useQuery } from "convex/react";
-// If using codegen, switch to: import { api } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api"; // ← requires `npx convex codegen`
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
+} from "@/components/ui/table";
 
 const PAGE_SIZE = 10;
 
 type Service = {
   _id: string;
-  title?: string;
+  name?: string;
   description?: string;
+  isPublished?: boolean;
 };
 
-export default function ServicesPageSafe() {
-  // Using the string name keeps this drop-in; swap to api.services.getPublics if you have codegen.
-  const raw = useQuery("services:getPublics") as Service[] | undefined;
-  const isLoading = raw === undefined;
-  const list: Service[] = Array.isArray(raw) ? raw : [];
+export default function ServicesPage() {
+  // Returns all if admin; else only published (see server query below)
+  const raw = useQuery(api.services.getPublics) ?? undefined;
 
-  // query
   const [q, setQ] = React.useState("");
-  const filtered = React.useMemo(() => {
+  const [page, setPage] = React.useState(1);
+
+  const services = React.useMemo<Service[]>(() => {
+    const list = Array.isArray(raw) ? (raw as Service[]) : [];
     const term = q.trim().toLowerCase();
     if (!term) return list;
-    return list.filter((s) =>
-      [s.title, s.description]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(term))
+    return list.filter(s =>
+      (s.name ?? "").toLowerCase().includes(term) ||
+      (s.description ?? "").toLowerCase().includes(term)
     );
-  }, [q, list]);
+  }, [raw, q]);
 
-  // pagination (safe math, no NaNs)
-  const total = filtered.length;
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const [page, setPage] = React.useState(1);
-  const safePage = Math.min(Math.max(page, 1), pageCount);
+  const total = services.length;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), lastPage);
+  const startIndex = total > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0;
+  const endIndex = total > 0 ? Math.min(safePage * PAGE_SIZE, total) : 0;
 
-  const start = total ? (safePage - 1) * PAGE_SIZE + 1 : 0;
-  const end = total ? Math.min(total, safePage * PAGE_SIZE) : 0;
+  React.useEffect(() => {
+    setPage(p => Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE))));
+  }, [q, services.length]);
 
-  const pageItems = React.useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage]
-  );
+  const pageItems =
+    total > 0
+      ? services.slice((safePage - 1) * PAGE_SIZE, (safePage - 1) * PAGE_SIZE + PAGE_SIZE)
+      : [];
 
-  if (isLoading) {
-    return (
-      <main className="p-4">
-        <h1 className="text-3xl font-bold">Services</h1>
-        <p className="mt-2">Browse available services.</p>
-        <p className="mt-6 opacity-70">Loading services…</p>
-      </main>
-    );
-  }
+  const isLoading = raw === undefined;
 
   return (
-    <main className="p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <input
-          aria-label="Search service"
+    <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <div className="mb-6 flex items-center gap-3">
+        <Input
           placeholder="Search service"
-          className="border rounded px-3 py-2 w-72"
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          className="max-w-sm"
         />
-        <div className="text-sm opacity-70">
-          {total === 0 ? "No results" : `Showing ${start}–${end} of ${total}`}
-        </div>
       </div>
 
-      {pageItems.length === 0 ? (
-        <p className="opacity-80">No services yet.</p>
-      ) : (
-        <table className="w-full border-separate border-spacing-y-1">
-          <thead>
-            <tr className="text-left font-semibold">
-              <th className="px-2 py-1">Title</th>
-              <th className="px-2 py-1">Description</th>
-              <th className="px-2 py-1">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageItems.map((s) => (
-              <tr key={s._id} className="bg-white/5">
-                <td className="px-2 py-2">{s.title || "Untitled"}</td>
-                <td className="px-2 py-2 opacity-80">
-                  {s.description || "—"}
-                </td>
-                <td className="px-2 py-2">
-                  {/* replace with your real actions */}
-                  <button className="border rounded px-2 py-1 text-sm">
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <h1 className="text-3xl font-bold tracking-tight">Services</h1>
+      <p className="mt-2 text-muted-foreground">Browse available services.</p>
+
+      {isLoading && <div className="mt-6 text-sm text-muted-foreground">Loading services…</div>}
+
+      {!isLoading && total === 0 && (
+        <div className="mt-6 rounded-lg border p-6">
+          <div className="text-base font-medium">No services found</div>
+          <div className="text-sm text-muted-foreground">
+            Try clearing your search or add some services in the admin panel.
+          </div>
+        </div>
       )}
 
-      <div className="flex gap-2 mt-4">
-        <button
-          className="border rounded px-3 py-1 disabled:opacity-50"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={safePage === 1}
-        >
-          Prev
-        </button>
-        <button
-          className="border rounded px-3 py-1 disabled:opacity-50"
-          onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-          disabled={safePage === pageCount}
-        >
-          Next
-        </button>
-      </div>
-    </main>
+      {!isLoading && total > 0 && (
+        <>
+          <div className="mt-6 overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40%]">Title</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="w-[140px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pageItems.map((s) => (
+                  <TableRow key={s._id}>
+                    <TableCell className="font-medium">{s.name ?? "Untitled"}</TableCell>
+                    <TableCell className="truncate max-w-[420px]">
+                      {s.description ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => alert(`Selected: ${s.name ?? s._id}`)}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Showing <span className="font-medium">{startIndex}</span>–
+              <span className="font-medium">{endIndex}</span> of{" "}
+              <span className="font-medium">{total}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                ‹ Prev
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={safePage >= lastPage}
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+              >
+                Next ›
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -24,7 +24,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Item } from "@/app/(main)/_components/item";
 import { toast } from "sonner";
-import { DocumentList } from "@/app/(main)/_components/document-list";
+import DocumentList from "@/app/(main)/_components/document-list";
 import {
   Popover,
   PopoverContent,

@@ -1,6 +1,8 @@
+// convex/services.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// ---------- utils ----------
 function slugify(input: string) {
   return (input || "")
     .toLowerCase()
@@ -23,37 +25,46 @@ async function uniqueSlug(ctx: any, baseName: string) {
   }
 }
 
-// --------- mutations ---------
+// ---------- admin helper ----------
+// Put identity.subjects of your admins here (Convex env var)
+const ADMIN_SUBJECTS =
+  (process.env.ADMIN_SUBJECTS ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+function isAdminSubject(subject?: string | null) {
+  return !!subject && ADMIN_SUBJECTS.includes(subject);
+}
+
+// ---------- mutations ----------
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),
+    price: v.optional(v.float64()),
     deliveryTime: v.optional(v.string()),
-    isPublic: v.boolean(),
-    slug: v.string(),
+    isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
-
     const now = Date.now();
-
+    const slug = await uniqueSlug(ctx, args.name);
     return await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
       price: args.price,
       deliveryTime: args.deliveryTime,
-      isPublic: args.isPublic,
-      archived: false,
-      slug: args.slug,
+      isPublic: args.isPublic ?? true,
+      archived: args.archived ?? false,
+      slug,
       createdAt: now,
       updatedAt: now,
-      createdBy: userId,
+      createdBy: identity.subject
     });
   },
-}); 
+});
+
 export const update = mutation({
   args: {
     id: v.id("services"),
@@ -86,22 +97,34 @@ export const remove = mutation({
   },
 });
 
-// --------- queries ---------
+// ---------- queries ----------
+
+// ✅ NEW NAME with admin override
 export const getPublic = query({
   args: {},
   handler: async (ctx) => {
-    const items = await ctx.db
-      .query("services")
-      .withIndex("by_isPublic_archived", (q: any) => q.eq("isPublic", true))
-      .collect();
-    return items
-      .filter((s: any) => !s.archived)
-      .sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const identity = await ctx.auth.getUserIdentity();
+    const admin = isAdminSubject(identity?.subject ?? null);
+
+    // Admins: all non-archived
+    // Others: non-archived AND isPublic === true
+    const items = await ctx.db.query("services").collect();
+
+    const filtered = admin
+      ? items.filter((s: any) => !s.archived)
+      : items.filter((s: any) => !s.archived && s.isPublic === true);
+
+    // newest first by createdAt (fallback 0)
+    return filtered.sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   },
 });
 
+// (Optional) keep this TEMPORARY alias while you rename callers,
+// then delete it when everything references getPublic.
+// export const getPublics = getPublic;
+
 export const getById = query({
-  args: { _id: v.id("services") },
+  args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
     return await ctx.db.get(id);
   },
@@ -114,64 +137,5 @@ export const getArchived = query({
       .query("services")
       .withIndex("by_archived", (q: any) => q.eq("archived", true))
       .collect();
-  },
-});
-
-import { query } from "./_generated/server";
-import { v } from "convex/values";
-
-
-    // Return serializable, public fields
-    return rows.map(r => ({
-      id: r._id,
-      title: r.title,
-      slug: r.slug,
-      price: r.price ?? null,
-      coverImage: r.coverImage ?? null,
-      updatedAt: r.updatedAt ?? r._creationTime,
-    }));
-  },
-});
-
-import { query } from "./_generated/server";
-import { v } from "convex/values";
-
-export const getPublics = query({
-  args: { search: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    let q = ctx.db.query("services").withIndex("by_isPublished", x =>
-      x.eq("isPublished", true)
-    );
-
-    let rows = await q.collect();
-
-    // Filter archived safely
-    rows = rows.filter(r => !r.archived);
-
-    // Optional search
-    if (args.search && args.search.trim()) {
-      const s = args.search.trim().toLowerCase();
-      rows = rows.filter(r =>
-        (r.title?.toLowerCase() ?? "").includes(s) ||
-        (r.slug?.toLowerCase() ?? "").includes(s)
-      );
-    }
-
-    // Sort by updatedAt fallback to _creationTime
-    rows.sort((a, b) => {
-      const bu = (b.updatedAt ?? b._creationTime ?? 0);
-      const au = (a.updatedAt ?? a._creationTime ?? 0);
-      return bu - au;
-    });
-
-    // Return serializable, public fields
-    return rows.map(r => ({
-      id: r._id,
-      title: r.title,
-      slug: r.slug,
-      price: r.price ?? null,
-      coverImage: r.coverImage ?? null,
-      updatedAt: r.updatedAt ?? r._creationTime,
-    }));
   },
 });

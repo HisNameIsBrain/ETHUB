@@ -1,85 +1,75 @@
-"use client";
+'use client'
 
-import { Doc, Id } from "@/convex/_generated/dataModel";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Item } from "@/app/(main)/_components/item";
-import { cn } from "@/lib/utils";
-import { FileIcon } from "lucide-react";
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+import { cn } from '@/lib/utils'
+import type { Doc, Id } from '@/convex/_generated/dataModel'
 
-interface DocumentListProps {
-  parentDocumentId ? : Id < "documents" > ;
-  level ? : number;
-  data ? : Doc < "documents" > [];
+type DocumentListProps = {
+  parentDocumentId?: Id<'documents'>
+  skeletonCount?: number
 }
 
-export const DocumentList = ({
-  parentDocumentId,
-  level = 0,
-}: DocumentListProps) => {
-  const params = useParams();
-  const router = useRouter();
-  const [expanded, setExpanded] = useState < Record < string, boolean >> ({});
-  
-  const onExpand = (documentId: string) => {
-    setExpanded((prevExpand) => ({
-      ...prevExpand,
-      [documentId]: !prevExpand[documentId],
-    }));
-  };
-  
-  const documents = useQuery(api.documents.getSidebar, {
-    parentDocument: parentDocumentId,
-  });
-  
-  const onRedirect = (documentId: string) => {
-    router.push(`/documents/${documentId}`);
-  };
-  if (documents === undefined) {
-    return (
-      <>
-        <Item.Skeleton level={level} />
-        {level === 0 && (
-          <>
-            <Item.Skeleton level={level} />
-            <Item.Skeleton level={level} />
-          </>
-        )}
-      </>
-    );
+export default function DocumentList({ parentDocumentId, skeletonCount = 6 }: DocumentListProps) {
+  const router = useRouter()
+
+  const createDoc = useMutation(api.documents.create)
+  const documents = useQuery(api.documents.getSidebar, parentDocumentId ? { parentDocument: parentDocumentId } : {}) as
+    | Doc<'documents'>[]
+    | undefined
+
+  const onCreate = async () => {
+    const id = await createDoc({
+      title: 'Untitled',
+      parentDocument: parentDocumentId,
+    })
+    router.push(`/documents/${id}`)
   }
+
+  if (!documents) {
+    return (
+      <ul className="flex flex-col divide-y border rounded-md overflow-hidden">
+        {Array.from({ length: skeletonCount }).map((_, i) => (
+          <li key={i} className="p-3">
+            <div className="h-4 w-1/3 rounded bg-muted animate-pulse" />
+            <div className="mt-2 h-3 w-2/3 rounded bg-muted/70 animate-pulse" />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  if (documents.length === 0) {
+    return (
+      <div className="p-6 border rounded-md text-sm flex flex-col items-start gap-3">
+        <p className="text-muted-foreground">No documents yet.</p>
+        <button
+          onClick={onCreate}
+          className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium shadow-sm hover:bg-muted transition-colors"
+        >
+          Create your first document
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <>
-      <p
-        className={cn(
-          "hidden text-sm font-medium text-muted-foreground/80",
-          expanded && "last:block",
-          level === 0 && "hidden",
-        )}
-        style={{ paddingLeft: level ? `${level * 12 + 25}px` : undefined }}
-      >
-        No page inside
-      </p>
-      {documents.map((document) => (
-        <div key={document._id}>
-          <Item
-            id={document._id}
-            label={document.title}
-            onClick={() => onRedirect(document._id)}
-            icon={FileIcon}
-            documentIcon={document.icon}
-            active={params.documentId === document._id}
-            level={level}
-            onExpand={() => onExpand(document._id)}
-            expanded={expanded[document._id]}
-          />
-          {expanded[document._id] && (
-            <DocumentList parentDocumentId={document._id} level={level + 1} />
-          )}
-        </div>
+    <ul className="flex flex-col divide-y border rounded-md overflow-hidden">
+      {documents.map((doc: Doc<'documents'>) => (
+        <li key={doc._id}>
+          <Link
+            href={`/documents/${doc._id}`}
+            className={cn(
+              'block px-4 py-3 hover:bg-muted transition-colors',
+              doc.isPublished && 'font-medium text-foreground'
+            )}
+          >
+            {doc.title || 'Untitled'}
+          </Link>
+        </li>
       ))}
-    </>
-  );
-};
+    </ul>
+  )
+}

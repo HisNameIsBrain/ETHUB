@@ -1,14 +1,30 @@
+// convex/documents.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api"; // ← add this
 
-/**
- * Matches your documents schema:
- * title (req), content?, coverImage?, icon?, isArchived (req), isPublished (req),
- * organizationId?, parentDocument?, userId (req), createdAt (req), updatedAt (req)
- * Indexes: by_userId, by_parent, by_isArchived
- */
+// ... where you call runQuery:
+const children = await ctx.runQuery(api.documents.getChildren, {
+  parentDocument: someParentId, // your existing arg(s)
+});
 
+// Give the mapper a type so destructuring isn’t implicit any
+type ChildDoc = {
+  _id: Id<"documents">;
+  title?: string;
+  icon?: string;
+  isPublished?: boolean;
+  parentDocument?: Id<"documents"> | null;
+};
+
+return children.map(({ _id, title, icon, isPublished, parentDocument }: ChildDoc) => ({
+  _id,
+  title,
+  icon,
+  isPublished,
+  parentDocument,
+}));
 async function requireUserId(ctx: any): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Unauthorized");
@@ -143,6 +159,21 @@ export const getTrash = query({
       .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .collect();
     return docs.filter((d: any) => d.isArchived);
+  },
+});
+export const getSidebar = query({
+  args: { parentDocument: v.optional(v.id("documents")) },
+  handler: async (ctx, args) => {
+    const children = await ctx.runQuery(api.documents.getChildren, {
+      parentDocument: args.parentDocument,
+    });
+    return children.map(({ _id, title, icon, isPublished, parentDocument }) => ({
+      _id,
+      title,
+      icon,
+      isPublished,
+      parentDocument,
+    }));
   },
 });
 

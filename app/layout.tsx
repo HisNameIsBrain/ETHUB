@@ -1,29 +1,53 @@
-"use client";
+import * as ConvexProviderModule from "@/components/providers/convex-provider";
+const ConvexClientProvider =
+  (ConvexProviderModule as any).ConvexClientProvider ??
+  (({ children }: { children: React.ReactNode }) => <>{children}</>);
+import "./globals.css"; import type { Metadata } from "next"; import { Suspense } from "react";
 
-import * as React from "react";
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { ThemeProvider } from "next-themes";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/sonner"; // or your toaster path
-import { EdgeStoreProvider } from "@/lib/edgestore/provider"; // adjust path
+// Providers & UI 
+import { ConvexClientProvider } from "@/components/providers/convex-provider"; import { TooltipProvider } from "@/components/ui/tooltip"; import { Toaster } from "@/components/ui/sonner";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// App chrome 
+import { Navbar } from "@/app/(marketing)/_components/navbar";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <ClerkProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <EdgeStoreProvider>
-            <TooltipProvider delayDuration={150}>
-              {children}
-              <Toaster richColors closeButton position="top-right" />
-            </TooltipProvider>
-          </EdgeStoreProvider>
-        </ConvexProviderWithClerk>
-      </ThemeProvider>
-    </ClerkProvider>
-  );
-}
+// Siri-style bubble (animated ring) 
+import { SiriGlow } from "@/components/siri-glow";
+
+export const metadata: Metadata = { title: "ETHUB", description: "Tech Hub platform", };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) { return ( <html lang="en" suppressHydrationWarning> <body className="min-h-screen bg-background text-foreground antialiased"> <ConvexClientProvider> <TooltipProvider> {/* Top navigation */} <Navbar />
+
+{/* Page content */}
+        <main className="min-h-[calc(100vh-4rem)]">
+          <Suspense fallback={null}>{children}</Suspense>
+        </main>
+
+        {/* Global toaster */}
+        <Toaster richColors />
+
+        {/* Siri chat bubble — fixed, non-intrusive */}
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+          {/* Optional label for accessibility / hint */}
+          <span className="sr-only">Open assistant</span>
+          <button
+            aria-label="Open assistant"
+            className="group relative grid h-14 w-14 place-items-center rounded-full border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50 shadow-lg hover:shadow-xl transition-all"
+            // Hook up your dialog / sheet open handler here
+            onClick={() => {
+              // you can wire this to your chat panel or command palette
+              const evt = new CustomEvent("siri-bubble:open");
+              window.dispatchEvent(evt);
+            }}
+          >
+            <SiriGlow className="pointer-events-none absolute inset-0" />
+            {/* inner dot */}
+            <div className="relative z-[1] h-3 w-3 rounded-full bg-foreground/80 group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      </TooltipProvider>
+    </ConvexClientProvider>
+  </body>
+</html>
+
+); }
+
