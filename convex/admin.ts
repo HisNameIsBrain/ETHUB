@@ -16,7 +16,9 @@ export const backfillDocTimestamps = mutation({
         await ctx.db.patch(d._id, {
           // use Convex system creation time if available
           createdAt: needsCreated ? (d._creationTime ?? now) : d.createdAt,
-          updatedAt: needsUpdated ? (d.updatedAt ?? d._creationTime ?? now) : d.updatedAt,
+          updatedAt: needsUpdated
+            ? (d.updatedAt ?? d._creationTime ?? now)
+            : d.updatedAt,
         });
         updated++;
       }

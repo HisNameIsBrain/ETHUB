@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -21,19 +22,19 @@ export const Banner = ({ documentId }: BannerProps) => {
   const onRemove = () => {
     const promise = remove({ id: documentId });
     toast.promise(promise, {
-      loading: "Deleting note...",
-      success: "Note deleted!",
-      error: "Failed to delete note.",
+      loading: &quot;Deleting note...&quot;,
+      success: &quot;Note deleted!&quot;,
+      error: &quot;Failed to delete note.&quot;,
     });
-    router.push("/documents");
+    router.push(&quot;/documents&quot; as Route);
   };
   
   const onRestore = () => {
     const promise = restore({ id: documentId });
     toast.promise(promise, {
-      loading: "Restoring note...",
-      success: "Note restored!",
-      error: "Failed to restore note.",
+      loading: &quot;Restoring note...&quot;,
+      success: &quot;Note restored!&quot;,
+      error: &quot;Failed to restore note.&quot;,
     });
   };
   

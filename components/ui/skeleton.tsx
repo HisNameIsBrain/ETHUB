@@ -6,7 +6,7 @@ import * as React from "react";
 // Comment back in the cn version if you prefer.
 type DivProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function Skeleton({ className = "", ...props }: DivProps) {
+export function Skeleton({ className = &quot;&quot;, ...props }: DivProps) {
   return (
     <div
       className={`animate-pulse rounded-md bg-muted ${className}`}

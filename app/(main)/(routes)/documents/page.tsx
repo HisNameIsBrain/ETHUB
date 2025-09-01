@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
@@ -17,7 +18,7 @@ export default function DocumentsPage() {
           className="border rounded px-3 py-2"
           onClick={async () => {
             const id = await create({});
-            router.push(`/documents/${id}`);
+            router.push(&quot;/documents/${id}&quot; as Route);
           }}
         >
           New note

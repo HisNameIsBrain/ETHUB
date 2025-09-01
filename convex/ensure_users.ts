@@ -35,7 +35,7 @@ export const ensureUser = mutation({
       // Optional
       username: args.username,
       phoneNumber: args.phoneNumber,
-      role: args.role ?? "user" as const,
+      role: args.role ?? ("user" as const),
       updatedAt: now,
     };
 

@@ -1,3 +1,4 @@
+"use client";
 // app/(marketing)/_components/navbar.tsx
 "use client";
 
@@ -52,7 +53,7 @@ export function Navbar() {
 
           <div className="ml-4 hidden gap-2 md:flex">
             {links.map((l) => {
-              const active = pathname === l.href || pathname?.startsWith(l.href + "/");
+              const active = pathname === l.href || pathname?.startsWith(l.href + &quot;/&quot;);
               return (
                 <Link
                   key={l.href}
@@ -74,10 +75,10 @@ export function Navbar() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label="Toggle theme"
+            onClick={() => setTheme(theme === &quot;dark&quot; ? &quot;light&quot; : &quot;dark&quot;)}
+            aria-label=&quot;Toggle theme&quot;
           >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === &quot;dark&quot; ? <Sun size={16} /> : <Moon size={16} />}
           </Button>
 
           <SignOutButton signOutOptions={{ redirectUrl: "/" }}>
@@ -95,7 +96,7 @@ export function Navbar() {
         <div className="border-t border-white/10 bg-black/70 px-4 py-2 md:hidden">
           <div className="flex flex-col gap-1">
             {links.map((l) => {
-              const active = pathname === l.href || pathname?.startsWith(l.href + "/");
+              const active = pathname === l.href || pathname?.startsWith(l.href + &quot;/&quot;);
               return (
                 <Link
                   key={l.href}

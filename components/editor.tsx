@@ -1,3 +1,4 @@
+"use client";
 // components/editor.tsx
 "use client";
 
@@ -9,7 +10,7 @@ export type EditorProps = {
   onChange: (content: string) => void;
 };
 
-export default function Editor({ initialContent = "", onChange }: EditorProps) {
+export default function Editor({ initialContent = &quot;&quot;, onChange }: EditorProps) {
   const [value, setValue] = React.useState(initialContent);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

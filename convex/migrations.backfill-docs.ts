@@ -4,12 +4,14 @@ import { mutation, QueryCtx } from "./_generated/server";
 async function* paginateAll<T>(
   ctx: QueryCtx,
   table: string,
-  pageSize = 200
+  pageSize = 200,
 ): AsyncGenerator<T[], void, unknown> {
   let cursor: string | null = null;
   while (true) {
     // @ts-ignore - Convex types allow this at runtime
-    const page = await ctx.db.query(table).paginate({ cursor, numItems: pageSize });
+    const page = await ctx.db
+      .query(table)
+      .paginate({ cursor, numItems: pageSize });
     yield page.page as T[];
     if (!page.isDone) cursor = page.continueCursor!;
     else break;

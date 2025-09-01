@@ -1,3 +1,5 @@
+"use client";
+import type { Route } from "next";
 // "use client";
 
 import {
@@ -58,12 +60,12 @@ export const Item = ({
   const onArchive = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     event.stopPropagation();
     if (!id) return;
-    const promise = archive({ id }).then(() => router.push("/documents"));
+    const promise = archive({ id }).then(() => router.push(&quot;/documents&quot; as Route));
 
     toast.promise(promise, {
-      loading: "Moving to trash...",
-      success: "Note moved to trash!",
-      error: "Failed to archive note.",
+      loading: &quot;Moving to trash...&quot;,
+      success: &quot;Note moved to trash!&quot;,
+      error: &quot;Failed to archive note.&quot;,
     });
   };
   const handleExpand = (
@@ -76,19 +78,19 @@ export const Item = ({
   const onCreate = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     event.stopPropagation();
     if (!id) return;
-    const promise = create({ title: "Untitled", parentDocument: id }).then(
+    const promise = create({ title: &quot;Untitled&quot;, parentDocument: id }).then(
       (documentId) => {
         if (!expanded) {
           onExpand?.();
         }
-        router.push(`/documents/${documentId}`);
+        router.push(&quot;/documents/${documentId}&quot; as Route);
       },
     );
 
     toast.promise(promise, {
-      loading: "Creating a new note...",
-      success: "New note created",
-      error: "Failed to create new note",
+      loading: &quot;Creating a new note...&quot;,
+      success: &quot;New note created&quot;,
+      error: &quot;Failed to create new note&quot;,
     });
   };
   const ChevronIcon = expanded ? ChevronDown : ChevronRight;

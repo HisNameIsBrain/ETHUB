@@ -21,7 +21,9 @@ export const ensureByToken = mutation({
 
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", args.tokenIdentifier))
+      .withIndex("by_token", (q: any) =>
+        q.eq("tokenIdentifier", args.tokenIdentifier),
+      )
       .first();
 
     const patch = {
@@ -31,7 +33,7 @@ export const ensureByToken = mutation({
       imageUrl: args.imageUrl ?? "", // schema field is imageUrl
       username: args.username,
       phoneNumber: args.phoneNumber,
-      role: args.role ?? "user" as const,
+      role: args.role ?? ("user" as const),
       updatedAt: now,
     };
 

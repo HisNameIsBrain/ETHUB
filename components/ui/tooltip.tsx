@@ -30,7 +30,7 @@ export const TooltipContent = React.forwardRef<
       "data-[state=delayed-open]:data-[side=bottom]:slide-in-from-top-1",
       "data-[state=delayed-open]:data-[side=left]:slide-in-from-right-1",
       "data-[state=delayed-open]:data-[side=right]:slide-in-from-left-1",
-      className
+      className,
     )}
     {...props}
   />

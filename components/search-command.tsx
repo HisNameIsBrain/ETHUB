@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { useEffect, useState } from "react";
 import { File } from "lucide-react";
@@ -33,18 +34,18 @@ export const SearchCommand = () => {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === &quot;k&quot; && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         toggle();
       }
     };
 
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    document.addEventListener(&quot;keydown&quot;, down);
+    return () => document.removeEventListener(&quot;keydown&quot;, down);
   }, [toggle]);
 
   const onSelect = (id: string) => {
-    router.push(`/documents/${id}`);
+    router.push(&quot;/documents/${id}&quot; as Route);
     onClose();
   };
 

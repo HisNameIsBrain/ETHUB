@@ -1,9 +1,9 @@
 // components/siri-loader.tsx
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
-export function SiriLoader({ className = '' }: { className?: string }) {
+export function SiriLoader({ className = "" }: { className?: string }) {
   return (
     <div className={`relative h-8 w-8 ${className}`}>
       <span className="absolute inset-0 rounded-full ring-2 ring-foreground/30 animate-[siriPulse_1.6s_ease-in-out_infinite]" />

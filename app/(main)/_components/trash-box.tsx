@@ -1,3 +1,5 @@
+"use client";
+import type { Route } from "next";
 // app/(main)/_components/trash-box.tsx
 "use client";
 
@@ -26,14 +28,14 @@ export const TrashBox = () => {
   const restore = useMutation(api.documents.restore);
   const remove = useMutation(api.documents.remove);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(&quot;&quot;);
 
   const filteredDocuments = documents?.filter((document: UIDocument) =>
-    (document.title ?? "").toLowerCase().includes(search.toLowerCase())
+    (document.title ?? &quot;&quot;).toLowerCase().includes(search.toLowerCase())
   );
 
   const onClick = (documentId: Id<"documents">) => {
-    router.push(`/documents/${documentId}`);
+    router.push(&quot;/documents/${documentId}&quot; as Route);
   };
 
   const onRestore = (
@@ -43,18 +45,18 @@ export const TrashBox = () => {
     event.stopPropagation();
     const promise = restore({ id: documentId });
     toast.promise(promise, {
-      loading: "Restoring page…",
-      success: "Page restored!",
-      error: "Failed to restore page.",
+      loading: &quot;Restoring page…&quot;,
+      success: &quot;Page restored!&quot;,
+      error: &quot;Failed to restore page.&quot;,
     });
   };
 
   const onRemove = (documentId: Id<"documents">) => {
     const promise = remove({ id: documentId });
     toast.promise(promise, {
-      loading: "Deleting permanently…",
-      success: "Page deleted.",
-      error: "Failed to delete page.",
+      loading: &quot;Deleting permanently…&quot;,
+      success: &quot;Page deleted.&quot;,
+      error: &quot;Failed to delete page.&quot;,
     });
 
     // params.documentId can be string | string[] | undefined
@@ -63,7 +65,7 @@ export const TrashBox = () => {
       : params?.documentId;
 
     if (openId && String(openId) === String(documentId)) {
-      router.push("/documents");
+      router.push(&quot;/documents&quot; as Route);
     }
   };
 
@@ -82,8 +84,8 @@ export const TrashBox = () => {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-7 px-2 focus-visible:ring-transparent bg-secondary"
-          placeholder="Filter by page title..."
+          className=&quot;h-7 px-2 focus-visible:ring-transparent bg-secondary&quot;
+          placeholder=&quot;Filter by page title...&quot;
         />
       </div>
 
@@ -97,14 +99,14 @@ export const TrashBox = () => {
             key={document._id}
             role="button"
             onClick={() => onClick(document._id)}
-            className="text-sm rounded-sm w-full hover:bg-primary/5 flex items-center text-primary justify-between"
+            className=&quot;text-sm rounded-sm w-full hover:bg-primary/5 flex items-center text-primary justify-between&quot;
           >
             <span className="truncate pl-2">{document.title}</span>
             <div className="flex items-center">
               <div
                 onClick={(e) => onRestore(e, document._id)}
-                role="button"
-                className="rounded-sm p-2 hover:bg-neutral-200 dark:hover:bg-neutral-600"
+                role=&quot;button&quot;
+                className=&quot;rounded-sm p-2 hover:bg-neutral-200 dark:hover:bg-neutral-600&quot;
               >
                 <Undo className="h-4 w-4 text-muted-foreground" />
               </div>

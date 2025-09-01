@@ -1,3 +1,4 @@
+"use client";
 // app/dashboard/_components/product.tsx
 "use client";
 
@@ -15,15 +16,15 @@ type Service = {
 export function ServiceRow({ service }: { service: Service }) {
   return (
     <TableRow>
-      <TableCell>{service.name ?? "Untitled"}</TableCell>
-      <TableCell>{service.price ?? "—"}</TableCell>
+      <TableCell>{service.name ?? &quot;Untitled&quot;}</TableCell>
+      <TableCell>{service.price ?? &quot;—&quot;}</TableCell>
       <TableCell className="text-right">
         <button
           aria-label="Delete service"
           onClick={() =>
-            deleteServiceById(service._id, { revalidate: "/dashboard/services" })
+            deleteServiceById(service._id, { revalidate: &quot;/dashboard/services&quot; })
           }
-          className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-muted"
+          className=&quot;inline-flex h-8 w-8 items-center justify-center rounded hover:bg-muted&quot;
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>

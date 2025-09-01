@@ -25,11 +25,10 @@ async function uniqueSlug(ctx: any, baseName: string) {
 }
 
 // admin helper via env
-const ADMIN_SUBJECTS =
-  (process.env.ADMIN_SUBJECTS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+const ADMIN_SUBJECTS = (process.env.ADMIN_SUBJECTS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 function isAdminSubject(subject?: string | null) {
   return !!subject && ADMIN_SUBJECTS.includes(subject);
@@ -108,20 +107,25 @@ export const getPublic = query({
 
     if (admin) {
       // all non-archived
-      return (await ctx.db
-        .query("services")
-        .withIndex("by_archived", (q: any) => q.eq("archived", false))
-        .collect()
+      return (
+        await ctx.db
+          .query("services")
+          .withIndex("by_archived", (q: any) => q.eq("archived", false))
+          .collect()
       ).sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
     }
 
     // public + non-archived (use combined index if available)
     const items = await ctx.db
       .query("services")
-      .withIndex("by_isPublic_archived", (q: any) => q.eq("isPublic", true).eq("archived", false))
+      .withIndex("by_isPublic_archived", (q: any) =>
+        q.eq("isPublic", true).eq("archived", false),
+      )
       .collect();
 
-    return items.sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return items.sort(
+      (a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+    );
   },
 });
 

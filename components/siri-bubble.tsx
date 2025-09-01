@@ -1,8 +1,9 @@
+"use client";
 // components/siri-bubble.tsx
-'use client';
+"use client";
 
-import * as React from 'react';
-import { SiriGlow } from '@/components/siri-glow';
+import * as React from "react";
+import { SiriGlow } from "@/components/siri-glow";
 
 export function SiriBubble() {
   return (
@@ -12,7 +13,7 @@ export function SiriBubble() {
         aria-label="Open assistant"
         className="group relative grid h-14 w-14 place-items-center rounded-full border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50 shadow-lg hover:shadow-xl transition-all"
         onClick={() => {
-          const evt = new CustomEvent('siri-bubble:open');
+          const evt = new CustomEvent("siri-bubble:open");
           window.dispatchEvent(evt);
         }}
       >

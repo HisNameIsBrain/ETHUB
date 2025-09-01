@@ -29,8 +29,8 @@ export function SiriGlow({
   // Animate rainbow sweep forever
   useEffect(() => {
     controls.start({
-      backgroundPosition: ["0% 50%", "100% 50%"],
-      transition: { repeat: Infinity, duration: 2, ease: "linear" },
+      backgroundPosition: [&quot;0% 50%&quot;, &quot;100% 50%&quot;],
+      transition: { repeat: Infinity, duration: 2, ease: &quot;linear&quot; },
     });
   }, [controls]);
   
@@ -68,27 +68,27 @@ export function SiriGlow({
     };
     
     // initial state on mount
-    if (document.readyState === "loading") start();
-    else if (document.readyState === "interactive") setInternal(0.6);
+    if (document.readyState === &quot;loading&quot;) start();
+    else if (document.readyState === &quot;interactive&quot;) setInternal(0.6);
     else setInternal(0);
     
     const onReady = () => complete();
     const onBeforeUnload = () => start(); // when user reloads/navigates away
     
-    document.addEventListener("readystatechange", () => {
-      if (document.readyState === "complete") onReady();
+    document.addEventListener(&quot;readystatechange&quot;, () => {
+      if (document.readyState === &quot;complete&quot;) onReady();
     });
-    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener(&quot;beforeunload&quot;, onBeforeUnload);
     
     return () => {
       cancel();
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener(&quot;beforeunload&quot;, onBeforeUnload);
     };
   }, [auto, progress]);
   
   // Style bits (rainbow + glow)
   const gradient =
-    "linear-gradient(90deg, red, orange, yellow, green, cyan, blue, violet)";
+    &quot;linear-gradient(90deg, red, orange, yellow, green, cyan, blue, violet)&quot;;
   
   const visible = pct > 0 && pct < 1 ? 1 : pct === 1 ? 1 : 0;
   

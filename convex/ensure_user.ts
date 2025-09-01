@@ -33,8 +33,8 @@ export const ensureUser = mutation({
         ...(imageUrl !== undefined
           ? { imageUrl }
           : identity.pictureUrl
-          ? { imageUrl: identity.pictureUrl }
-          : {}),
+            ? { imageUrl: identity.pictureUrl }
+            : {}),
         ...(identity.tokenIdentifier
           ? { tokenIdentifier: identity.tokenIdentifier }
           : {}),

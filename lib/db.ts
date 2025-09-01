@@ -60,7 +60,7 @@ export async function getServices(search: string, offset: number) {
   // Example (Prisma): const rows = await prisma.service.findMany({ ... });
 
   const list = __services__.filter((s) =>
-    matches(search, s.name, s.description, s.slug)
+    matches(search, s.name, s.description, s.slug),
   );
 
   const totalServices = list.length;
@@ -75,14 +75,16 @@ export async function getServices(search: string, offset: number) {
 
 export async function getServiceById(serviceId: string) {
   // TODO: wire to your real DB call
-  const found = __services__.find((s) => s.id === serviceId || s.slug === serviceId);
+  const found = __services__.find(
+    (s) => s.id === serviceId || s.slug === serviceId,
+  );
   return found ?? null;
 }
 
 export async function getProducts(search: string, offset: number) {
   // Back-compat for any pages/components still using products.
   const list = __products__.filter((p) =>
-    matches(search, p.name, p.description, p.slug)
+    matches(search, p.name, p.description, p.slug),
   );
 
   const totalProducts = list.length;

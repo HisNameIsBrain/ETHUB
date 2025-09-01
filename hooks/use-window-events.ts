@@ -1,7 +1,7 @@
 // components/hooks/use-window-event.ts
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
 export function useWindowEvent<T = any>(type: string, handler: (e: T) => void) {
   React.useEffect(() => {

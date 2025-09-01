@@ -10,7 +10,10 @@ interface DocumentEditorProps {
   documentId: Id<"documents">;
 }
 
-export function DocumentEditor({ initialContent, documentId }: DocumentEditorProps) {
+export function DocumentEditor({
+  initialContent,
+  documentId,
+}: DocumentEditorProps) {
   const update = useMutation(api.documents.update);
 
   const onChange = (content: string) => {

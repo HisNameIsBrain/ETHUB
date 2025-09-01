@@ -40,9 +40,9 @@ export const Publish = ({
       .finally(() => setIsSubmitting(false));
 
     toast.promise(promise, {
-      loading: "Publishing...",
-      success: "Note published",
-      error: "Failed to publish note.",
+      loading: &quot;Publishing...&quot;,
+      success: &quot;Note published&quot;,
+      error: &quot;Failed to publish note.&quot;,
     });
   };
 
@@ -56,9 +56,9 @@ export const Publish = ({
       .finally(() => setIsSubmitting(false));
 
     toast.promise(promise, {
-      loading: "Unpublishing...",
-      success: "Note unpublished",
-      error: "Failed to unpublish note.",
+      loading: &quot;Unpublishing...&quot;,
+      success: &quot;Note unpublished&quot;,
+      error: &quot;Failed to unpublish note.&quot;,
     });
   };
 

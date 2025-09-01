@@ -12,26 +12,26 @@ const OLLAMA_BASE =
 export default function FloatingBuildAssistant() {
   const [open, setOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(&quot;&quot;);
   const [loading, setLoading] = useState(false);
 
   async function sendMessage() {
     const text = input.trim();
     if (!text || loading) return;
 
-    const userMsg: Message = { role: "user", content: text };
+    const userMsg: Message = { role: &quot;user&quot;, content: text };
     const history = [...messages, userMsg];
 
     setMessages(history);
-    setInput("");
+    setInput(&quot;&quot;);
     setLoading(true);
 
     try {
       const res = await fetch(`${OLLAMA_BASE}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: &quot;POST&quot;,
+        headers: { &quot;Content-Type&quot;: &quot;application/json&quot; },
         body: JSON.stringify({
-          model: "llama3", // change to your ollama model
+          model: &quot;llama3&quot;, // change to your ollama model
           messages: history.map((m) => ({ role: m.role, content: m.content })),
           stream: false,
         }),
@@ -42,13 +42,13 @@ export default function FloatingBuildAssistant() {
         data?.message?.content ??
         data?.message ??
         data?.response ??
-        "No response";
+        &quot;No response&quot;;
 
-      setMessages((prev) => [...prev, { role: "assistant", content: replyText }]);
+      setMessages((prev) => [...prev, { role: &quot;assistant&quot;, content: replyText }]);
     } catch (e) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Error contacting Ollama." },
+        { role: &quot;assistant&quot;, content: &quot;Error contacting Ollama.&quot; },
       ]);
       // eslint-disable-next-line no-console
       console.error(e);
@@ -115,8 +115,8 @@ export default function FloatingBuildAssistant() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask something…"
-          className="flex-1 rounded-md border px-3 py-2 text-sm outline-none"
+          placeholder=&quot;Ask something…&quot;
+          className=&quot;flex-1 rounded-md border px-3 py-2 text-sm outline-none&quot;
         />
         <button
           type="submit"

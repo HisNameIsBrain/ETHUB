@@ -1,3 +1,4 @@
+"use client";
 // components/services/services-table.tsx
 "use client";
 
@@ -49,7 +50,7 @@ export function ServicesTable({
   // smooth scroll to the current row
   useEffect(() => {
     const el = containerRef.current?.children[index] as HTMLElement | undefined;
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.scrollIntoView({ behavior: &quot;smooth&quot;, block: &quot;start&quot; });
   }, [index]);
 
   const canPrev = offset > 0;
@@ -115,7 +116,7 @@ export function ServicesTable({
                 <div className="text-center space-y-2">
                   <h2 className="text-4xl md:text-5xl font-semibold">{s.name}</h2>
                   <p className="text-white/70 text-lg md:text-xl">
-                    {s.description || "Premium device service."}
+                    {s.description || &quot;Premium device service.&quot;}
                   </p>
                   <div className="flex items-center justify-center gap-3 pt-3">
                     <Button
@@ -131,7 +132,7 @@ export function ServicesTable({
                   </div>
                 </div>
 
-                {/* the black "row" */}
+                {/* the black &quot;row&quot; */}
                 <div className="mt-8 rounded-xl border border-white/12 overflow-hidden">
                   <div className="grid grid-cols-12">
                     <div className="col-span-4 border-r border-white/10 p-4">

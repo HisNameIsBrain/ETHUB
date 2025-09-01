@@ -1,4 +1,5 @@
 'use client';
+import type { Route } from "next";
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,7 +15,7 @@ export function SearchInput() {
     let value = formData.get('q') as string;
     let params = new URLSearchParams({ q: value });
     startTransition(() => {
-      router.replace(`/?${params.toString()}`);
+      router.replace(&quot;/?${params.toString()}&quot; as Route);
     });
   }
 

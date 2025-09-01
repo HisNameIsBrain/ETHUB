@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "../globals.css"; // adjust if your globals are elsewhere
 
 // These can be client components; importing them here is fine.
-import { Navbar } from "./_components/navbar";        // <-- ensure this path exists
-import { Footer } from "./_components/footer";        // <-- or remove if you don't use a footer
+import { Navbar } from "./_components/navbar"; // <-- ensure this path exists
+import { Footer } from "./_components/footer"; // <-- or remove if you don't use a footer
 
 export const metadata = {
   title: "ETHUB",

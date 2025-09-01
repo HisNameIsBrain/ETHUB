@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { useEffect } from "react";
 import { useConvexAuth } from "convex/react";
@@ -16,7 +17,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/");
+      router.push(&quot;/&quot; as Route);
     }
   }, [isLoading, isAuthenticated, router]);
   

@@ -15,8 +15,10 @@ export const backfillServices = mutation({
       if (r.isPublic === undefined) patch.isPublic = true; // choose true/false as your default
 
       // Timestamps (prefer creationTime if missing)
-      if (r.createdAt === undefined) patch.createdAt = r._creationTime ?? Date.now();
-      if (r.updatedAt === undefined) patch.updatedAt = patch.createdAt ?? r.createdAt ?? Date.now();
+      if (r.createdAt === undefined)
+        patch.createdAt = r._creationTime ?? Date.now();
+      if (r.updatedAt === undefined)
+        patch.updatedAt = patch.createdAt ?? r.createdAt ?? Date.now();
 
       // Only patch if needed
       if (Object.keys(patch).length > 0) {

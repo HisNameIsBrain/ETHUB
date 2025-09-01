@@ -1,7 +1,5 @@
 "use client";
 
-
-
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, usePathname } from "next/navigation";
@@ -27,7 +25,7 @@ export default function ServicesNavbar() {
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link
-          href={"/" as Route}
+          href={"/" as Route as Route}
           className="text-base font-semibold tracking-tight"
         >
           ETECHHUB
@@ -38,7 +36,7 @@ export default function ServicesNavbar() {
             href={SERVICES_PATH}
             className={cn(
               "text-sm font-medium hover:text-orange-500",
-              pathname === SERVICES_PATH && "text-orange-500"
+              pathname === SERVICES_PATH && "text-orange-500",
             )}
           >
             Services
@@ -83,4 +81,3 @@ export default function ServicesNavbar() {
     </header>
   );
 }
-

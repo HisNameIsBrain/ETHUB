@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
         }
         return new Response(
           JSON.stringify({ error: `Ollama error: ${upstream.statusText}` }),
-          { status: upstream.status, headers: { "content-type": "application/json" } }
+          {
+            status: upstream.status,
+            headers: { "content-type": "application/json" },
+          },
         );
       }
 
@@ -64,14 +67,21 @@ export async function POST(req: NextRequest) {
     // Default: OpenAI streaming
     return await streamOpenAI(messages, OPENAI_KEY!, OPENAI_MODEL);
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message ?? "Server error" }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: err?.message ?? "Server error" }),
+      {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      },
+    );
   }
 }
 
-async function streamOpenAI(messages: ChatMessage[], apiKey: string, model: string) {
+async function streamOpenAI(
+  messages: ChatMessage[],
+  apiKey: string,
+  model: string,
+) {
   const upstream = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -88,7 +98,10 @@ async function streamOpenAI(messages: ChatMessage[], apiKey: string, model: stri
   if (!upstream.ok) {
     return new Response(
       JSON.stringify({ error: `OpenAI error: ${upstream.statusText}` }),
-      { status: upstream.status, headers: { "content-type": "application/json" } }
+      {
+        status: upstream.status,
+        headers: { "content-type": "application/json" },
+      },
     );
   }
 

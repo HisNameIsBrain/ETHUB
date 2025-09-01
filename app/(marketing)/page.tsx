@@ -1,7 +1,7 @@
 "use client";
 import { Heading } from "@/app/(marketing)/_components/heading";
-import { Heroes } from"@/app/(marketing)/_components/heroes";
-import { Footer } from  "@/app/(marketing)/_components/footer";
+import { Heroes } from "@/app/(marketing)/_components/heroes";
+import { Footer } from "@/app/(marketing)/_components/footer";
 import { SiriGlowInvert } from "@/components/siri-glow-invert";
 
 export default function MarketingPage() {

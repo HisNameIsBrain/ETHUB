@@ -1,6 +1,7 @@
 'use client'
 
-import Link from 'next/link'
+
+import type { Route } from "next";import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
@@ -25,7 +26,7 @@ export default function DocumentList({ parentDocumentId, skeletonCount = 6 }: Do
       title: 'Untitled',
       parentDocument: parentDocumentId,
     })
-    router.push(`/documents/${id}`)
+    router.push(&quot;/documents/${id}&quot; as Route)
   }
 
   if (!documents) {
@@ -60,7 +61,7 @@ export default function DocumentList({ parentDocumentId, skeletonCount = 6 }: Do
       {documents.map((doc: Doc<'documents'>) => (
         <li key={doc._id}>
           <Link
-            href={`/documents/${doc._id}`}
+            href={"/documents/${doc._id}" as Route
             className={cn(
               'block px-4 py-3 hover:bg-muted transition-colors',
               doc.isPublished && 'font-medium text-foreground'

@@ -1,11 +1,15 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import Link from 'next/link';
-import type { UrlObject } from 'url';
-import { usePathname } from 'next/navigation';
-import clsx from 'clsx';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import * as React from "react";
+import Link from "next/link";
+import type { UrlObject } from "url";
+import { usePathname } from "next/navigation";
+import clsx from "clsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Props = {
   href: string | UrlObject;
@@ -24,21 +28,21 @@ export function NavItem({
   exact = false,
   className,
 }: Props) {
-  const pathname = usePathname() ?? '';
+  const pathname = usePathname() ?? "";
 
   const hrefPath =
-    typeof href === 'string'
+    typeof href === "string"
       ? href
-      : typeof (href as UrlObject).pathname === 'string'
-      ? String((href as UrlObject).pathname)
-      : '';
+      : typeof (href as UrlObject).pathname === "string"
+        ? String((href as UrlObject).pathname)
+        : "";
 
   const isActive =
     hrefPath &&
-    hrefPath !== '#' &&
+    hrefPath !== "#" &&
     (exact ? pathname === hrefPath : pathname.startsWith(hrefPath));
 
-  if (hrefPath === '#') {
+  if (hrefPath === "#") {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -46,8 +50,8 @@ export function NavItem({
             type="button"
             aria-label={label}
             className={clsx(
-              'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
-              className
+              "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+              className,
             )}
           >
             {children ?? icon}
@@ -66,9 +70,9 @@ export function NavItem({
           href={href as UrlObject}
           aria-label={label}
           className={clsx(
-            'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
-            isActive && 'bg-accent text-accent-foreground',
-            className
+            "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+            isActive && "bg-accent text-accent-foreground",
+            className,
           )}
         >
           {children ?? icon}

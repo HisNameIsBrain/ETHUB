@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
@@ -29,11 +30,11 @@ export const Menu = ({ documentId }: MenuProps) => {
   const onArchive = () => {
     const promise = archive({ id: documentId });
     toast.promise(promise, {
-      loading: "Moving to trash...",
-      success: "Note moved to trash!",
-      error: "Failed to archive note.",
+      loading: &quot;Moving to trash...&quot;,
+      success: &quot;Note moved to trash!&quot;,
+      error: &quot;Failed to archive note.&quot;,
     });
-    router.push("/documents");
+    router.push(&quot;/documents&quot; as Route);
   };
   
   return (

@@ -1,10 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  typedRoutes: true,
   images: {
-    domains: ["files.edgestore.dev"]
+    domains: ["files.edgestore.dev"],
   },
-  experimental: {
-    typedRoutes: true
-  }
 };
-module.exports = nextConfig;
+typedRoutes: true, (module.exports = nextConfig);

@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import * as React from "react";
 import { useMemo, useEffect, useState } from "react";
@@ -32,8 +33,8 @@ export default function DashboardServicesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const q = useMemo(() => (searchParams.get("q") ?? "").toString(), [searchParams]);
-  const offset = useMemo(() => Number(searchParams.get("offset") ?? 0), [searchParams]);
+  const q = useMemo(() => (searchParams.get(&quot;q&quot;) ?? &quot;&quot;).toString(), [searchParams]);
+  const offset = useMemo(() => Number(searchParams.get(&quot;offset&quot;) ?? 0), [searchParams]);
 
   const createService = useMutation(api.services.create);
 
@@ -49,7 +50,7 @@ export default function DashboardServicesPage() {
       try {
         const res = await fetch(
           `/api/services?search=${encodeURIComponent(q)}&offset=${offset}`,
-          { cache: "no-store" }
+          { cache: &quot;no-store&quot; }
         );
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = (await res.json()) as {
@@ -64,7 +65,7 @@ export default function DashboardServicesPage() {
         }
       } catch {
         if (!cancelled) {
-          toast.error("Failed to load services");
+          toast.error(&quot;Failed to load services&quot;);
           setServices([]);
           setNewOffset(0);
           setTotalServices(0);
@@ -81,17 +82,17 @@ export default function DashboardServicesPage() {
 
   const onCreate = () => {
     const promise = createService({
-      name: "Untitled",
-      description: "",
+      name: &quot;Untitled&quot;,
+      description: &quot;&quot;,
       price: 0,
       isPublic: true,
       archived: false,
-    }).then((serviceId: string) => router.push(`/services/${serviceId}`));
+    }).then((serviceId: string) => router.push(&quot;/services/${serviceId}&quot; as Route));
 
     toast.promise(promise, {
-      loading: "Creating a new service...",
-      success: "Service created!",
-      error: "Failed to create a new service.",
+      loading: &quot;Creating a new service...&quot;,
+      success: &quot;Service created!&quot;,
+      error: &quot;Failed to create a new service.&quot;,
     });
   };
 
@@ -133,8 +134,8 @@ export default function DashboardServicesPage() {
           totalServices={totalServices}
           onPageChange={(nextOffset) => {
             const params = new URLSearchParams(searchParams.toString());
-            params.set("offset", String(nextOffset));
-            router.push(`?${params.toString()}`);
+            params.set(&quot;offset&quot;, String(nextOffset));
+            router.push(&quot;?${params.toString()}&quot; as Route);
           }}
         />
       </TabsContent>

@@ -24,10 +24,10 @@ const subMessages = [
 export const Heading = () => {
   const { isAuthenticated, isLoading } = useConvexAuth();
   
-  const [titleText, setTitleText] = useState("");
+  const [titleText, setTitleText] = useState(&quot;&quot;);
   const [titleIndex, setTitleIndex] = useState(0);
   
-  const [subText, setSubText] = useState("");
+  const [subText, setSubText] = useState(&quot;&quot;);
   const [subIndex, setSubIndex] = useState(0);
   const [subCharIndex, setSubCharIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);

@@ -25,21 +25,11 @@ const SETTINGS_PATH = "/settings" as Route; // change if your settings route dif
 export default function User(props: UserProps) {
   const { user } = useUser();
 
-  const displayName =
-    props.name ??
-    user?.fullName ??
-    user?.firstName ??
-    "User";
+  const displayName = props.name ?? user?.fullName ?? user?.firstName ?? "User";
 
-  const email =
-    props.email ??
-    user?.primaryEmailAddress?.emailAddress ??
-    "";
+  const email = props.email ?? user?.primaryEmailAddress?.emailAddress ?? "";
 
-  const avatarUrl =
-    props.avatarUrl ??
-    user?.imageUrl ??
-    undefined;
+  const avatarUrl = props.avatarUrl ?? user?.imageUrl ?? undefined;
 
   const initial = displayName?.charAt(0)?.toUpperCase() ?? "U";
 

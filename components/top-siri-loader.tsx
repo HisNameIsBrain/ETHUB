@@ -12,13 +12,13 @@ const TOTAL_MS = SWEEP_ONCE_MS * 2; // exactly two full swipes
 export default function TopSiriLoader() {
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     setLoading(true);
     const t = setTimeout(() => setLoading(false), TOTAL_MS);
     return () => clearTimeout(t);
   }, [pathname]);
-  
+
   return (
     <>
       <AnimatePresence>

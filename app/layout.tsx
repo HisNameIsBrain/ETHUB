@@ -1,3 +1,4 @@
+"use client";
 // app/layout.tsx
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 aria-label="Open assistant"
                 className="group relative grid h-14 w-14 place-items-center rounded-full border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50 shadow-lg hover:shadow-xl transition-all"
                 onClick={() => {
-                  const evt = new CustomEvent("siri-bubble:open");
+                  const evt = new CustomEvent(&quot;siri-bubble:open&quot;);
                   window.dispatchEvent(evt);
                 }}
               >

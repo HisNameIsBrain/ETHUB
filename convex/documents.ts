@@ -1,4 +1,3 @@
-
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -76,7 +75,8 @@ export const update = mutation({
     if (args.icon !== undefined) patch.icon = args.icon;
     if (args.isArchived !== undefined) patch.isArchived = args.isArchived;
     if (args.isPublished !== undefined) patch.isPublished = args.isPublished;
-    if (args.parentDocument !== undefined) patch.parentDocument = args.parentDocument;
+    if (args.parentDocument !== undefined)
+      patch.parentDocument = args.parentDocument;
     await ctx.db.patch(args.id, patch);
   },
 });
@@ -132,7 +132,7 @@ export const getAll = query({
       .filter((d: any) => !d.isArchived)
       .sort(
         (a: any, b: any) =>
-          (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0)
+          (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0),
       );
   },
 });
@@ -158,7 +158,9 @@ export const getChildren = query({
     if (parentDocument) {
       rows = await ctx.db
         .query("documents")
-        .withIndex("by_parent", (q: any) => q.eq("parentDocument", parentDocument))
+        .withIndex("by_parent", (q: any) =>
+          q.eq("parentDocument", parentDocument),
+        )
         .collect();
     } else {
       rows = await ctx.db
@@ -178,7 +180,7 @@ export const getChildren = query({
           icon: r.icon as string | undefined,
           isPublished: r.isPublished === true,
           parentDocument: r.parentDocument as Id<"documents"> | undefined,
-        })
+        }),
       );
   },
 });
@@ -186,9 +188,12 @@ export const getChildren = query({
 export const getSidebar = query({
   args: { parentDocument: v.optional(v.id("documents")) },
   handler: async (ctx, args): Promise<SidebarDoc[]> => {
-    const children: SidebarDoc[] = await ctx.runQuery(api.documents.getChildren, {
-      parentDocument: args.parentDocument,
-    });
+    const children: SidebarDoc[] = await ctx.runQuery(
+      api.documents.getChildren,
+      {
+        parentDocument: args.parentDocument,
+      },
+    );
     return children;
   },
 });

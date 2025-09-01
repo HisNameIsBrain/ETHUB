@@ -1,3 +1,4 @@
+"use client";
 // components/toolbar.tsx
 "use client";
 
@@ -43,12 +44,12 @@ export const Toolbar = ({ initialData, preview }: ToolbarProps) => {
     setValue(next);
     update({
       id: initialData._id,
-      title: next || "Untitled",
+      title: next || &quot;Untitled&quot;,
     });
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter") {
+    if (event.key === &quot;Enter&quot;) {
       event.preventDefault();
       disableInput();
     }
@@ -120,7 +121,7 @@ export const Toolbar = ({ initialData, preview }: ToolbarProps) => {
           onKeyDown={onKeyDown}
           value={value}
           onChange={(e) => onInput(e.target.value)}
-          className="text-5xl bg-transparent font-bold break-words outline-none text-[#3F3F3F] dark:text-[#CFCFCF] resize-none"
+          className=&quot;text-5xl bg-transparent font-bold break-words outline-none text-[#3F3F3F] dark:text-[#CFCFCF] resize-none&quot;
         />
       ) : (
         <div

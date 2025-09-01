@@ -17,7 +17,7 @@ type Props = {
 
 export default function NavItem({ href, label, icon: Icon, className, children }: Props) {
   const pathname = usePathname();
-  const target = typeof href === "string" ? href : href.pathname ?? "";
+  const target = typeof href === &quot;string&quot; ? href : href.pathname ?? &quot;&quot;;
   const active = pathname === target;
 
   return (

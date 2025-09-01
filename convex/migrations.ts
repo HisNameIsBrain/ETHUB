@@ -9,8 +9,10 @@ export const backfillServices = mutation({
       const patch: Record<string, any> = {};
       if (r.archived === undefined) patch.archived = false;
       if (r.isPublic === undefined) patch.isPublic = true; // choose your default
-      if (r.createdAt === undefined) patch.createdAt = r._creationTime ?? Date.now();
-      if (r.updatedAt === undefined) patch.updatedAt = patch.createdAt ?? r.createdAt ?? Date.now();
+      if (r.createdAt === undefined)
+        patch.createdAt = r._creationTime ?? Date.now();
+      if (r.updatedAt === undefined)
+        patch.updatedAt = patch.createdAt ?? r.createdAt ?? Date.now();
       if (Object.keys(patch).length > 0) {
         await ctx.db.patch(r._id, patch);
         patched++;

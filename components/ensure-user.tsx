@@ -17,7 +17,9 @@ export function EnsureUser() {
       userId: user.id,
       tokenIdentifier,
       role: "user" as const,
-      name: user.fullName ?? [user.firstName, user.lastName].filter(Boolean).join(" "),
+      name:
+        user.fullName ??
+        [user.firstName, user.lastName].filter(Boolean).join(" "),
       email: user.primaryEmailAddress?.emailAddress,
       imageUrl: user.imageUrl,
       username: user.username ?? undefined,
