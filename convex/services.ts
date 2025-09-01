@@ -1,8 +1,7 @@
-// convex/services.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// ---------- utils ----------
+// utils
 function slugify(input: string) {
   return (input || "")
     .toLowerCase()
@@ -25,19 +24,18 @@ async function uniqueSlug(ctx: any, baseName: string) {
   }
 }
 
-// ---------- admin helper ----------
-// Put identity.subjects of your admins here (Convex env var)
+// admin helper via env
 const ADMIN_SUBJECTS =
   (process.env.ADMIN_SUBJECTS ?? "")
     .split(",")
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 
 function isAdminSubject(subject?: string | null) {
   return !!subject && ADMIN_SUBJECTS.includes(subject);
 }
 
-// ---------- mutations ----------
+// mutations
 export const create = mutation({
   args: {
     name: v.string(),
@@ -48,8 +46,12 @@ export const create = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     const now = Date.now();
     const slug = await uniqueSlug(ctx, args.name);
+
     return await ctx.db.insert("services", {
       name: args.name,
       description: args.description,
@@ -60,7 +62,7 @@ export const create = mutation({
       slug,
       createdAt: now,
       updatedAt: now,
-      createdBy: identity.subject
+      createdBy: identity.subject,
     });
   },
 });
@@ -97,31 +99,31 @@ export const remove = mutation({
   },
 });
 
-// ---------- queries ----------
-
-// ✅ NEW NAME with admin override
+// queries
 export const getPublic = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     const admin = isAdminSubject(identity?.subject ?? null);
 
-    // Admins: all non-archived
-    // Others: non-archived AND isPublic === true
-    const items = await ctx.db.query("services").collect();
+    if (admin) {
+      // all non-archived
+      return (await ctx.db
+        .query("services")
+        .withIndex("by_archived", (q: any) => q.eq("archived", false))
+        .collect()
+      ).sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    }
 
-    const filtered = admin
-      ? items.filter((s: any) => !s.archived)
-      : items.filter((s: any) => !s.archived && s.isPublic === true);
+    // public + non-archived (use combined index if available)
+    const items = await ctx.db
+      .query("services")
+      .withIndex("by_isPublic_archived", (q: any) => q.eq("isPublic", true).eq("archived", false))
+      .collect();
 
-    // newest first by createdAt (fallback 0)
-    return filtered.sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return items.sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   },
 });
-
-// (Optional) keep this TEMPORARY alias while you rename callers,
-// then delete it when everything references getPublic.
-// export const getPublics = getPublic;
 
 export const getById = query({
   args: { id: v.id("services") },

@@ -64,7 +64,7 @@ function DesktopNav() {
           <span className="sr-only">ETECHHUB</span>
         </Link>
 
-        <NavItem href="#" label="Dashboard">
+        <NavItem href="/dashboard" label="Dashboard">
           <Home className="h-5 w-5" />
         </NavItem>
 
@@ -76,7 +76,7 @@ function DesktopNav() {
           <Package className="h-5 w-5" />
         </NavItem>
 
-        <NavItem href="/customers" label="Customers">
+        <NavItem href="/dashboard/customers" label="Customers">
           <Users2 className="h-5 w-5" />
         </NavItem>
 
@@ -147,7 +147,7 @@ function MobileNav() {
           </Link>
 
           <Link
-            href="/customers"
+            href="/dashboard/customers"
             className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
           >
             <Users2 className="h-5 w-5" />
@@ -173,7 +173,7 @@ function DashboardBreadcrumb() {
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href="#">Dashboard</Link>
+            <Link href="/dashboard">Dashboard</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />

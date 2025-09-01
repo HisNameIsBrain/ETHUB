@@ -1,33 +1,21 @@
-// convex/documents.ts
+
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { api } from "./_generated/api"; // ← add this
+import { api } from "./_generated/api";
 
-// ... where you call runQuery:
-const children = await ctx.runQuery(api.documents.getChildren, {
-  parentDocument: someParentId, // your existing arg(s)
-});
-
-// Give the mapper a type so destructuring isn’t implicit any
-type ChildDoc = {
+export type SidebarDoc = {
   _id: Id<"documents">;
-  title?: string;
+  title: string;
   icon?: string;
-  isPublished?: boolean;
-  parentDocument?: Id<"documents"> | null;
+  isPublished: boolean;
+  parentDocument?: Id<"documents">;
 };
 
-return children.map(({ _id, title, icon, isPublished, parentDocument }: ChildDoc) => ({
-  _id,
-  title,
-  icon,
-  isPublished,
-  parentDocument,
-}));
+// auth helper
 async function requireUserId(ctx: any): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
+  if (!identity) throw new Error("Not authenticated");
   return identity.subject;
 }
 
@@ -42,7 +30,7 @@ async function archiveDescendants(ctx: any, parentId: Id<"documents">) {
   }
 }
 
-// ------- mutations -------
+// ── mutations ──────────────────────────────────────────────────
 export const create = mutation({
   args: {
     title: v.optional(v.string()),
@@ -54,19 +42,18 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const now = Date.now();
-    const id = await ctx.db.insert("documents", {
+    return await ctx.db.insert("documents", {
       title: args.title ?? "Untitled",
       content: "",
       coverImage: args.coverImage,
       icon: args.icon,
       isArchived: false,
-      isPublished: args.isPublished ?? true,   // ✅ default public
+      isPublished: args.isPublished ?? true,
       parentDocument: args.parentDocument,
       userId,
       createdAt: now,
       updatedAt: now,
     });
-    return id;
   },
 });
 
@@ -122,7 +109,7 @@ export const remove = mutation({
   },
 });
 
-// ------- queries -------
+// ── queries ────────────────────────────────────────────────────
 export const getById = query({
   args: { id: v.id("documents") },
   handler: async (ctx, { id }) => {
@@ -161,30 +148,47 @@ export const getTrash = query({
     return docs.filter((d: any) => d.isArchived);
   },
 });
-export const getSidebar = query({
+
+export const getChildren = query({
   args: { parentDocument: v.optional(v.id("documents")) },
-  handler: async (ctx, args) => {
-    const children = await ctx.runQuery(api.documents.getChildren, {
-      parentDocument: args.parentDocument,
-    });
-    return children.map(({ _id, title, icon, isPublished, parentDocument }) => ({
-      _id,
-      title,
-      icon,
-      isPublished,
-      parentDocument,
-    }));
+  handler: async (ctx, { parentDocument }): Promise<SidebarDoc[]> => {
+    const userId = await requireUserId(ctx);
+
+    let rows: any[];
+    if (parentDocument) {
+      rows = await ctx.db
+        .query("documents")
+        .withIndex("by_parent", (q: any) => q.eq("parentDocument", parentDocument))
+        .collect();
+    } else {
+      rows = await ctx.db
+        .query("documents")
+        .withIndex("by_userId", (q: any) => q.eq("userId", userId))
+        .collect();
+      rows = rows.filter((r: any) => r.parentDocument == null);
+    }
+
+    return rows
+      .filter((r: any) => r.userId === userId && r.isArchived !== true)
+      .sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .map(
+        (r: any): SidebarDoc => ({
+          _id: r._id as Id<"documents">,
+          title: r.title ?? "Untitled",
+          icon: r.icon as string | undefined,
+          isPublished: r.isPublished === true,
+          parentDocument: r.parentDocument as Id<"documents"> | undefined,
+        })
+      );
   },
 });
 
-export const getChildren = query({
-  args: { parentId: v.id("documents") },
-  handler: async (ctx, { parentId }) => {
-    const userId = await requireUserId(ctx);
-    const kids = await ctx.db
-      .query("documents")
-      .withIndex("by_parent", (q: any) => q.eq("parentDocument", parentId))
-      .collect();
-    return kids.filter((d: any) => d.userId === userId && !d.isArchived);
+export const getSidebar = query({
+  args: { parentDocument: v.optional(v.id("documents")) },
+  handler: async (ctx, args): Promise<SidebarDoc[]> => {
+    const children: SidebarDoc[] = await ctx.runQuery(api.documents.getChildren, {
+      parentDocument: args.parentDocument,
+    });
+    return children;
   },
 });

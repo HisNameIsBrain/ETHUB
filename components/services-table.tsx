@@ -1,22 +1,40 @@
-// components/services/services-table.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
-} from "@/components/ui/card";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody
-} from "@/components/ui/table";
+import * as React from "react";
+import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type Service = {
+export type Service = {
   _id: string;
   name: string;
-  description?: string;
   price?: number;
+  description?: string;
+  createdAt: number;
+  updatedAt: number;
+  isPublic: boolean;
+  archived: boolean;
+  slug: string;
+};
+
+type ServicesTableProps = {
+  services: Service[];
+  offset: number;
+  servicesPerPage: number;
+  totalServices: number;
+  onPageChange?: (nextOffset: number) => void;
+  autoAdvanceMs?: number;
+  loading?: boolean;
+  className?: string;
 };
 
 export function ServicesTable({
@@ -25,138 +43,186 @@ export function ServicesTable({
   servicesPerPage,
   totalServices,
   onPageChange,
-  autoAdvanceMs = 4500,
-}: {
-  services: Service[];
-  offset: number;
-  servicesPerPage: number;
-  totalServices: number;
-  onPageChange?: (nextOffset: number) => void;
-  autoAdvanceMs?: number;
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [index, setIndex] = useState(0);
+  autoAdvanceMs,
+  loading,
+  className,
+}: ServicesTableProps) {
+  const pageCount = Math.max(1, Math.ceil(totalServices / Math.max(1, servicesPerPage)));
+  const currentPage = Math.min(pageCount, Math.floor(offset / Math.max(1, servicesPerPage)) + 1);
 
-  const rows = useMemo(() => services ?? [], [services]);
+  const nextOffset = useMemo(() => {
+    const nextPage = Math.min(pageCount, currentPage + 1);
+    return (nextPage - 1) * servicesPerPage;
+  }, [currentPage, pageCount, servicesPerPage]);
 
-  // auto-advance between the visible “rows”
+  const prevOffset = useMemo(() => {
+    const prevPage = Math.max(1, currentPage - 1);
+    return (prevPage - 1) * servicesPerPage;
+  }, [currentPage, servicesPerPage]);
+
   useEffect(() => {
-    if (rows.length <= 1 || !autoAdvanceMs) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % rows.length), autoAdvanceMs);
+    if (!autoAdvanceMs || autoAdvanceMs <= 0 || !onPageChange || pageCount <= 1) return;
+    const id = setInterval(() => {
+      const next = currentPage >= pageCount ? 0 : nextOffset;
+      onPageChange(next);
+    }, autoAdvanceMs);
     return () => clearInterval(id);
-  }, [rows.length, autoAdvanceMs]);
+  }, [autoAdvanceMs, currentPage, nextOffset, onPageChange, pageCount]);
 
-  // smooth scroll to the current row
-  useEffect(() => {
-    const el = containerRef.current?.children[index] as HTMLElement | undefined;
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [index]);
+  if (loading) {
+    return (
+      <div className={cn("w-full", className)}>
+        <div className="rounded-md border">
+          <div className="p-3 border-b text-sm font-medium">Services</div>
+          <div className="divide-y">
+            {Array.from({ length: servicesPerPage || 10 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-32 rounded bg-muted animate-pulse" />
+                <div className="ml-auto h-4 w-28 rounded bg-muted animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <Pager
+          currentPage={currentPage}
+          pageCount={pageCount}
+          onPrev={() => onPageChange?.(prevOffset)}
+          onNext={() => onPageChange?.(nextOffset)}
+        />
+      </div>
+    );
+  }
 
-  const canPrev = offset > 0;
-  const canNext = offset + servicesPerPage < totalServices;
+  if (!services?.length) {
+    return (
+      <div className={cn("w-full", className)}>
+        <div className="rounded-md border">
+          <div className="p-3 border-b text-sm font-medium">Services</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No services found.
+          </div>
+        </div>
+        <Pager
+          currentPage={currentPage}
+          pageCount={pageCount}
+          onPrev={() => onPageChange?.(prevOffset)}
+          onNext={() => onPageChange?.(nextOffset)}
+        />
+      </div>
+    );
+  }
 
   return (
-    <Card className="bg-black text-white border border-white/10">
-      <CardHeader className="border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Services</CardTitle>
-            <CardDescription className="text-white/60">
-              Browse available services. One at a time, like the Apple hero.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
-              disabled={!canPrev}
-              onClick={() => onPageChange?.(Math.max(0, offset - servicesPerPage))}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
-              disabled={!canNext}
-              onClick={() =>
-                onPageChange?.(Math.min(
-                  totalServices - (totalServices % servicesPerPage || servicesPerPage),
-                  offset + servicesPerPage
-                ))
-              }
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* table header like your black screenshot */}
-        <Table className="mt-3">
+    <div className={cn("w-full", className)}>
+      <div className="rounded-md border overflow-x-auto">
+        <Table>
           <TableHeader>
-            <TableRow className="border-white/10">
-              <TableHead className="text-white/60 uppercase">Title</TableHead>
-              <TableHead className="text-white/60 uppercase">Description</TableHead>
-              <TableHead className="text-white/60 uppercase text-right">Actions</TableHead>
+            <TableRow>
+              <TableHead className="min-w-[240px]">Name</TableHead>
+              <TableHead className="min-w-[100px]">Price</TableHead>
+              <TableHead className="min-w-[160px]">Status</TableHead>
+              <TableHead className="min-w-[180px] text-right">Updated</TableHead>
             </TableRow>
           </TableHeader>
+          <TableBody>
+            {services.map((s) => (
+              <TableRow key={s._id} className={cn(s.archived && "opacity-60")}>
+                <TableCell className="font-medium">
+                  <div className="truncate">{s.name || "Untitled"}</div>
+                  {s.description ? (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {s.description}
+                    </div>
+                  ) : null}
+                </TableCell>
+                <TableCell>{formatPrice(s.price)}</TableCell>
+                <TableCell>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded px-2 py-0.5 text-xs border",
+                      s.archived
+                        ? "bg-muted text-muted-foreground"
+                        : s.isPublic
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900"
+                        : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
+                    )}
+                  >
+                    {s.archived ? "Archived" : s.isPublic ? "Public" : "Private"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">{formatDate(s.updatedAt)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-0">
-        {/* one-at-a-time “rows” with hero + table row */}
-        <div
-          ref={containerRef}
-          className="max-h-[70vh] overflow-y-auto snap-y snap-mandatory"
-        >
-          {rows.map((s) => (
-            <section key={s._id} className="snap-start min-h-[65vh] flex items-center px-4 py-10">
-              <div className="w-full">
-                {/* Apple-like hero */}
-                <div className="text-center space-y-2">
-                  <h2 className="text-4xl md:text-5xl font-semibold">{s.name}</h2>
-                  <p className="text-white/70 text-lg md:text-xl">
-                    {s.description || "Premium device service."}
-                  </p>
-                  <div className="flex items-center justify-center gap-3 pt-3">
-                    <Button
-                      variant="outline"
-                      className="border-white/30 text-white hover:bg-white/10"
-                      onClick={() => alert(`Info about: ${s.name}`)}
-                    >
-                      ?
-                    </Button>
-                    <Link href={`/main/services/${s._id}`} prefetch>
-                      <Button className="bg-white text-black hover:opacity-90">Buy</Button>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* the black "row" */}
-                <div className="mt-8 rounded-xl border border-white/12 overflow-hidden">
-                  <div className="grid grid-cols-12">
-                    <div className="col-span-4 border-r border-white/10 p-4">
-                      <div className="text-sm text-white/60 uppercase">serviceId</div>
-                      <div className="mt-1 font-mono text-sm break-all">{s._id}</div>
-                    </div>
-                    <div className="col-span-8 p-4">
-                      <div className="text-sm text-white/60 uppercase">name</div>
-                      <div className="mt-1">{s.name}</div>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </section>
-          ))}
-        </div>
-      </CardContent>
-
-      <CardFooter className="border-t border-white/10 flex items-center justify-between">
-        <div className="text-xs text-white/60">
-          Showing {Math.min(offset + 1, totalServices)}–
-          {Math.min(offset + servicesPerPage, totalServices)} of {totalServices}
-        </div>
-      </CardFooter>
-    </Card>
+      <Pager
+        currentPage={currentPage}
+        pageCount={pageCount}
+        onPrev={() => onPageChange?.(prevOffset)}
+        onNext={() => onPageChange?.(nextOffset)}
+      />
+    </div>
   );
 }
+
+function Pager({
+  currentPage,
+  pageCount,
+  onPrev,
+  onNext,
+}: {
+  currentPage: number;
+  pageCount: number;
+  onPrev?: () => void;
+  onNext?: () => void;
+}) {
+  return (
+    <div className="mt-3 flex items-center justify-between text-sm">
+      <div className="text-muted-foreground">
+        Page {currentPage} of {pageCount}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onPrev}
+          disabled={!onPrev || currentPage <= 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onNext}
+          disabled={!onNext || currentPage >= pageCount}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function formatPrice(p?: number) {
+  if (p === undefined || p === null || Number.isNaN(p)) return "—";
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(p);
+  } catch {
+    return `$${p.toFixed(2)}`;
+  }
+}
+
+function formatDate(ts?: number) {
+  if (!ts) return "—";
+  try {
+    return new Date(ts).toLocaleString();
+  } catch {
+    return "—";
+  }
+}
+
+export default ServicesTable;

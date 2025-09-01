@@ -21,7 +21,7 @@ type Service = {
 
 export default function ServicesPage() {
   // Returns all if admin; else only published (see server query below)
-  const raw = useQuery(api.services.getPublics) ?? undefined;
+  const raw = useQuery(api.services.getPublic) ?? undefined;
 
   const [q, setQ] = React.useState("");
   const [page, setPage] = React.useState(1);

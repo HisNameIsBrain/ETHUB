@@ -1,4 +1,3 @@
-// convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -11,12 +10,10 @@ export default defineSchema({
     isArchived: v.boolean(),
     isPublished: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
-    updatedAt:v.optional(v.number()),
-    // ⬇️ add this so create/update with coverImage is valid
+    updatedAt: v.optional(v.number()),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
   })
-    // keep existing indexes, plus ensure these exact names:
     .index("by_userId", ["userId"])
     .index("by_parent", ["parentDocument"])
     .index("by_isArchived", ["isArchived"]),
@@ -28,34 +25,29 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     role: v.optional(v.string()),
     username: v.optional(v.string()),
-    // ⬇️ add these so your ensure_* code compiles
+    phoneNumber: v.optional(v.string()),
+    tokenIdentifier: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
-    phoneNumber: v.optional(v.string()),
-    // ⬇️ add if you query by tokenIdentifier
-    tokenIdentifier: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_email", ["email"])
-    // ⬇️ enable .withIndex("by_token", q => q.eq("tokenIdentifier", ...))
     .index("by_token", ["tokenIdentifier"]),
 
   services: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
     price: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    deliveryTime: v.optional(v.string()),
     isPublic: v.boolean(),
     archived: v.boolean(),
-    slug: v.string(),
-    createdBy: v.string(),
-    // ⬇️ add this so create/update with deliveryTime is valid
-    deliveryTime: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    createdAt: v.number(),
+    createdBy: v.optional(v.string()),
+    updatedAt: v.number(),
   })
     .index("by_slug", ["slug"])
     .index("by_archived", ["archived"])
     .index("by_createdBy", ["createdBy"])
-    // ⬇️ use this combined index instead of plain "by_isPublic"
     .index("by_isPublic_archived", ["isPublic", "archived"]),
 });

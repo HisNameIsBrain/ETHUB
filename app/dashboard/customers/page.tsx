@@ -1,0 +1,11 @@
+// app/dashboard/customers/page.tsx
+export default function CustomersPage() {
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold">Customers</h1>
+      <p className="text-muted-foreground">
+        Manage your customer list here.
+      </p>
+    </div>
+  );
+}

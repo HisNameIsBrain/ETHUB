@@ -1,4 +1,3 @@
-// components/ensure-user.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -8,17 +7,26 @@ import { api } from "@/convex/_generated/api";
 
 export function EnsureUser() {
   const { user, isSignedIn } = useUser();
-  const ensureUser = useMutation(api.users.ensureUser);
-  
+  const ensureByToken = useMutation(api.users.ensureByToken);
+
   useEffect(() => {
-    if (!isSignedIn || !user?.primaryEmailAddress?.emailAddress) return;
-    ensureUser({
-      email: user.primaryEmailAddress.emailAddress.toLowerCase(),
-      name: user.fullName ?? undefined,
+    if (!isSignedIn || !user) return;
+
+    const tokenIdentifier = user.id; // adjust if your server expects a different token id
+    const payload = {
+      userId: user.id,
+      tokenIdentifier,
+      role: "user" as const,
+      name: user.fullName ?? [user.firstName, user.lastName].filter(Boolean).join(" "),
+      email: user.primaryEmailAddress?.emailAddress,
+      imageUrl: user.imageUrl,
       username: user.username ?? undefined,
-      phoneNumber: user.phoneNumbers?.[0]?.phoneNumber ?? undefined,
-    }).catch(console.error);
-  }, [isSignedIn, user, ensureUser]);
-  
+      phoneNumber: user.primaryPhoneNumber?.phoneNumber ?? undefined,
+    };
+
+    // fire-and-forget; Convex mutation returns promise
+    void ensureByToken(payload);
+  }, [isSignedIn, user, ensureByToken]);
+
   return null;
 }

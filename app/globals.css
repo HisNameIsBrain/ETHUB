@@ -92,3 +92,10 @@ body,
   animation: smokeIn 2.5s ease-out forwards;
 }
  
+@keyframes siriPulse {
+  0%, 100% { transform: scale(0.9); opacity: .7; }
+  50%      { transform: scale(1.1); opacity: 1; }
+}
+@keyframes ping {
+  75%, 100% { transform: scale(1.5); opacity: 0; }
+}

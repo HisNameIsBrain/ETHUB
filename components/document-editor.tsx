@@ -17,7 +17,5 @@ export function DocumentEditor({ initialContent, documentId }: DocumentEditorPro
     update({ id: documentId, content });
   };
 
-  return (
-    <Editor initialContent={initialContent} onChange={onChange} editable />
-  );
+  return <Editor initialContent={initialContent} onChange={onChange} />;
 }

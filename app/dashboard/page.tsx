@@ -10,8 +10,8 @@ import { api } from "@/convex/_generated/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { File, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ServicesTable } from "@/components/services-table"; // adjust if needed
-import { toast } from "sonner"; // or your toast lib
+import { ServicesTable } from "@/components/services-table";
+import { toast } from "sonner";
 
 type Service = {
   _id: string;
@@ -23,35 +23,30 @@ type Service = {
   isPublic: boolean;
   archived: boolean;
   slug: string;
-  // add fields you actually render in ServicesTable
 };
 
 export default function DashboardServicesPage() {
+  const PAGE_SIZE = 10;
+
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const q = useMemo(() => (searchParams.get("q") ?? "").toString(), [searchParams]);
-  const offset = useMemo(
-    () => Number(searchParams.get("offset") ?? 0),
-    [searchParams]
-  );
+  const offset = useMemo(() => Number(searchParams.get("offset") ?? 0), [searchParams]);
 
-  const createService = useMutation(api.services.create); // make sure this exists in Convex
+  const createService = useMutation(api.services.create);
 
-  // Local state for table data
   const [services, setServices] = useState<Service[]>([]);
   const [newOffset, setNewOffset] = useState<number>(0);
   const [totalServices, setTotalServices] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch services from your API route (or change to your preferred client fetcher)
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       setLoading(true);
       try {
-        // Implement /api/services to return { services, newOffset, totalServices }
         const res = await fetch(
           `/api/services?search=${encodeURIComponent(q)}&offset=${offset}`,
           { cache: "no-store" }
@@ -67,7 +62,7 @@ export default function DashboardServicesPage() {
           setNewOffset(data.newOffset ?? 0);
           setTotalServices(data.totalServices ?? 0);
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           toast.error("Failed to load services");
           setServices([]);
@@ -91,7 +86,6 @@ export default function DashboardServicesPage() {
       price: 0,
       isPublic: true,
       archived: false,
-      // add any required fields your convex function expects
     }).then((serviceId: string) => router.push(`/services/${serviceId}`));
 
     toast.promise(promise, {
@@ -135,7 +129,13 @@ export default function DashboardServicesPage() {
           loading={loading}
           services={services}
           offset={newOffset}
+          servicesPerPage={PAGE_SIZE}
           totalServices={totalServices}
+          onPageChange={(nextOffset) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("offset", String(nextOffset));
+            router.push(`?${params.toString()}`);
+          }}
         />
       </TabsContent>
     </Tabs>

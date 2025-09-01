@@ -1,19 +1,29 @@
 // app/dashboard/_components/product.tsx
+"use client";
+
 import { MoreHorizontal } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import type { Product } from "@/lib/db"; // ← change this
-import { deleteProduct } from "./actions";
+import type { Id } from "@/convex/_generated/dataModel";
+import { deleteServiceById } from "./actions";
 
-export function ProductRow({ product }: { product: Product }) { // ← rename to avoid clash
+type Service = {
+  _id: Id<"services">;
+  name?: string;
+  price?: number;
+};
+
+export function ServiceRow({ service }: { service: Service }) {
   return (
     <TableRow>
-      <TableCell>{product.name}</TableCell>
-      <TableCell>{product.price ?? "—"}</TableCell>
+      <TableCell>{service.name ?? "Untitled"}</TableCell>
+      <TableCell>{service.price ?? "—"}</TableCell>
       <TableCell className="text-right">
         <button
-          aria-label="More"
-          onClick={() => deleteProduct(product.id)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded"
+          aria-label="Delete service"
+          onClick={() =>
+            deleteServiceById(service._id, { revalidate: "/dashboard/services" })
+          }
+          className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-muted"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
