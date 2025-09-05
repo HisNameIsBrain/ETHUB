@@ -42,7 +42,7 @@ export const Navigation = () => {
   const settings = useSettings();
   const params = useParams();
   const pathname = usePathname();
-  const isMobile = useMediaQuery(&quot;(max-width: 768px)&quot;);
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const create = useMutation(api.documents.create);
   
   const isResizingRef = useRef(false);
@@ -58,8 +58,8 @@ export const Navigation = () => {
     event.stopPropagation();
     
     isResizingRef.current = true;
-    document.addEventListener(&quot;mousemove&quot;, handleMouseMove);
-    document.addEventListener(&quot;mouseup&quot;, handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
   
   const handleMouseMove = (event: MouseEvent) => {
@@ -71,15 +71,15 @@ export const Navigation = () => {
     
     if (sidebarRef.current && navbarRef.current) {
       sidebarRef.current.style.width = `${newWidth}px`;
-      navbarRef.current.style.setProperty(&quot;left&quot;, `${newWidth}px`);
-      navbarRef.current.style.setProperty(&quot;width&quot;, `calc(100% - ${newWidth}px`);
+      navbarRef.current.style.setProperty("left", `${newWidth}px`);
+      navbarRef.current.style.setProperty("width", `calc(100% - ${newWidth}px`);
     }
   };
   
   const handleMouseUp = () => {
     isResizingRef.current = false;
-    document.removeEventListener(&quot;mousemove&quot;, handleMouseMove);
-    document.removeEventListener(&quot;mouseup&quot;, handleMouseUp);
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
   };
   
   const resetWidth = useCallback(() => {
@@ -87,11 +87,11 @@ export const Navigation = () => {
       setIsCollapsed(false);
       setIsResetting(true);
       
-      sidebarRef.current.style.width = isMobile ? &quot;100%&quot; : &quot;240px&quot;;
-      navbarRef.current.style.setProperty(&quot;left&quot;, isMobile ? &quot;100%&quot; : &quot;240px&quot;);
+      sidebarRef.current.style.width = isMobile ? "100%" : "240px";
+      navbarRef.current.style.setProperty("left", isMobile ? "100%" : "240px");
       navbarRef.current.style.setProperty(
-        &quot;width&quot;,
-        isMobile ? &quot;0&quot; : &quot;calc(100% - 240px&quot;,
+        "width",
+        isMobile ? "0" : "calc(100% - 240px",
       );
       
       setTimeout(() => setIsResetting(false), 300);
@@ -103,23 +103,23 @@ export const Navigation = () => {
       setIsCollapsed(true);
       setIsResetting(true);
       
-      sidebarRef.current.style.width = &quot;0&quot;;
-      navbarRef.current.style.setProperty(&quot;left&quot;, &quot;0&quot;);
-      navbarRef.current.style.setProperty(&quot;width&quot;, &quot;100%&quot;);
+      sidebarRef.current.style.width = "0";
+      navbarRef.current.style.setProperty("left", "0");
+      navbarRef.current.style.setProperty("width", "100%");
       
       setTimeout(() => setIsResetting(false), 300);
     }
   };
   
   const handleCreate = () => {
-    const promise = create({ title: &quot;Untitled&quot; }).then((documentId) =>
-      router.push(&quot;/documents/${documentId}&quot; as Route),
+    const promise = create({ title: "Untitled" }).then((documentId) =>
+      router.push(`/documents/${documentId}` as Route),
     );
     
     toast.promise(promise, {
-      loading: &quot;Creating a new note...&quot;,
-      success: &quot;New note created&quot;,
-      error: &quot;Failed to create new note&quot;,
+      loading: "Creating a new note...",
+      success: "New note created",
+      error: "Failed to create new note",
     });
   };
   

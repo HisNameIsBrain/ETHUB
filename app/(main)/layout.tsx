@@ -17,7 +17,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push(&quot;/&quot; as Route);
+      router.push("/" as Route);
     }
   }, [isLoading, isAuthenticated, router]);
   

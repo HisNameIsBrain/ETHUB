@@ -18,12 +18,12 @@ export async function generateMetadata({
   const service = await fetchQuery(api.services.getById, { id }).catch(() => null);
 
   if (!service) {
-    return { title: &quot;Service not found - ETECHHUB&quot; };
+    return { title: "Service not found - ETECHHUB" };
   }
 
   return {
-    title: `${service.name ?? &quot;Untitled Service&quot;} - ETECHHUB`,
-    description: service.description ?? &quot;View details about this service.&quot;,
+    title: `${service.name ?? "Untitled Service"} - ETECHHUB`,
+    description: service.description ?? "View details about this service.",
   };
 }
 
@@ -40,10 +40,10 @@ export default async function ServiceDetail({
   if (!service) return notFound();
 
   const price =
-    &quot;price&quot; in service && typeof service.price === &quot;number&quot;
+    "price" in service && typeof service.price === "number"
       ? new Intl.NumberFormat(undefined, {
-          style: &quot;currency&quot;,
-          currency: &quot;USD&quot;,
+          style: "currency",
+          currency: "USD",
           maximumFractionDigits: 2,
         }).format(service.price)
       : null;
@@ -52,7 +52,7 @@ export default async function ServiceDetail({
     <div className="min-h-screen bg-black text-white">
       <div className="mx-auto max-w-5xl px-4 py-16 space-y-6">
         <h1 className="text-4xl md:text-5xl font-semibold">
-          {service.name ?? &quot;Untitled&quot;}
+          {service.name ?? "Untitled"}
         </h1>
 
         {service.description && (
@@ -69,7 +69,7 @@ export default async function ServiceDetail({
             <div className="col-span-8 p-4 space-y-4">
               <div>
                 <div className="text-sm text-white/60 uppercase">name</div>
-                <div className="mt-1">{service.name ?? &quot;Untitled&quot;}</div>
+                <div className="mt-1">{service.name ?? "Untitled"}</div>
               </div>
 
               {price && (
@@ -79,7 +79,7 @@ export default async function ServiceDetail({
                 </div>
               )}
 
-              {&quot;deliveryTime&quot; in service && (service as any).deliveryTime && (
+              {"deliveryTime" in service && (service as any).deliveryTime && (
                 <div>
                   <div className="text-sm text-white/60 uppercase">delivery</div>
                   <div className="mt-1">{(service as any).deliveryTime}</div>

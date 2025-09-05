@@ -57,8 +57,8 @@ export function ServicesTable({ data, pageSize = 10 }: Props) {
           {pageData.map((s) => (
             <tr key={s._id}>
               <td className="border px-4 py-2">{s.name}</td>
-              <td className="border px-4 py-2">{s.price ?? &quot;-&quot;}</td>
-              <td className="border px-4 py-2">{s.description ?? &quot;-&quot;}</td>
+              <td className="border px-4 py-2">{s.price ?? "-"}</td>
+              <td className="border px-4 py-2">{s.description ?? "-"}</td>
             </tr>
           ))}
         </tbody>
@@ -75,7 +75,7 @@ export function ServicesTable({ data, pageSize = 10 }: Props) {
         <button
           onClick={nextPage}
           disabled={offset + pageSize >= data.length}
-          className=&quot;rounded border px-3 py-1 disabled:opacity-50&quot;
+          className="rounded border px-3 py-1 disabled:opacity-50"
         >
           Next
         </button>

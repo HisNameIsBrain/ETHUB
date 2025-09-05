@@ -32,20 +32,20 @@ const ERROR_MESSAGES = {
     return `The file is too large. Max size is ${formatFileSize(maxSize)}.`;
   },
   fileInvalidType() {
-    return &quot;Invalid file type.&quot;;
+    return "Invalid file type.";
   },
   tooManyFiles(maxFiles: number) {
     return `You can only add ${maxFiles} file(s).`;
   },
   fileNotSupported() {
-    return &quot;The file is not supported.&quot;;
+    return "The file is not supported.";
   },
 };
 
 const SingleImageDropzone = React.forwardRef<HTMLInputElement, InputProps>(
   ({ dropzoneOptions, width, height, value, className, disabled, onChange }, ref) => {
     const imageUrl = React.useMemo(() => {
-      if (typeof value === &quot;string&quot;) return value;
+      if (typeof value === "string") return value;
       else if (value) return URL.createObjectURL(value);
       return null;
     }, [value]);
@@ -59,7 +59,7 @@ const SingleImageDropzone = React.forwardRef<HTMLInputElement, InputProps>(
       isDragAccept,
       isDragReject,
     } = useDropzone({
-      accept: { &quot;image/*&quot;: [] },
+      accept: { "image/*": [] },
       multiple: false,
       disabled,
       onDrop: (acceptedFiles) => {
@@ -86,11 +86,11 @@ const SingleImageDropzone = React.forwardRef<HTMLInputElement, InputProps>(
     const errorMessage = React.useMemo(() => {
       if (fileRejections[0]) {
         const { errors } = fileRejections[0];
-        if (errors[0]?.code === &quot;file-too-large&quot;) {
+        if (errors[0]?.code === "file-too-large") {
           return ERROR_MESSAGES.fileTooLarge(dropzoneOptions?.maxSize ?? 0);
-        } else if (errors[0]?.code === &quot;file-invalid-type&quot;) {
+        } else if (errors[0]?.code === "file-invalid-type") {
           return ERROR_MESSAGES.fileInvalidType();
-        } else if (errors[0]?.code === &quot;too-many-files&quot;) {
+        } else if (errors[0]?.code === "too-many-files") {
           return ERROR_MESSAGES.tooManyFiles(dropzoneOptions?.maxFiles ?? 0);
         } else {
           return ERROR_MESSAGES.fileNotSupported();

@@ -32,8 +32,8 @@ export default function ServicesPage() {
     const term = q.trim().toLowerCase();
     if (!term) return list;
     return list.filter(s =>
-      (s.name ?? &quot;&quot;).toLowerCase().includes(term) ||
-      (s.description ?? &quot;&quot;).toLowerCase().includes(term)
+      (s.name ?? "").toLowerCase().includes(term) ||
+      (s.description ?? "").toLowerCase().includes(term)
     );
   }, [raw, q]);
 
@@ -61,7 +61,7 @@ export default function ServicesPage() {
           placeholder="Search service"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className=&quot;max-w-sm&quot;
+          className="max-w-sm"
         />
       </div>
 
@@ -93,9 +93,9 @@ export default function ServicesPage() {
               <TableBody>
                 {pageItems.map((s) => (
                   <TableRow key={s._id}>
-                    <TableCell className="font-medium">{s.name ?? &quot;Untitled&quot;}</TableCell>
+                    <TableCell className="font-medium">{s.name ?? "Untitled"}</TableCell>
                     <TableCell className="truncate max-w-[420px]">
-                      {s.description ?? &quot;—&quot;}
+                      {s.description ?? "—"}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -115,7 +115,7 @@ export default function ServicesPage() {
           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
             <div>
               Showing <span className="font-medium">{startIndex}</span>–
-              <span className="font-medium">{endIndex}</span> of{&quot; &quot;}
+              <span className="font-medium">{endIndex}</span> of{" "}
               <span className="font-medium">{total}</span>
             </div>
             <div className="flex items-center gap-2">

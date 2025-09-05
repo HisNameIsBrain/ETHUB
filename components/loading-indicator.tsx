@@ -11,14 +11,14 @@ export default function LoadingIndicator() {
   const start = () => setLoading(true);
   const done = () => setTimeout(() => setLoading(false), 300); // smooth fade
   
-  Router.events.on(&quot;routeChangeStart&quot;, start);
-  Router.events.on(&quot;routeChangeComplete&quot;, done);
-  Router.events.on(&quot;routeChangeError&quot;, done);
+  Router.events.on("routeChangeStart", start);
+  Router.events.on("routeChangeComplete", done);
+  Router.events.on("routeChangeError", done);
   
   return () => {
-   Router.events.off(&quot;routeChangeStart&quot;, start);
-   Router.events.off(&quot;routeChangeComplete&quot;, done);
-   Router.events.off(&quot;routeChangeError&quot;, done);
+   Router.events.off("routeChangeStart", start);
+   Router.events.off("routeChangeComplete", done);
+   Router.events.off("routeChangeError", done);
   };
  }, []);
  

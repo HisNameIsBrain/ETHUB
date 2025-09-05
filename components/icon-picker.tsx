@@ -21,11 +21,11 @@ export const IconPicker = ({
   asChild
 }: IconPickerProps) => {
   const { resolvedTheme } = useTheme();
-  const currentTheme = (resolvedTheme || &quot;light&quot;) as keyof typeof themeMap
+  const currentTheme = (resolvedTheme || "light") as keyof typeof themeMap
 
   const themeMap = {
-    &quot;dark&quot;: Theme.DARK,
-    &quot;light&quot;: Theme.LIGHT
+    "dark": Theme.DARK,
+    "light": Theme.LIGHT
   };
 
   const theme = themeMap[currentTheme];

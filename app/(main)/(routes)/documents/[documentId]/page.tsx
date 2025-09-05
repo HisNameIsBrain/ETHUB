@@ -24,7 +24,7 @@ export default function DocumentIdPage() {
       <input
         className="w-full text-2xl font-semibold bg-transparent outline-none border-b pb-2"
         defaultValue={document.title}
-        onBlur={(e) => update({ id, title: e.currentTarget.value || &quot;Untitled&quot; })}
+        onBlur={(e) => update({ id, title: e.currentTarget.value || "Untitled" })}
       />
       <textarea
         className="mt-4 w-full min-h-[40vh] bg-transparent outline-none"

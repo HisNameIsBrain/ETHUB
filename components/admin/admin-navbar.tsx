@@ -24,7 +24,7 @@ const adminMenuItems: { label: string; href: Route }[] = [
 export function AdminNavbar() {
   const pathname = usePathname();
   const { setTheme, theme } = useTheme();
-  const toggleTheme = () => setTheme(theme === &quot;dark&quot; ? &quot;light&quot; : &quot;dark&quot;);
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <Disclosure
@@ -72,7 +72,7 @@ export function AdminNavbar() {
                 </div>
 
                 <Button size="icon" variant="ghost" onClick={toggleTheme} aria-label="Toggle theme">
-                  {theme === &quot;dark&quot; ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </Button>
 
                 <UserButton afterSignOutUrl={"/" as Route} />
@@ -80,7 +80,7 @@ export function AdminNavbar() {
 
               <div className="md:hidden flex items-center gap-2">
                 <Button size="icon" variant="ghost" onClick={toggleTheme} aria-label="Toggle theme">
-                  {theme === &quot;dark&quot; ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </Button>
               </div>
             </div>

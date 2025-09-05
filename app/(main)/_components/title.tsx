@@ -19,7 +19,7 @@ export const Title = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const update = useMutation(api.documents.update);
 
-  const [title, setTitle] = useState(initialData.title || &quot;Untitled&quot;);
+  const [title, setTitle] = useState(initialData.title || "Untitled");
   const [isEditing, setIsEditing] = useState(false);
 
   const enableInput = () => {
@@ -41,14 +41,14 @@ export const Title = ({
     setTitle(event.target.value);
     update({
       id: initialData._id,
-      title: event.target.value || &quot;Untitled&quot;
+      title: event.target.value || "Untitled"
     });
   };
 
   const onKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>
   ) => {
-    if (event.key === &quot;Enter&quot;) {
+    if (event.key === "Enter") {
       disableInput();
     }
   };

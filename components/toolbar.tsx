@@ -44,12 +44,12 @@ export const Toolbar = ({ initialData, preview }: ToolbarProps) => {
     setValue(next);
     update({
       id: initialData._id,
-      title: next || &quot;Untitled&quot;,
+      title: next || "Untitled",
     });
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === &quot;Enter&quot;) {
+    if (event.key === "Enter") {
       event.preventDefault();
       disableInput();
     }
@@ -121,7 +121,7 @@ export const Toolbar = ({ initialData, preview }: ToolbarProps) => {
           onKeyDown={onKeyDown}
           value={value}
           onChange={(e) => onInput(e.target.value)}
-          className=&quot;text-5xl bg-transparent font-bold break-words outline-none text-[#3F3F3F] dark:text-[#CFCFCF] resize-none&quot;
+          className="text-5xl bg-transparent font-bold break-words outline-none text-[#3F3F3F] dark:text-[#CFCFCF] resize-none"
         />
       ) : (
         <div

@@ -34,18 +34,18 @@ export const SearchCommand = () => {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === &quot;k&quot; && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         toggle();
       }
     };
 
-    document.addEventListener(&quot;keydown&quot;, down);
-    return () => document.removeEventListener(&quot;keydown&quot;, down);
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
   }, [toggle]);
 
   const onSelect = (id: string) => {
-    router.push(&quot;/documents/${id}&quot; as Route);
+    router.push(`/documents/${id}` as Route);
     onClose();
   };
 

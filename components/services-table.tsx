@@ -130,7 +130,7 @@ export function ServicesTable({
             {services.map((s) => (
               <TableRow key={s._id} className={cn(s.archived && "opacity-60")}>
                 <TableCell className="font-medium">
-                  <div className="truncate">{s.name || &quot;Untitled&quot;}</div>
+                  <div className="truncate">{s.name || "Untitled"}</div>
                   {s.description ? (
                     <div className="text-xs text-muted-foreground truncate">
                       {s.description}
@@ -149,7 +149,7 @@ export function ServicesTable({
                         : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
                     )}
                   >
-                    {s.archived ? &quot;Archived&quot; : s.isPublic ? &quot;Public&quot; : &quot;Private&quot;}
+                    {s.archived ? "Archived" : s.isPublic ? "Public" : "Private"}
                   </span>
                 </TableCell>
                 <TableCell className="text-right">{formatDate(s.updatedAt)}</TableCell>

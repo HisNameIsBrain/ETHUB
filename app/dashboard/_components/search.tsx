@@ -15,7 +15,7 @@ export function SearchInput() {
     let value = formData.get('q') as string;
     let params = new URLSearchParams({ q: value });
     startTransition(() => {
-      router.replace(&quot;/?${params.toString()}&quot; as Route);
+      router.replace(`/?${params.toString()}` as Route);
     });
   }
 

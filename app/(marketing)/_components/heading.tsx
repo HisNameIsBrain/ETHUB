@@ -23,15 +23,15 @@ const subMessages = [
 
 export const Heading = () => {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  
-  const [titleText, setTitleText] = useState(&quot;&quot;);
+
+  const [titleText, setTitleText] = useState("");
   const [titleIndex, setTitleIndex] = useState(0);
-  
-  const [subText, setSubText] = useState(&quot;&quot;);
+
+  const [subText, setSubText] = useState("");
   const [subIndex, setSubIndex] = useState(0);
   const [subCharIndex, setSubCharIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Typewriter for headline
   useEffect(() => {
     if (titleIndex < headline.length) {
@@ -42,13 +42,13 @@ export const Heading = () => {
       return () => clearTimeout(timeout);
     }
   }, [titleIndex]);
-  
+
   // Typewriter for subMessages
   useEffect(() => {
     const current = subMessages[subIndex];
     const typingSpeed = isDeleting ? 30 : 60;
     const pause = 1400;
-    
+
     const timeout = setTimeout(() => {
       if (!isDeleting && subCharIndex < current.length) {
         setSubText(current.slice(0, subCharIndex + 1));
@@ -63,18 +63,19 @@ export const Heading = () => {
         setSubIndex((prev) => (prev + 1) % subMessages.length);
       }
     }, !isDeleting && subCharIndex === current.length ? pause : typingSpeed);
-    
+
     return () => clearTimeout(timeout);
   }, [subCharIndex, isDeleting, subIndex]);
+
   return (
     <div className="max-w-3xl space-y-4">
       <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold min-h-[4rem]">
         {titleText}
-        <span className="animate-pulse">|</span>
+        <span className="animate-pulse" aria-hidden="true">|</span>
       </h1>
       <h3 className="text-base sm:text-xl md:text-2xl font-medium min-h-[4rem]">
         {subText}
-        <span className="animate-pulse">|</span>
+        <span className="animate-pulse" aria-hidden="true">|</span>
       </h3>
 
       {isLoading && (

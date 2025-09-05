@@ -26,7 +26,7 @@ export default function DocumentList({ parentDocumentId, skeletonCount = 6 }: Do
       title: 'Untitled',
       parentDocument: parentDocumentId,
     })
-    router.push(&quot;/documents/${id}&quot; as Route)
+    router.push(`/documents/${id}` as Route)
   }
 
   if (!documents) {
@@ -61,7 +61,7 @@ export default function DocumentList({ parentDocumentId, skeletonCount = 6 }: Do
       {documents.map((doc: Doc<'documents'>) => (
         <li key={doc._id}>
           <Link
-            href={"/documents/${doc._id}" as Route
+            href={`/documents/${doc._id}` as Route as Route
             className={cn(
               'block px-4 py-3 hover:bg-muted transition-colors',
               doc.isPublished && 'font-medium text-foreground'

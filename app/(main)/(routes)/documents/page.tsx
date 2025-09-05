@@ -18,7 +18,7 @@ export default function DocumentsPage() {
           className="border rounded px-3 py-2"
           onClick={async () => {
             const id = await create({});
-            router.push(&quot;/documents/${id}&quot; as Route);
+            router.push(`/documents/${id}` as Route);
           }}
         >
           New note

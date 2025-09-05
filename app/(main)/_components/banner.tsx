@@ -22,19 +22,19 @@ export const Banner = ({ documentId }: BannerProps) => {
   const onRemove = () => {
     const promise = remove({ id: documentId });
     toast.promise(promise, {
-      loading: &quot;Deleting note...&quot;,
-      success: &quot;Note deleted!&quot;,
-      error: &quot;Failed to delete note.&quot;,
+      loading: "Deleting note...",
+      success: "Note deleted!",
+      error: "Failed to delete note.",
     });
-    router.push(&quot;/documents&quot; as Route);
+    router.push("/documents" as Route);
   };
   
   const onRestore = () => {
     const promise = restore({ id: documentId });
     toast.promise(promise, {
-      loading: &quot;Restoring note...&quot;,
-      success: &quot;Note restored!&quot;,
-      error: &quot;Failed to restore note.&quot;,
+      loading: "Restoring note...",
+      success: "Note restored!",
+      error: "Failed to restore note.",
     });
   };
   
