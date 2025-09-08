@@ -19,22 +19,24 @@ export default defineSchema({
     .index("by_parent", ["parentDocument"])
     .index("by_isArchived", ["isArchived"]),
 
+
+export default defineSchema({
   services: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),
+    price: v.optional(v.number()),            // if you used v.float64, keep schema in sync
     deliveryTime: v.optional(v.string()),
-    slug: v.string(),
     isPublic: v.boolean(),
     archived: v.boolean(),
-    createdBy: v.string(),
+    slug: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    createdBy: v.string(),
   })
     .index("by_slug", ["slug"])
-    .index("by_isPublic_archived", ["isPublic", "archived"])
     .index("by_archived", ["archived"])
-    .index("by_createdBy", ["createdBy"]),
+    .index("by_isPublic_archived", ["isPublic", "archived"]),
+});
 
   users: defineTable({
     userId: v.string(),
