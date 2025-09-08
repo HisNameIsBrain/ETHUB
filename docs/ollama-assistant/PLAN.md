@@ -33,3 +33,5 @@
 - Code applied only with `--apply`.
 - Any audit failure writes an entry to `TROUBLESHOOT.md` with root-cause notes & next steps.
 - Optional `--repeat` re-runs audits until success (good for active fixing).
+
+--apply

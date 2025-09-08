@@ -10,7 +10,7 @@ async function* paginateAll<T>(
   while (true) {
     // @ts-ignore - Convex types allow this at runtime
     const page = await ctx.db
-      .query(table)
+      .query("documents")
       .paginate({ cursor, numItems: pageSize });
     yield page.page as T[];
     if (!page.isDone) cursor = page.continueCursor!;

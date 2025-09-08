@@ -1,65 +1,37 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
-/**
- * Upsert by tokenIdentifier (used by some auth flows).
- * Matches your index: by_token on tokenIdentifier.
- */
-export const ensureByToken = mutation({
+export const upsert = mutation({
   args: {
-    tokenIdentifier: v.string(),
     userId: v.string(),
+    role: v.optional(v.string()),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
-    imageUrl: v.optional(v.string()), // we’ll map to imageUrl
+    imageUrl: v.optional(v.string()),
     username: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
-    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
+    tokenIdentifier: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_token", (q: any) =>
-        q.eq("tokenIdentifier", args.tokenIdentifier),
-      )
+      .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
       .first();
-
-    const patch = {
-      userId: args.userId,
-      name: args.name ?? "",
-      email: args.email ?? "",
-      imageUrl: args.imageUrl ?? "", // schema field is imageUrl
-      username: args.username,
-      phoneNumber: args.phoneNumber,
-      role: args.role ?? ("user" as const),
-      updatedAt: now,
-    };
-
+    const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, patch);
+      await ctx.db.patch(existing._id, { ...args, updatedAt: now });
       return existing._id;
     }
-
-    return await ctx.db.insert("users", {
-      tokenIdentifier: args.tokenIdentifier,
-      ...patch,
-      createdAt: now,
-    });
+    return await ctx.db.insert("users", { ...args, createdAt: now, updatedAt: now });
   },
 });
 
-/** Optional helper: fetch current user doc via subject */
-export const me = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
+export const getByToken = query({
+  args: { tokenIdentifier: v.string() },
+  handler: async (ctx, { tokenIdentifier }) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_userId", (q: any) => q.eq("userId", identity.subject))
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", tokenIdentifier))
       .first();
   },
 });

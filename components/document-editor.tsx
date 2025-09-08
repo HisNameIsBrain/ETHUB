@@ -1,24 +1,16 @@
 "use client";
-
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import Editor from "./editor"; // Adjust path if needed
-import { Id } from "@/convex/_generated/dataModel";
-
-interface DocumentEditorProps {
+export type EditorProps = {
   initialContent: string;
-  documentId: Id<"documents">;
-}
-
-export function DocumentEditor({
-  initialContent,
-  documentId,
-}: DocumentEditorProps) {
-  const update = useMutation(api.documents.update);
-
-  const onChange = (content: string) => {
-    update({ id: documentId, content });
-  };
-
-  return <Editor initialContent={initialContent} onChange={onChange} />;
+  onChange: (content: string) => void;
+  editable?: boolean;
+};
+export function DocumentEditor({ initialContent, onChange, editable = true }: EditorProps) {
+  return (
+    <textarea
+      className="w-full min-h-[240px] border rounded p-3"
+      defaultValue={initialContent}
+      readOnly={!editable}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
 }

@@ -25,7 +25,7 @@ export default function ServicesNavbar() {
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link
-          href={"/" as Route as Route as Route}
+          href={("/" as Route as Route as Route as Route)}
           className="text-base font-semibold tracking-tight"
         >
           ETECHHUB
@@ -33,7 +33,7 @@ export default function ServicesNavbar() {
 
         <nav className="hidden gap-6 md:flex">
           <Link
-            href={SERVICES_PATH}
+            href={(SERVICES_PATH as Route)}
             className={cn(
               "text-sm font-medium hover:text-orange-500",
               pathname === SERVICES_PATH && "text-orange-500",
@@ -62,7 +62,7 @@ export default function ServicesNavbar() {
               </SignedIn>
               <SignedOut>
                 <DropdownMenuItem asChild>
-                  <Link href={"/sign-in" as Route}>Sign in</Link>
+                  <Link href={("/sign-in" as Route as Route)}>Sign in</Link>
                 </DropdownMenuItem>
               </SignedOut>
             </DropdownMenuContent>
@@ -73,7 +73,7 @@ export default function ServicesNavbar() {
           </SignedIn>
           <SignedOut>
             <Button asChild size="sm" variant="default">
-              <Link href={"/sign-up" as Route}>Get started</Link>
+              <Link href={("/sign-up" as Route as Route)}>Get started</Link>
             </Button>
           </SignedOut>
         </div>

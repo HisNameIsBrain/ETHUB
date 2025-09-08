@@ -1,3 +1,4 @@
+import type { Route } from "next";
 "use client";
 
 import * as React from "react";

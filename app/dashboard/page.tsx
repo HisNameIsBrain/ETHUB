@@ -86,7 +86,6 @@ export default function DashboardServicesPage() {
       description: "",
       price: 0,
       isPublic: true,
-      archived: false,
     }).then((serviceId: string) => router.push(`/services/${serviceId}` as Route));
 
     toast.promise(promise, {

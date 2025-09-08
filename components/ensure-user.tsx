@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 
 export function EnsureUser() {
   const { user, isSignedIn } = useUser();
-  const ensureByToken = useMutation(api.users.ensureByToken);
+  const ensureByToken = useMutation(api.users.upsert);
 
   useEffect(() => {
     if (!isSignedIn || !user) return;

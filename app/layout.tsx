@@ -16,7 +16,7 @@ import { Navbar } from "@/app/(marketing)/_components/navbar";
 
 // Siri-style bubble (animated ring)
 import { SiriGlow } from "@/components/siri-glow";
-
+import {SiriFlow} from "@/components/siri-flow";
 type RootLayoutProps = {
   children: React.ReactNode;
 };
@@ -48,20 +48,26 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
             {/* Global toaster */}
             <Toaster richColors />
-
-            {/* Siri chat bubble — fixed, non-intrusive */}
-            <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+	    {/* AI */}
+            <div
+	      id="ai-bubble"
+              className="
+                fixed z-[1000]
+                right-[calc(env(safe-area-inset-right)+1.5rem)]
+                bottom-[calc(env(safe-area-inset-bottom)+1.5rem)]
+                flex items-center gap-3
+              "
+            >
               <span className="sr-only">Open assistant</span>
               <button
                 aria-label="Open assistant"
                 className="group relative grid h-14 w-14 place-items-center rounded-full border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50 shadow-lg hover:shadow-xl transition-all"
-                onClick={() => {
-                  const evt = new CustomEvent("siri-bubble:open");
-                  window.dispatchEvent(evt);
-                }}
+                onClick={() => window.dispatchEvent(new CustomEvent("siri-bubble:open"))}
               >
-                {/* If SiriGlow doesn't accept className, wrap it in a div instead */}
-                <SiriGlow className="pointer-events-none absolute inset-0" />
+                <div className="pointer-events-none absolute inset-0">
+                  <SiriGlow />
+		  <SiriFlow />
+                </div>
                 <div className="relative z-[1] h-3 w-3 rounded-full bg-foreground/80 group-hover:scale-110 transition-transform" />
               </button>
             </div>

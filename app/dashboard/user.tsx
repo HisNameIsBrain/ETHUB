@@ -62,11 +62,11 @@ export default function User(props: UserProps) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <Link href={SETTINGS_PATH}>Settings</Link>
+          <Link href={(SETTINGS_PATH as Route)}>Settings</Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <Link href={"/logout" as Route}>Log out</Link>
+          <Link href={("/logout" as Route as Route)}>Log out</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
