@@ -1,3 +1,0 @@
-import type { Id } from "@/convex/_generated/dataModel";
-// ...
-await fetchMutation(api.services.update, { id: id as unknown as Id<"services">, archived: true });
