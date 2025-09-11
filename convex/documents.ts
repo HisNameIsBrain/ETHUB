@@ -47,7 +47,7 @@ export const update = mutation({
     parentDocument: v.optional(v.id("documents")),
     icon: v.optional(v.string()),
     coverImage: v.optional(v.string()),
-    isPublished: v.optional(v.boolean()),
+    isPublic: v.optional(v.boolean()),
     isArchived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -60,7 +60,7 @@ export const update = mutation({
       ...("parentDocument" in args ? { parentDocument: args.parentDocument } : {}),
       ...("icon" in args ? { icon: args.icon } : {}),
       ...("coverImage" in args ? { coverImage: args.coverImage } : {}),
-      ...("isPublished" in args ? { isPublished: args.isPublished } : {}),
+      ...("isPublic" in args ? { isPublished: args.isPublic } : {}),
       ...("isArchived" in args ? { isArchived: args.isArchived } : {}),
       updatedAt: Date.now(),
     });

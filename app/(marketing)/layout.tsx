@@ -1,19 +1,13 @@
-"use client";
+import React from "react";
 
-import ClientSEO from "@/components/client-seo";
-
-export default function MarketingLayout({ children }: { children: React.ReactNode }) {
+export default function MarketingLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <>
-      <ClientSEO
-        title="ETHUB — Marketing"
-        description="Learn more about ETHUB."
-        metas={[
-          { property: "og:title", content: "ETHUB — Marketing" },
-          { property: "og:description", content: "Learn more about ETHUB." },
-        ]}
-      />
-      {children}
-    </>
+    <div className="h-full dark:bg-[#1F1F1F]">
+      <main className="h-full pt-40">{children}</main>
+    </div>
   );
 }

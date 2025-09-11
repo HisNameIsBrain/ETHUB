@@ -13,7 +13,7 @@ export default defineSchema({
     coverImage: v.optional(v.string()),
     organizationId: v.optional(v.string()),
     createdAt: v.number(),
-    updatedAt: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_parent", ["parentDocument"])
@@ -22,15 +22,35 @@ export default defineSchema({
   services: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),            // if you used v.float64, keep schema in sync
-    deliveryTime: v.optional(v.string()),
-    isPublic: v.boolean(),
-    archived: v.boolean(),
+    price: v.number(),                  // ✅ keep required price:number
+    isPublic: v.optional(v.boolean()),
+    imageUrl: v.optional(v.string()),
+    sortOrder: v.optional(v.number()),
+    button: v.optional(
+      v.object({
+        label: v.string(),
+        href: v.string(),
+        variant: v.optional(
+          v.union(
+            v.literal("default"),
+            v.literal("secondary"),
+            v.literal("outline"),
+            v.literal("ghost")
+          )
+        ),
+      })
+    ),
+
     slug: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()),
+    createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    createdBy: v.optional(v.string()),
+    archived: v.optional(v.boolean()),
   })
+    .index("by_public", ["isPublic"])
+    .index("by_sortOrder", ["sortOrder"])
+    .index("by_createdAt", ["createdAt"])
     .index("by_slug", ["slug"])
     .index("by_archived", ["archived"])
     .index("by_isPublic_archived", ["isPublic", "archived"]),

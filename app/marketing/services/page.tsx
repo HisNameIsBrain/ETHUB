@@ -1,10 +1,9 @@
 "use client";
-// app/(main)/dashboard/services/page.tsx
-"use client";
 
 import * as React from "react";
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api"; // ← requires `npx convex codegen`
+import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,23 +14,28 @@ const PAGE_SIZE = 10;
 
 type Service = {
   _id: string;
-  name?: string;
-  description?: string;
-  isPublished?: boolean;
+  name?: string | null;
+  description?: string | null;
+  price?: number | null;
 };
 
 export default function ServicesPage() {
-  // Returns all if admin; else only published (see server query below)
+  const router = useRouter();
   const raw = useQuery(api.services.getPublic) ?? undefined;
 
   const [q, setQ] = React.useState("");
   const [page, setPage] = React.useState(1);
 
+  const currency = React.useMemo(
+    () => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }),
+    []
+  );
+
   const services = React.useMemo<Service[]>(() => {
     const list = Array.isArray(raw) ? (raw as Service[]) : [];
     const term = q.trim().toLowerCase();
     if (!term) return list;
-    return list.filter(s =>
+    return list.filter((s) =>
       (s.name ?? "").toLowerCase().includes(term) ||
       (s.description ?? "").toLowerCase().includes(term)
     );
@@ -44,7 +48,7 @@ export default function ServicesPage() {
   const endIndex = total > 0 ? Math.min(safePage * PAGE_SIZE, total) : 0;
 
   React.useEffect(() => {
-    setPage(p => Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE))));
+    setPage((p) => Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE))));
   }, [q, services.length]);
 
   const pageItems =
@@ -55,7 +59,7 @@ export default function ServicesPage() {
   const isLoading = raw === undefined;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8">
+    <div className="mx-auto w-full max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center gap-3">
         <Input
           placeholder="Search service"
@@ -74,7 +78,7 @@ export default function ServicesPage() {
         <div className="mt-6 rounded-lg border p-6">
           <div className="text-base font-medium">No services found</div>
           <div className="text-sm text-muted-foreground">
-            Try clearing your search or add some services in the admin panel.
+            Clear your search or add services in the admin panel.
           </div>
         </div>
       )}
@@ -85,23 +89,24 @@ export default function ServicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Title</TableHead>
+                  <TableHead className="w-[28%]">Name</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="w-[140px]">Actions</TableHead>
+                  <TableHead className="w-[120px]">Price</TableHead>
+                  <TableHead className="w-[120px] text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pageItems.map((s) => (
                   <TableRow key={s._id}>
                     <TableCell className="font-medium">{s.name ?? "Untitled"}</TableCell>
-                    <TableCell className="truncate max-w-[420px]">
-                      {s.description ?? "—"}
+                    <TableCell className="truncate max-w-[520px]">{s.description ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {s.price != null ? currency.format(s.price) : "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Button
                         size="sm"
-                        variant="secondary"
-                        onClick={() => alert(`Selected: ${s.name ?? s._id}`)}
+                        onClick={() => router.push(`/main/services/${s._id}`)}
                       >
                         View
                       </Button>
@@ -142,3 +147,4 @@ export default function ServicesPage() {
     </div>
   );
 }
+

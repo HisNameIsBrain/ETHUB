@@ -1,6 +1,6 @@
 "use client";
+
 // app/(marketing)/_components/navbar.tsx
-"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,7 +20,7 @@ const links = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
 
   return (
@@ -37,7 +37,7 @@ export function Navbar() {
       </div>
 
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-white">
-        {/* Left: brand + links */}
+        {/* Left: brand + mobile menu button */}
         <div className="flex items-center gap-3">
           <button
             aria-label={open ? "Close menu" : "Open menu"}
@@ -50,8 +50,12 @@ export function Navbar() {
           <Link href={"/" as Route} className="text-sm font-semibold tracking-wide">
             ETECHHUB
           </Link>
+        </div>
 
-          <div className="ml-4 hidden gap-2 md:flex">
+        {/* Right: tabs + theme + auth */}
+        <div className="flex items-center gap-3">
+          {/* Tabs on the RIGHT (desktop) */}
+          <div className="hidden md:flex items-center gap-2 mr-2">
             {links.map((l) => {
               const active = pathname === l.href || pathname?.startsWith(l.href + "/");
               return (
@@ -67,18 +71,21 @@ export function Navbar() {
               );
             })}
           </div>
-        </div>
 
-        {/* Right: theme + auth */}
-        <div className="flex items-center gap-2">
+          {/* Theme toggle (hydration-safe: render both icons, CSS toggles visibility) */}
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            <span className="block dark:hidden">
+              <Sun size={16} />
+            </span>
+            <span className="hidden dark:block">
+              <Moon size={16} />
+            </span>
           </Button>
 
           <SignOutButton signOutOptions={{ redirectUrl: "/" }}>
@@ -91,7 +98,7 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer: tabs stack here */}
       {open && (
         <div className="border-t border-white/10 bg-black/70 px-4 py-2 md:hidden">
           <div className="flex flex-col gap-1">

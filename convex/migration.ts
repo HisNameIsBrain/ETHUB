@@ -1,31 +1,20 @@
-// convex/migrations.ts
 import { mutation } from "./_generated/server";
 
-export const backfillServices = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const rows = await ctx.db.query("services").collect();
+export const addDefaultsToServices = mutation(async (ctx) => {
+  const rows = await ctx.db.query("services").collect();
+  for (const r of rows) {
+    const patch: Record<string, unknown> = {};
 
-    let patched = 0;
-    for (const r of rows) {
-      const patch: Record<string, any> = {};
-
-      // Boolean defaults
-      if (r.archived === undefined) patch.archived = false;
-      if (r.isPublic === undefined) patch.isPublic = true; // choose true/false as your default
-
-      // Timestamps (prefer creationTime if missing)
-      if (r.createdAt === undefined)
-        patch.createdAt = r._creationTime ?? Date.now();
-      if (r.updatedAt === undefined)
-        patch.updatedAt = patch.createdAt ?? r.createdAt ?? Date.now();
-
-      // Only patch if needed
-      if (Object.keys(patch).length > 0) {
-        await ctx.db.patch(r._id, patch);
-        patched++;
-      }
+    if (typeof (r as any).isPublished !== "boolean") {
+      patch.isPublished = true;
     }
-    return { total: rows.length, patched };
-  },
+
+    if (typeof (r as any).updatedAt !== "number") {
+      patch.updatedAt = Date.now();
+    }
+
+    if (Object.keys(patch).length) {
+      await ctx.db.patch(r._id, patch);
+    }
+  }
 });
