@@ -1,98 +1,40 @@
-import { mutation, query } from "./_generated/server";
+// convex/services.ts
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// ---------- utils ----------
-function slugify(input: string) {
-  return (input || "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
+const now = () => Date.now();
 
-async function uniqueSlug(ctx: any, baseName: string) {
-  const base = slugify(baseName) || "service";
-  let slug = base;
-  let i = 1;
-  while (true) {
-    const existing = await ctx.db
-      .query("services")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .first();
-    if (!existing) return slug;
-    slug = `${base}-${i++}`;
-  }
-}
-
-function normalizePrice(price?: number | null, priceCents?: number | null): number {
-  if (typeof price === "number") return price;
-  if (typeof priceCents === "number") {
-    const dollars = Math.round(priceCents) / 100;
-    return Math.round(dollars * 100) / 100;
-  }
-  throw new Error("Missing price: provide price (number) or priceCents (number).");
-}
-
-const ADMIN_SUBJECTS = (process.env.ADMIN_SUBJECTS ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-function isAdminSubject(subject?: string | null) {
-  return !!subject && ADMIN_SUBJECTS.includes(subject);
-}
-
-// ---------- mutations ----------
 export const create = mutation({
   args: {
     name: v.string(),
+    slug: v.string(),
+    priceCents: v.number(),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),
-    priceCents: v.optional(v.number()),
-    deliveryTime: v.optional(v.string()),
-    isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
     imageUrl: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
     button: v.optional(
       v.object({
+        variant: v.optional(v.union(v.literal("default"), v.literal("secondary"), v.literal("outline"), v.literal("ghost"))),
         label: v.string(),
         href: v.string(),
-        variant: v.optional(
-          v.union(
-            v.literal("default"),
-            v.literal("secondary"),
-            v.literal("outline"),
-            v.literal("ghost")
-          )
-        ),
       })
     ),
+    isPublished: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const price = normalizePrice(args.price, args.priceCents);
-    const now = Date.now();
-    const slug = await uniqueSlug(ctx, args.name);
-
-    return await ctx.db.insert("services", {
-      name: args.name,
-      description: args.description,
-      price, // ✅ matches schema
-      deliveryTime: args.deliveryTime,
-      isPublic: args.isPublic ?? true,
-      archived: args.archived ?? false,
-      imageUrl: args.imageUrl,
-      sortOrder: args.sortOrder,
-      button: args.button,
-      slug,
-      createdBy: identity.subject,
-
-      createdAt: now,
-      updatedAt: now,
-    });
+    if (!identity) throw new Error("Unauthorized");
+    const doc = {
+      ...args,
+      isPublished: args.isPublished ?? false,
+      archived: false as boolean,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    const id = await ctx.db.insert("services", doc as any);
+    return id;
   },
 });
 
@@ -100,77 +42,58 @@ export const update = mutation({
   args: {
     id: v.id("services"),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    price: v.optional(v.number()),
+    slug: v.optional(v.string()),
     priceCents: v.optional(v.number()),
-    deliveryTime: v.optional(v.string()),
-    isPublic: v.optional(v.boolean()),
-    archived: v.optional(v.boolean()),
+    description: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
     button: v.optional(
       v.object({
+        variant: v.optional(v.union(v.literal("default"), v.literal("secondary"), v.literal("outline"), v.literal("ghost"))),
         label: v.string(),
         href: v.string(),
-        variant: v.optional(
-          v.union(
-            v.literal("default"),
-            v.literal("secondary"),
-            v.literal("outline"),
-            v.literal("ghost")
-          )
-        ),
       })
     ),
+    isPublished: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    const { id, price, priceCents, ...rest } = args;
-    const patch: Record<string, unknown> = { ...rest, updatedAt: Date.now() };
+  handler: async (ctx, { id, ...patch }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    await ctx.db.patch(id, { ...patch, updatedAt: now() } as any);
+    return await ctx.db.get(id);
+  },
+});
 
-    if (rest.name !== undefined) {
-      patch.name = rest.name;
-      patch.slug = await uniqueSlug(ctx, rest.name);
-    }
+export const archive = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, { id }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    await ctx.db.patch(id, { archived: true, updatedAt: now() } as any);
+    return id;
+  },
+});
 
-    if (price !== undefined || priceCents !== undefined) {
-      patch.price = normalizePrice(price ?? undefined, priceCents ?? undefined);
-    }
-
-    await ctx.db.patch(id, patch);
+export const restore = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, { id }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    await ctx.db.patch(id, { archived: false, updatedAt: now() } as any);
+    return id;
   },
 });
 
 export const remove = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
-    await ctx.db.delete(id);
-  },
-});
-
-// ---------- queries ----------
-export const getPublic = query({
-  args: {},
-  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    const admin = isAdminSubject(identity?.subject ?? null);
-
-    if (admin) {
-      const rows = await ctx.db
-        .query("services")
-        .withIndex("by_archived", (q) => q.eq("archived", false))
-        .collect();
-
-      return rows.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    }
-
-    const items = await ctx.db
-      .query("services")
-      .withIndex("by_isPublic_archived", (q) =>
-        q.eq("isPublic", true).eq("archived", false)
-      )
-      .collect();
-
-    return items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    if (!identity) throw new Error("Unauthorized");
+    await ctx.db.delete(id);
+    return id;
   },
 });
 
@@ -181,12 +104,65 @@ export const getById = query({
   },
 });
 
-export const getArchived = query({
+export const getAll = query({
+  args: {
+    q: v.optional(v.string()),
+    includeUnpublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { q, includeUnpublished }) => {
+    const term = q?.toLowerCase().trim() || "";
+    const rows = await ctx.db.query("services").collect();
+    return rows
+      .filter((r: any) => !r.archived)
+      .filter((r: any) => (includeUnpublished ? true : r.isPublished === true))
+      .filter((r: any) =>
+        term
+          ? [r.name, r.description, r.category, (r.tags || []).join(" ")].some((f) =>
+              typeof f === "string" ? f.toLowerCase().includes(term) : false
+            )
+          : true
+      )
+      .sort((a: any, b: any) =>
+        (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+  },
+});
+
+export const getTrash = query({
   args: {},
   handler: async (ctx) => {
+    const rows = await ctx.db.query("services").collect();
+    return rows.filter((r: any) => r.archived);
+  },
+});
+
+export const getPublic = query({
+  args: { q: v.optional(v.string()) },
+  handler: async (ctx, { q }) => {
+    const term = q?.toLowerCase().trim() || "";
+    const rows = await ctx.db.query("services").collect();
+    return rows
+      .filter((r: any) => r.isPublished === true && !r.archived)
+      .filter((r: any) =>
+        term
+          ? [r.name, r.description, r.category, (r.tags || []).join(" ")].some((f) =>
+              typeof f === "string" ? f.toLowerCase().includes(term) : false
+            )
+          : true
+      )
+      .sort((a: any, b: any) =>
+        (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+  },
+});
+
+// in convex/services.ts
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
     return await ctx.db
       .query("services")
-      .withIndex("by_archived", (q) => q.eq("archived", true))
-      .collect();
+      .withIndex("by_slug", (q: any) => q.eq("slug", slug)) // ← fix here
+      .unique();
   },
 });
