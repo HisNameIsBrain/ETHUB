@@ -12,7 +12,6 @@ export default function MarketingPage() {
         <Heroes />
       </div>
       <Footer />
-      <SiriGlowInvert />
     </div>
   );
 }

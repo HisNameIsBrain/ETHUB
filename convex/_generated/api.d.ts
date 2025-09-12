@@ -21,6 +21,7 @@ import type * as convex__generated_server from "../convex/_generated/server.js";
 import type * as documents from "../documents.js";
 import type * as ensure_user from "../ensure_user.js";
 import type * as ensure_users from "../ensure_users.js";
+import type * as logs from "../logs.js";
 import type * as migration from "../migration.js";
 import type * as openai from "../openai.js";
 import type * as services from "../services.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   ensure_user: typeof ensure_user;
   ensure_users: typeof ensure_users;
+  logs: typeof logs;
   migration: typeof migration;
   openai: typeof openai;
   services: typeof services;

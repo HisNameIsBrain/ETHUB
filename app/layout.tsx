@@ -10,7 +10,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Navbar } from "@/app/(marketing)/_components/navbar";
 import SiriGlow from "@/components/siri-glow";
-import AssistantLauncher from "@/components/assistant-launcher";
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -39,7 +38,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </main>
               <Toaster richColors />
 	<div className="fixed z-[...]" role="region" aria-label="Assistant launcher">
-	   <AssistantLauncher />
 	      <div className="pointer-events-none">
 	 </div>
 	      </div>

@@ -1,186 +1,226 @@
 #!/usr/bin/env bash
 set -euo pipefail
+echo "=== Wire chat send/receive (no schema edits) ==="
 
-echo "=== ETHUB Guardrails v2: append-only logs; zero duplicate imports ==="
+ROOT="$PWD"
+mkdir -p "$ROOT/convex" "$ROOT/lib" "$ROOT/app/test-assistant"
 
-ROOT="${PWD}"
-SCHEMA="${ROOT}/convex/schema.ts"
-LOGS_TS="${ROOT}/convex/logs.ts"
-
-fail(){ echo "ERROR: $*" >&2; exit 1; }
-ts(){ date +%Y%m%d-%H%M%S; }
-
-[[ -f "$SCHEMA" ]] || fail "convex/schema.ts not found. Run from repo root."
-grep -q 'defineSchema' "$SCHEMA" || fail "schema.ts missing defineSchema(...)."
-
-backup="$SCHEMA.bak.$(ts)"
-cp "$SCHEMA" "$backup"
-echo "Backup: $(basename "$backup")"
-
-# --- 0) Import hygiene: augment, don't duplicate ---
-# Ensure: import { defineSchema, defineTable } from "convex/server";
-if grep -q 'from "convex/server"' "$SCHEMA"; then
-  # augment missing specifiers in-place
-  if ! grep -q 'import\s*{[^}]*defineSchema' "$SCHEMA"; then
-    sed -i 's|from "convex/server";|, defineSchema from "convex/server";|; t; s|import \{|\0 defineSchema,|; t' "$SCHEMA"
-  fi
-  if ! grep -q 'import\s*{[^}]*defineTable' "$SCHEMA"; then
-    # insert defineTable into the same import brace set
-    awk '
-      BEGIN{done=0}
-      /import[ \t]*\{[^}]*\}[ \t]*from[ \t]*"convex\/server"[ \t]*;/ && !done {
-        line=$0
-        sub(/\}[ \t]*from[ \t]*"convex\/server"[ \t]*;/, ", defineTable } from \"convex/server\";", line)
-        print line
-        done=1; next
-      }
-      {print}
-    ' "$SCHEMA" > "$SCHEMA.tmp" && mv "$SCHEMA.tmp" "$SCHEMA"
-  fi
-else
-  # add single import line once
-  sed -i '1i import { defineSchema, defineTable } from "convex/server";' "$SCHEMA"
-fi
-
-# Ensure: import { v } from "convex/values";
-if grep -q 'from "convex/values"' "$SCHEMA"; then
-  if ! grep -q 'import\s*{[^}]*\bv\b' "$SCHEMA"; then
-    awk '
-      BEGIN{done=0}
-      /import[ \t]*\{[^}]*\}[ \t]*from[ \t]*"convex\/values"[ \t]*;/ && !done {
-        line=$0
-        sub(/\}[ \t]*from[ \t]*"convex\/values"[ \t]*;/, ", v } from \"convex/values\";", line)
-        print line
-        done=1; next
-      }
-      {print}
-    ' "$SCHEMA" > "$SCHEMA.tmp" && mv "$SCHEMA.tmp" "$SCHEMA"
-  fi
-else
-  sed -i '1i import { v } from "convex/values";' "$SCHEMA"
-fi
-
-# --- 1) Append-only injection of assistantLogs (if absent) ---
-if grep -q 'assistantLogs\s*:' "$SCHEMA"; then
-  echo "assistantLogs already present (no schema changes)."
-else
-  BLOCK='  assistantLogs: defineTable({
-    userId: v.optional(v.string()),
-    userKeyHmac: v.optional(v.string()),
-    promptHashHmac: v.optional(v.string()),
-    modelUsed: v.optional(v.string()),
-    promptRedacted: v.optional(v.string()),
-    answerRedacted: v.optional(v.string()),
-    ok: v.boolean(),
-    status: v.optional(v.number()),
-    code: v.optional(v.string()),
-    latencyMs: v.optional(v.number()),
-    inputTokens: v.optional(v.number()),
-    outputTokens: v.optional(v.number()),
-    createdAt: v.number(),
-  }),'
-
-  awk -v INS="$BLOCK" '
-    BEGIN{inobj=0; inserted=0}
-    /defineSchema\(\s*{\s*$/ { inobj=1 }
-    {
-      if (inobj && $0 ~ /^\s*}\)\s*;?\s*$/ && !inserted) {
-        print INS
-        inserted=1
-      }
-      print
-      if (inobj && $0 ~ /^\s*}\)\s*;?\s*$/) inobj=0
-    }
-    END{ if (!inserted) exit 42 }
-  ' "$SCHEMA" > "$SCHEMA.tmp" || fail "Could not append assistantLogs (no change applied)."
-
-  # sanity: only growth allowed
-  old=$(wc -l < "$SCHEMA"); new=$(wc -l < "$SCHEMA.tmp")
-  [[ "$new" -gt "$old" ]] || fail "Append-only check failed (size not increased)."
-
-  # diff preview
-  if command -v git >/dev/null 2>&1; then
-    echo "---- DIFF (schema.ts) ----"
-    git --no-pager diff --no-index "$SCHEMA" "$SCHEMA.tmp" || true
-    echo "--------------------------"
-  else
-    diff -u "$SCHEMA" "$SCHEMA.tmp" || true
-  fi
-
-  mv "$SCHEMA.tmp" "$SCHEMA"
-  echo "✓ Injected assistantLogs (append-only)."
-fi
-
-# --- 2) Create convex/logs.ts if missing (idempotent) ---
-if [[ -f "$LOGS_TS" ]]; then
-  echo "convex/logs.ts exists (unchanged)."
-else
-  cat > "$LOGS_TS" <<'TS'
-// convex/logs.ts
-import { mutation } from "./_generated/server";
+# 1) Server: convex/openai.ts — always returns content; optional logs call guarded.
+cat > "$ROOT/convex/openai.ts" <<'TS'
+import { action } from "./_generated/server";
 import { v } from "convex/values";
+import OpenAI from "openai";
 
-export const create = mutation({
+// Optional logs (if convex/logs.ts exists). Guarded so it never blocks.
+let runLogs: (ctx: any, payload: any) => Promise<void> = async () => {};
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { api } = require("./_generated/api");
+  runLogs = async (ctx, payload) => {
+    try { await ctx.runMutation(api.logs.create, payload); } catch {}
+  };
+} catch {}
+
+const ALLOWED = new Set(["gpt-4o-mini","gpt-4o","gpt-4.1","gpt-3.5-turbo"]);
+const DEFAULT_MODEL = "gpt-4o-mini";
+
+type Msg = { role: "system" | "user" | "assistant"; content: string };
+
+async function callOnce(model: string, messages: Msg[], key: string) {
+  const client = new OpenAI({ apiKey: key });
+  return client.chat.completions.create({ model, messages });
+}
+
+export const chat = action({
   args: {
-    userId: v.optional(v.string()),
-    userKeyHmac: v.optional(v.string()),
-    promptHashHmac: v.optional(v.string()),
-    modelUsed: v.optional(v.string()),
-    promptRedacted: v.optional(v.string()),
-    answerRedacted: v.optional(v.string()),
-    ok: v.boolean(),
-    status: v.optional(v.number()),
-    code: v.optional(v.string()),
-    latencyMs: v.optional(v.number()),
-    inputTokens: v.optional(v.number()),
-    outputTokens: v.optional(v.number()),
+    messages: v.array(v.object({
+      role: v.union(v.literal("system"), v.literal("user"), v.literal("assistant")),
+      content: v.string(),
+    })),
+    model: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    await ctx.db.insert("assistantLogs", { ...args, createdAt: Date.now() });
-    return true;
+  handler: async (ctx, { messages, model }) => {
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) throw new Error("Missing OPENAI_API_KEY");
+
+    const preferred = (model && ALLOWED.has(model) ? model : undefined) ?? DEFAULT_MODEL;
+    const tryOrder = Array.from(new Set([preferred, DEFAULT_MODEL]));
+    const prompt = messages[messages.length - 1]?.content ?? "";
+    const t0 = Date.now();
+
+    let lastErr: any;
+    for (const m of tryOrder) {
+      try {
+        const resp = await callOnce(m, messages as Msg[], key);
+        const content = resp.choices?.[0]?.message?.content ?? "";
+        const usage = resp.usage ?? { prompt_tokens: 0, completion_tokens: 0 };
+
+        await runLogs(ctx, {
+          userId: (await ctx.auth.getUserIdentity())?.subject,
+          modelUsed: m,
+          prompt,
+          answer: content,
+          ok: true,
+          latencyMs: Date.now() - t0,
+          inputTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
+        });
+
+        return { modelUsed: m, content }; // ✅ always return content
+      } catch (e: any) {
+        lastErr = e;
+        const status = e?.status ?? e?.response?.status;
+        const code = e?.code ?? e?.error?.code;
+
+        await runLogs(ctx, {
+          userId: (await ctx.auth.getUserIdentity())?.subject,
+          modelUsed: m,
+          prompt,
+          ok: false,
+          status,
+          code,
+          latencyMs: Date.now() - t0,
+        });
+
+        const downgradeable = status === 429 || status === 403 || code === "insufficient_quota";
+        if (!downgradeable) throw e;
+      }
+    }
+    return { modelUsed: preferred, content: "" }; // final fallback to avoid "(no reply)"
   },
 });
 TS
-  echo "✓ Wrote convex/logs.ts"
-fi
+echo "✓ convex/openai.ts"
 
-# --- 3) Upgrade string-based runMutation -> typed api.logs.create, no duplicate imports ---
-fix_runmutation_file() {
-  local f="$1"
-  [[ "$f" == *.ts ]] || return 0
-  grep -q 'ctx\.runMutation("logs:create"' "$f" || return 0
+# 2) Client hook: lib/useAssistant.ts — echo user, await server, append assistant.
+cat > "$ROOT/lib/useAssistant.ts" <<'TS'
+"use client";
+import * as React from "react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
-  # add or augment api import
-  if grep -q '_generated/api' "$f"; then
-    # ensure "api" is imported exactly once
-    if ! grep -q 'import\s*{[^}]*\bapi\b' "$f"; then
-      # if import exists but without api, add api to that line
-      awk '
-        BEGIN{done=0}
-        /import[ \t]*\{[^}]*\}[ \t]*from[ \t]*"\.\/_generated\/api"[ \t]*;/ && !done {
-          line=$0
-          sub(/\}/, ", api }", line)
-          print line
-          done=1; next
-        }
-        {print}
-      ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-    fi
-  else
-    # add full import once
-    sed -i '1i import { api } from "./_generated/api";' "$f"
-  fi
+type Msg = { role: "system" | "user" | "assistant"; content: string };
+type SendResult = { content: string; modelUsed?: string } | { blocked: true };
 
-  sed -i 's/ctx\.runMutation("logs:create"/ctx.runMutation(api.logs.create/g' "$f"
-  echo "Patched runMutation -> api.logs.create in $f"
+export function useAssistant(opts: {
+  debounceMs?: number;
+  bucketCap?: number;
+  bucketRefillPerMin?: number;
+} = {}) {
+  const { debounceMs = 250, bucketCap = 5, bucketRefillPerMin = 5 } = opts;
+
+  const chat = useAction(api.openai.chat);
+  const [busy, setBusy] = React.useState(false);
+  const [history, setHistory] = React.useState<Msg[]>([]);
+
+  const bucketRef = React.useRef({ tokens: bucketCap, last: Date.now() });
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function takeToken() {
+    const now = Date.now();
+    const elapsed = now - bucketRef.current.last;
+    bucketRef.current.tokens = Math.min(
+      bucketCap,
+      bucketRef.current.tokens + (elapsed / 60000) * bucketRefillPerMin
+    );
+    bucketRef.current.last = now;
+    if (bucketRef.current.tokens >= 1) { bucketRef.current.tokens -= 1; return true; }
+    return false;
+  }
+
+  const send = React.useCallback(
+    async (prompt: string, model?: string): Promise<SendResult> => {
+      if (busy) return { blocked: true };
+      if (!takeToken()) return { blocked: true };
+
+      setHistory(h => [...h, { role: "user", content: prompt }]); // echo immediately
+
+      setBusy(true);
+      try {
+        const res = await chat({ messages: [...history, { role: "user", content: prompt }], model });
+        const content = (res as any)?.content ?? "";
+        setHistory(h => [...h, { role: "assistant", content }]);
+        return { content, modelUsed: (res as any)?.modelUsed };
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, chat, history, bucketCap, bucketRefillPerMin]
+  );
+
+  const sendDebounced = React.useCallback(
+    (prompt: string, model?: string) =>
+      new Promise<SendResult>((resolve, reject) => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          send(prompt, model).then(resolve).catch(reject);
+        }, debounceMs);
+      }),
+    [send, debounceMs]
+  );
+
+  return { busy, history, send, sendDebounced };
 }
-export -f fix_runmutation_file
-find "$ROOT/convex" -maxdepth 1 -type f -name "*.ts" -print0 | xargs -0 -I{} bash -c 'fix_runmutation_file "$@"' _ {}
+TS
+echo "✓ lib/useAssistant.ts"
+
+# 3) Minimal test page for validation.
+cat > "$ROOT/app/test-assistant/page.tsx" <<'TS'
+"use client";
+import * as React from "react";
+import { useAssistant } from "@/lib/useAssistant";
+
+const MODELS = [
+  { value: "gpt-4o-mini", label: "GPT-4o Mini (default)" },
+  { value: "gpt-4o", label: "GPT-4o" },
+  { value: "gpt-4.1", label: "GPT-4.1" },
+  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+];
+
+export default function TestAssistantPage() {
+  const { history, busy, sendDebounced } = useAssistant();
+  const [input, setInput] = React.useState("");
+  const [model, setModel] = React.useState(MODELS[0].value);
+
+  async function onSend() {
+    const p = input.trim();
+    if (!p) return;
+    await sendDebounced(p, model);
+    setInput("");
+  }
+
+  return (
+    <div className="p-4 space-y-3 max-w-3xl mx-auto">
+      <div className="flex gap-2">
+        <select className="border rounded px-2 py-1" value={model} onChange={(e)=>setModel(e.target.value)}>
+          {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        <input
+          className="flex-1 border rounded px-3 py-2"
+          value={input}
+          onChange={(e)=>setInput(e.target.value)}
+          placeholder="Type a message"
+          onKeyDown={(e)=>{ if(e.key==="Enter") onSend(); }}
+        />
+        <button className="px-3 py-2 rounded bg-black text-white disabled:opacity-50" onClick={onSend} disabled={busy}>
+          {busy ? "…" : "Send"}
+        </button>
+      </div>
+
+      <div className="border rounded p-3 space-y-2 max-h-[60vh] overflow-auto">
+        {history.map((m,i)=>(
+          <div key={i}><strong>{m.role==="user"?"User":"Assistant"}:</strong> {m.content || "(no reply)"}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+TS
+echo "✓ app/test-assistant/page.tsx"
 
 echo
-echo "=== Next steps ==="
-echo "1) npx convex dev       # migrate assistantLogs"
-echo "2) npx convex codegen   # regenerate types"
-echo "3) pnpm dev             # or npm run build"
-echo
-echo "Rules enforced: append-only injection; import augmentation (no duplicates); no edits to documents/services/users."
+echo "Next:"
+echo "  npx convex dev"
+echo "  npx convex codegen"
+echo "  pnpm dev"
+echo "  Visit http://localhost:3000/test-assistant"

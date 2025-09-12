@@ -11,7 +11,7 @@ export function useAssistant(opts: {
   bucketCap?: number;
   bucketRefillPerMin?: number;
 } = {}) {
-  const { debounceMs = 300, bucketCap = 5, bucketRefillPerMin = 5 } = opts;
+  const { debounceMs = 250, bucketCap = 5, bucketRefillPerMin = 5 } = opts;
 
   const chat = useAction(api.openai.chat);
   const [busy, setBusy] = React.useState(false);
@@ -37,13 +37,14 @@ export function useAssistant(opts: {
       if (busy) return { blocked: true };
       if (!takeToken()) return { blocked: true };
 
-      setHistory(h => [...h, { role: "user", content: prompt }]);  // user echo
+      setHistory(h => [...h, { role: "user", content: prompt }]); // echo immediately
 
       setBusy(true);
       try {
         const res = await chat({ messages: [...history, { role: "user", content: prompt }], model });
-        setHistory(h => [...h, { role: "assistant", content: res.content }]);
-        return { content: res.content, modelUsed: (res as any).modelUsed };
+        const content = (res as any)?.content ?? "";
+        setHistory(h => [...h, { role: "assistant", content }]);
+        return { content, modelUsed: (res as any)?.modelUsed };
       } finally {
         setBusy(false);
       }
