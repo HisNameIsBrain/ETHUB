@@ -17,7 +17,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push(&quot;/&quot; as Route);
+      router.push("/" as Route);
     }
   }, [isLoading, isAuthenticated, router]);
   
@@ -36,7 +36,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <>
       <EnsureUser />
       <div className="h-full flex dark:bg-[#1F1F1F]">
-        <SiriGlow />
+        <SiriGlowRing />
         <Navigation />
         <main className="flex-1 h-full overflow-y-auto">
           <SearchCommand />

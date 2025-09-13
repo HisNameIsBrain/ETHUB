@@ -2,7 +2,12 @@
 const nextConfig = {
   typedRoutes: true,
   images: {
-    domains: ["files.edgestore.dev"],
+    remotePatterns: [
+      { protocol: "https", hostname: "files.edgestore.dev" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      // add more hostnames here if needed
+    ],
   },
 };
-typedRoutes: true, (module.exports = nextConfig);
+
+module.exports = nextConfig;

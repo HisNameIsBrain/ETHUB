@@ -1,31 +1,126 @@
-// components/siri-glow.tsx
 "use client";
-import { useEffect, useState } from "react";
+import { motion, useAnimationControls } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-type Props = { height?: string; position?: "top" | "bottom"; className?: string };
+type SiriGlowProps = {
+  height ? : string; // e.g. "4px"
+  position ? : "top" | "bottom";
+  className ? : string;
+  progress ? : number; // 0..1 (if provided, controls width directly)
+  auto ? : boolean; // true = track document readyState / reloads
+  glowStrength ? : number; // px blur for glow
+};
 
-function SiriGlowImpl({ height = "4px", position = "top", className = "" }: Props) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-
-  const posClass = position === "top" ? "top-0" : "bottom-0";
+export function SiriGlow({
+  height = "4px",
+  position = "top",
+  className = "",
+  progress, // controlled
+  auto = true,
+  glowStrength = 12,
+}: SiriGlowProps) {
+  const [internal, setInternal] = useState(0); // 0..1
+  const controls = useAnimationControls();
+  const raf = useRef < number | null > (null);
+  
+  const pct = Math.max(0, Math.min(1, progress ?? internal));
+  const barWidth = useMemo(() => `${pct * 100}%`, [pct]);
+  
+  // Animate rainbow sweep forever
+  useEffect(() => {
+    controls.start({
+      backgroundPosition: ["0% 50%", "100% 50%"],
+      transition: { repeat: Infinity, duration: 2, ease: "linear" },
+    });
+  }, [controls]);
+  
+  // Auto-progress based on document readyState + a “smart” loader curve
+  useEffect(() => {
+    if (!auto || progress !== undefined) return;
+    
+    const clamp = (v: number) => Math.max(0, Math.min(1, v));
+    
+    const tick = () => {
+      setInternal((p) => {
+        // Ease: approach 0.9 asymptotically while loading
+        const next = p + (0.9 - p) * 0.08; // faster at start, slower near 90%
+        return clamp(next);
+      });
+      raf.current = requestAnimationFrame(tick);
+    };
+    
+    const start = () => {
+      cancel();
+      setInternal(0.02); // jump visible
+      raf.current = requestAnimationFrame(tick);
+    };
+    
+    const complete = () => {
+      cancel();
+      setInternal(1);
+      // fade out after short delay
+      setTimeout(() => setInternal(0), 400);
+    };
+    
+    const cancel = () => {
+      if (raf.current) cancelAnimationFrame(raf.current);
+      raf.current = null;
+    };
+    
+    // initial state on mount
+    if (document.readyState === "loading") start();
+    else if (document.readyState === "interactive") setInternal(0.6);
+    else setInternal(0);
+    
+    const onReady = () => complete();
+    const onBeforeUnload = () => start(); // when user reloads/navigates away
+    
+    document.addEventListener("readystatechange", () => {
+      if (document.readyState === "complete") onReady();
+    });
+    window.addEventListener("beforeunload", onBeforeUnload);
+    
+    return () => {
+      cancel();
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [auto, progress]);
+  
+  // Style bits (rainbow + glow)
+  const gradient =
+    "linear-gradient(90deg, red, orange, yellow, green, cyan, blue, violet)";
+  
+  const visible = pct > 0 && pct < 1 ? 1 : pct === 1 ? 1 : 0;
+  
   return (
-    <div className={`fixed left-0 w-full ${posClass} z-[100] pointer-events-none ${className}`}>
-      <div
-        className="h-[var(--siri-glow-height,4px)] w-full blur-xl opacity-90"
+    <>
+      {/* Glow */}
+      <motion.div
+        className={`pointer-events-none fixed ${position}-0 left-0 z-50 ${className}`}
         style={{
-          background:
-            "linear-gradient(90deg, rgba(131,56,236,1) 0%, rgba(58,134,255,1) 25%, rgba(0,212,255,1) 50%, rgba(58,134,255,1) 75%, rgba(131,56,236,1) 100%)",
-          backgroundSize: "200% 100%",
-          animation: "siriSweep 1.6s linear infinite",
-          ["--siri-glow-height" as any]: height,
+          height,
+          width: barWidth,
+          filter: `blur(${glowStrength}px)`,
+          opacity: visible * 0.55,
+          background: gradient,
+          backgroundSize: "400% 100%",
         }}
+        animate={controls}
       />
-      <style>{`@keyframes siriSweep { from { background-position: 0% 50% } to { background-position: 200% 50% } }`}</style>
-    </div>
+      {/* Solid bar */}
+      <motion.div
+        className={`fixed ${position}-0 left-0 w-0 z-50 ${className}`}
+        style={{
+          height,
+          width: barWidth,
+          opacity: visible,
+          background: gradient,
+          backgroundSize: "400% 100%",
+        }}
+        animate={controls}
+      />
+    </>
   );
 }
 
-export const SiriGlow = SiriGlowImpl;
-export default SiriGlowImpl;
+export default SiriGlow;

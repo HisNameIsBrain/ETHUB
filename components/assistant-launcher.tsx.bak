@@ -1,0 +1,181 @@
+"use client";
+
+import * as React from "react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+} from "@/components/ui/select";
+import { X, Send, Bot, Loader2 } from "lucide-react";
+import { SiriGlowRingInvert } from "@/components/siri-glow-invert";
+
+type Role = "system" | "user" | "assistant";
+
+const OPENAI_MODEL_OPTIONS = [
+  { id: "gpt-4o-mini", label: "GPT-4o mini" },
+  { id: "gpt-4o", label: "GPT-4o" },
+  { id: "gpt-4.1-mini", label: "GPT-4.1 mini" },
+  { id: "gpt-4.1", label: "GPT-4.1" },
+  { id: "o3-mini", label: "o3 mini" },
+];
+
+export default function AssistantLauncher() {
+  // prevent duplicate mounts
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    const k = "__ETHUB_ASSISTANT_LAUNCHER__";
+    // @ts-ignore
+    if (window[k]) return;
+    // @ts-ignore
+    window[k] = true;
+    setMounted(true);
+    return () => { /* @ts-ignore */ delete window[k]; };
+  }, []);
+  if (!mounted) return null;
+
+  const [open, setOpen] = React.useState(false);
+  const [model, setModel] = React.useState<string>(OPENAI_MODEL_OPTIONS[0].id);
+  const [input, setInput] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [messages, setMessages] = React.useState<Array<{ role: Role; content: string }>>([]);
+
+  const chatAction = useAction(api.openai.chat);
+  const askAction = useAction(api.openai.ask);
+  const moderateAction = useAction(api.openai.moderate);
+
+  async function send(useAsk = false) {
+    const text = input.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try {
+      const mod = await moderateAction({ input: text });
+      if (mod?.flagged) {
+        setMessages((m) => [...m, { role: "assistant", content: "Blocked by moderation." }]);
+        return;
+      }
+      let res: { content: string } | null = null;
+      if (useAsk) {
+        res = await askAction({ prompt: text, model });
+      } else {
+        const next = [...messages, { role: "user", content: text }];
+        setMessages(next);
+        const r = await chatAction({ model, messages: next });
+        res = r as any;
+      }
+      if (res?.content) setMessages((m) => [...m, { role: "assistant", content: res!.content }]);
+    } finally {
+      setInput("");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        aria-label="Open Assistant"
+        onClick={() => setOpen(true)}
+        className={`
+          fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[ ninety-five ] z-[95]
+          h-16 w-16 rounded-full border border-white/10 bg-neutral-950 text-white
+          shadow-[0_10px_40px_rgba(0,0,0,0.45)] overflow-hidden isolate
+        `}
+      >
+        <SiriGlowRingInvert />
+        <Bot className="relative h-7 w-7" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[96] bg-black/40 backdrop-blur-sm">
+          <div className="absolute bottom-0 right-0 m-4 w-[min(640px,calc(100vw-2rem))] rounded-2xl border bg-background shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-3 border-b">
+              <div className="flex items-center gap-3">
+                <div className="relative h-6 w-6 overflow-hidden rounded-full">
+                  <SiriGlowRingInvert rotateSec={3.6} innerRotateSec={4.6} blurPx={10} insetPercent={-4} opacity={0.8} thicknessPx={8} inner />
+                  <span className="absolute inset-[2px] rounded-full border border-white/30 bg-black/50" />
+                </div>
+                <span className="font-medium">ETHUB Assistant</span>
+              </div>
+              <Button size="icon" variant="ghost" onClick={() => setOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="p-3 border-b">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-1">
+                  <Select value={model} onValueChange={setModel}>
+                    <SelectTrigger aria-label="Model">
+                      <SelectValue placeholder="Model" />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      {OPENAI_MODEL_OPTIONS.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-1">
+                  <Input placeholder="System (locked in code)" disabled value="" onChange={() => {}} />
+                </div>
+              </div>
+            </div>
+
+            <div className="max-h-[45vh] overflow-y-auto p-3 space-y-3">
+              {messages.length === 0 && (
+                <div className="text-sm text-muted-foreground">
+                  New chat. Select a model and ask your question.
+                </div>
+              )}
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={
+                    m.role === "user"
+                      ? "ml-auto max-w-[85%] rounded-2xl bg-primary text-primary-foreground px-3 py-2"
+                      : "mr-auto max-w-[85%] rounded-2xl border px-3 py-2"
+                  }
+                >
+                  {m.content}
+                </div>
+              ))}
+              {busy && (
+                <div className="mr-auto inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Thinking…
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 border-t">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type a message…"
+                  rows={2}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send(false);
+                    }
+                  }}
+                />
+                <div className="flex flex-col gap-2">
+                  <Button onClick={() => send(false)} disabled={busy || !input.trim()}>
+                    <Send className="h-4 w-4 mr-2" /> Chat
+                  </Button>
+                  <Button variant="outline" onClick={() => send(true)} disabled={busy || !input.trim()}>
+                    <Send className="h-4 w-4 mr-2" /> Ask
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

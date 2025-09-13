@@ -27,6 +27,7 @@ import type * as openai from "../openai.js";
 import type * as services from "../services.js";
 import type * as tools_backfill_documents from "../tools/backfill_documents.js";
 import type * as users from "../users.js";
+import type * as voice from "../voice.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   services: typeof services;
   "tools/backfill_documents": typeof tools_backfill_documents;
   users: typeof users;
+  voice: typeof voice;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

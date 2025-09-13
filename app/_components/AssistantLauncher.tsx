@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import ReactDOM from "react-dom";
-import { Bot, X, Mic, MicOff } from "lucide-react";
+import { Bot, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiriGlowRingInvert } from "@/components/siri-glow-invert";
 import { useAction } from "convex/react";
@@ -18,9 +18,9 @@ const MODEL_OPTIONS = [
   { id: "gpt-4.1", label: "GPT-4.1" },
   { id: "o3-mini", label: "o3 mini" },
   { id: "gpt-4o-mini-tts", label: "GPT-4o Voice" },
-] as const;
+];
 
-const DEFAULT_MODEL = MODEL_OPTIONS[0].id as (typeof MODEL_OPTIONS)[number]["id"];
+const DEFAULT_MODEL = MODEL_OPTIONS[0].id;
 
 function LauncherButton({ onOpen }: { onOpen: () => void }) {
   return (
@@ -73,14 +73,10 @@ export default function AssistantLauncher() {
   const [modelMenuOpen, setModelMenuOpen] = React.useState(true);
   const modelTouchedRef = React.useRef(false);
 
-  const [audioStream, setAudioStream] = React.useState<MediaStream | null>(null);
-  const mediaRef = React.useRef<MediaStream | null>(null);
-
   const chatAction = useAction(api.openai.chat);
   const askAction = useAction(api.openai.ask);
   const moderateAction = useAction(api.openai.moderate);
 
-  // ensure single mount
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
     // @ts-ignore
@@ -94,7 +90,6 @@ export default function AssistantLauncher() {
     };
   }, []);
 
-  // auto-close model menu after a moment
   React.useEffect(() => {
     if (!open) return;
     setModelMenuOpen(true);
@@ -104,37 +99,6 @@ export default function AssistantLauncher() {
     }, 2500);
     return () => clearTimeout(t);
   }, [open]);
-
-  // publish model + audioStream globally for VoiceVisualizerGate
-  React.useEffect(() => {
-    const w = globalThis as any;
-    w.__assistantState = { ...(w.__assistantState || {}), model, audioStream };
-    w.__onAssistantStateChange =
-      w.__onAssistantStateChange ||
-      ((cb: (s: any) => void) => {
-        (w.__assistantSubscribers ||= new Set()).add(cb);
-        return () => (w.__assistantSubscribers as Set<Function>).delete(cb);
-      });
-    (w.__assistantSubscribers as Set<Function> | undefined)?.forEach((cb) =>
-      cb(w.__assistantState)
-    );
-    (w as any).VoiceVisualizerComponent =
-      (w as any).VoiceVisualizerComponent || undefined;
-  }, [model, audioStream]);
-
-  // mic controls (for visualizer and future VAD)
-  const startMic = React.useCallback(async () => {
-    if (mediaRef.current) return;
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRef.current = s;
-    setAudioStream(s);
-  }, []);
-  const stopMic = React.useCallback(() => {
-    mediaRef.current?.getTracks().forEach((t) => t.stop());
-    mediaRef.current = null;
-    setAudioStream(null);
-  }, []);
-  React.useEffect(() => () => stopMic(), [stopMic]);
 
   function getTextFromResponse(res: any): string {
     if (!res) return "";
@@ -148,7 +112,7 @@ export default function AssistantLauncher() {
     if (!text || busy) return;
     setBusy(true);
     try {
-      const mod = await moderateAction({ text });
+      const mod = await moderateAction({ input: text });
       if (mod?.flagged) {
         setMessages((m) => [...m, { role: "assistant", content: "Blocked by moderation." }]);
         return;
@@ -168,12 +132,10 @@ export default function AssistantLauncher() {
         });
         const output = getTextFromResponse(res);
         if (output) {
-          setMessages((m) => [
-            ...m,
-            { role: "user", content: text },
-            { role: "assistant", content: output },
-          ]);
-          if (voiceWanted) await speakWithOpenAI(output, "alloy", "mp3");
+          setMessages((m) => [...m, { role: "user", content: text }, { role: "assistant", content: output }]);
+          if (voiceWanted) {
+            await speakWithOpenAI(output, "alloy", "mp3");
+          }
         }
       } else {
         const next = [...messages, { role: "user", content: text }];
@@ -182,7 +144,9 @@ export default function AssistantLauncher() {
         const output = getTextFromResponse(res);
         if (output) {
           setMessages((m) => [...m, { role: "assistant", content: output }]);
-          if (voiceWanted) await speakWithOpenAI(output, "alloy", "mp3");
+          if (voiceWanted) {
+            await speakWithOpenAI(output, "alloy", "mp3");
+          }
         }
       }
     } catch (err) {
@@ -197,9 +161,6 @@ export default function AssistantLauncher() {
   if (!mounted) return null;
 
   const launcherButton = <LauncherButton onOpen={() => setOpen(true)} />;
-
-  const voiceMode = model === "gpt-4o-mini-tts";
-  const micActive = !!audioStream;
 
   return (
     <>
@@ -224,69 +185,26 @@ export default function AssistantLauncher() {
                 </div>
                 <span className="font-medium">ETHUB Assistant</span>
               </div>
-
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex flex-wrap gap-2 mr-2">
-                  {MODEL_OPTIONS.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        modelTouchedRef.current = true;
-                        setModel(m.id);
-                      }}
-                      className={`rounded-full px-3 py-1 text-xs border ${
-                        model === m.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background hover:bg-accent"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-
-                {voiceMode ? (
-                  micActive ? (
-                    <Button size="icon" variant="secondary" onClick={stopMic} title="Stop mic">
-                      <MicOff className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button size="icon" onClick={startMic} title="Start mic">
-                      <Mic className="h-4 w-4" />
-                    </Button>
-                  )
-                ) : (
-                  <Button size="icon" variant="outline" disabled title="Voice requires GPT-4o Voice">
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                )}
-
-                <Button size="icon" variant="ghost" onClick={() => setOpen(false)} title="Close">
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
+              <Button size="icon" variant="ghost" onClick={() => setOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
             </div>
 
-            {modelMenuOpen && (
-              <div className="flex flex-wrap gap-2 p-3 border-b bg-muted/40 sm:hidden">
+            <div className={`transition-[max-height,opacity] ${modelMenuOpen ? "max-h-28 opacity-100" : "max-h-0 opacity-0"} overflow-hidden`}>
+              <div className="flex flex-wrap gap-2 p-3 border-b bg-muted/40">
                 {MODEL_OPTIONS.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => {
-                      modelTouchedRef.current = true;
-                      setModel(m.id);
-                    }}
+                    onClick={() => { modelTouchedRef.current = true; setModel(m.id); }}
                     className={`rounded-full px-3 py-1 text-sm border ${
-                      model === m.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent"
+                      model === m.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"
                     }`}
                   >
                     {m.label}
                   </button>
                 ))}
               </div>
-            )}
+            </div>
 
             <div className="max-h-[40vh] overflow-auto p-3 space-y-3">
               {messages.length === 0 && (
@@ -298,9 +216,7 @@ export default function AssistantLauncher() {
                 <div
                   key={i}
                   className={`rounded-lg px-3 py-2 text-sm ${
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground ml-auto max-w-[85%]"
-                      : "bg-muted mr-auto max-w-[85%]"
+                    m.role === "user" ? "bg-primary text-primary-foreground ml-auto max-w-[85%]" : "bg-muted mr-auto max-w-[85%]"
                   }`}
                 >
                   {m.content}
@@ -310,10 +226,7 @@ export default function AssistantLauncher() {
 
             <form
               className="flex items-center gap-2 p-3 border-t"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void send(false);
-              }}
+              onSubmit={(e) => { e.preventDefault(); void send(false); }}
             >
               <input
                 value={input}
@@ -321,15 +234,8 @@ export default function AssistantLauncher() {
                 className="flex-1 rounded-md border px-3 py-2 text-sm"
                 placeholder="Type your question…"
               />
-              <Button type="submit" disabled={busy}>
-                {busy ? "…" : "Send"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => void send(true)}
-              >
+              <Button type="submit" disabled={busy}>{busy ? "…" : "Send"}</Button>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void send(true)}>
                 Ask (one-shot)
               </Button>
             </form>

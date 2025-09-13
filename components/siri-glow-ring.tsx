@@ -31,14 +31,14 @@ function ringMask(thicknessPx: number) {
   return `radial-gradient(circle, transparent calc(50% - ${t}px), #000 calc(50% - ${a}px), #000 calc(50% + ${a}px), transparent calc(50% + ${t}px))`;
 }
 
-export function SiriGlowRingInvert({
+export function SiriGlowRing({
   className = "",
   reverse = false,
-  rotateSec = 3.8,
-  innerRotateSec = 4.8,
+  rotateSec = 4.0,
+  innerRotateSec = 5.2,
   blurPx = 14,
   insetPercent = -6,
-  opacity = 0.8,
+  opacity = 0.8,          // ~20% transparent
   thicknessPx = 10,
   colors = COLORS_BRIGHT_TO_DARK,
   inner = true,
@@ -52,7 +52,7 @@ export function SiriGlowRingInvert({
     filter: `blur(${blurPx}px)`,
     opacity,
     background: conic,
-    animation: `siri-spin-rev ${rotateSec}s linear infinite`, // inverted
+    animation: `siri-spin ${rotateSec}s linear infinite`,
     WebkitMaskImage: mask,
     maskImage: mask,
     willChange: "transform",
@@ -62,7 +62,7 @@ export function SiriGlowRingInvert({
     filter: `blur(${Math.max(blurPx - 6, 6)}px)`,
     opacity: Math.min(opacity * 0.85, 1),
     background: conic,
-    animation: `siri-spin ${innerRotateSec}s linear infinite`, // inverted
+    animation: `siri-spin-rev ${innerRotateSec}s linear infinite`,
     WebkitMaskImage: mask,
     maskImage: mask,
     mixBlendMode: "normal",

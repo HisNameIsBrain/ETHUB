@@ -10,7 +10,7 @@ import { UserButton, SignOutButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Menu, X } from "lucide-react";
 import { useTheme } from "next-themes";
-import { SiriGlow } from "@/components/siri-glow";
+import { SiriGlowRing } from "@/components/siri-glow";
 
 const links = [
   { href: "/" as Route, label: "Home" },
@@ -30,7 +30,7 @@ export function Navbar() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5">
           <div className="mx-auto h-full w-[96%] overflow-hidden rounded-full bg-white/10">
             <div className="h-full w-full blur-[2px] opacity-90">
-              <SiriGlow />
+              </SiriGlowRing />
             </div>
           </div>
         </div>
@@ -48,7 +48,7 @@ export function Navbar() {
           </button>
 
           <Link href={"/" as Route} className="text-sm font-semibold tracking-wide">
-            ETHUB
+            ETECHHUB
           </Link>
         </div>
 

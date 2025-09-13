@@ -2,26 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  voiceSessions: defineTable({
-    userId: v.string(),
-    status: v.union(v.literal("active"), v.literal("ended")),
-    model: v.optional(v.string()),
-    device: v.optional(v.string()),
-    startedAt: v.number(),
-    endedAt: v.optional(v.number()),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_status", ["status"]),
-
-  voiceLogs: defineTable({
-    sessionId: v.id("voiceSessions"),
-    kind: v.union(v.literal("input"), v.literal("output"), v.literal("event")),
-    payloadJson: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_sessionId", ["sessionId"])
-    .index("by_sessionId_createdAt", ["sessionId", "createdAt"]),
-
   assistantLogs: defineTable({
     userId: v.optional(v.string()),
     modelUsed: v.optional(v.string()),

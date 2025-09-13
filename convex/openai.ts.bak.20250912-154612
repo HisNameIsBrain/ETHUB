@@ -1,7 +1,8 @@
-import OpenAI from "openai";
+import { mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { action, mutation, type ActionCtx } from "./_generated/server"; // <-- add this
+import OpenAI from "openai";
 
+// Allowed chat models
 const OPENAI_MODELS = new Set([
   "gpt-4o-mini",
   "gpt-4o",
@@ -10,6 +11,7 @@ const OPENAI_MODELS = new Set([
   "o3-mini",
 ]);
 
+// Constrain audio formats to avoid TS/validation issues
 const audioFormatValidator = v.union(
   v.literal("mp3"),
   v.literal("wav"),
@@ -17,28 +19,13 @@ const audioFormatValidator = v.union(
   v.literal("pcm")
 );
 
-export const moderate = action({
-  args: {
-    text: v.optional(v.string()),
-    input: v.optional(v.string()),
-  },
-  handler: async (_ctx: ActionCtx, { text, input }) => {
-    const value = (text ?? input ?? "").trim();
-    if (!value) return { flagged: false };
-
-    // TODO: replace with real moderation if you like
-    const flagged = /(?:kill|suicide|bomb)/i.test(value) || value.length > 8000;
-    return { flagged };
-  },
-});
-
-
 export const ask = mutation({
   args: {
     prompt: v.string(),
     model: v.optional(v.string()),
     system: v.optional(v.string()),
-    voice: v.optional(v.string()),              // metadata only
+    // Keep these for your UI/forms and analytics, but we won't synthesize on the server
+    voice: v.optional(v.string()),
     audioFormat: v.optional(audioFormatValidator),
     temperature: v.optional(v.number()),
   },
@@ -48,13 +35,17 @@ export const ask = mutation({
       prompt,
       model = "gpt-4o-mini",
       system,
-      voice,
-      audioFormat = "mp3",
+      voice,                 // kept for analytics/client-side TTS
+      audioFormat = "mp3",   // kept for analytics/client-side TTS
       temperature = 0.2,
     }
   ) => {
-    if (!process.env.OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY");
-    if (!OPENAI_MODELS.has(model)) throw new Error(`Unsupported model: ${model}`);
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("Missing OPENAI_API_KEY");
+    }
+    if (!OPENAI_MODELS.has(model)) {
+      throw new Error(`Unsupported model: ${model}`);
+    }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -73,7 +64,9 @@ export const ask = mutation({
     return {
       text,
       modelUsed: model,
-      tts: voice ? { requested: true, voice, format: audioFormat } : { requested: false },
+      tts: voice
+        ? { requested: true, voice, format: audioFormat }
+        : { requested: false },
     };
   },
 });
