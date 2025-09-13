@@ -17,18 +17,45 @@ const audioFormatValidator = v.union(
   v.literal("pcm")
 );
 
-export const moderate = action({
-  args: {
-    text: v.optional(v.string()),
-    input: v.optional(v.string()),
-  },
-  handler: async (_ctx: ActionCtx, { text, input }) => {
-    const value = (text ?? input ?? "").trim();
-    if (!value) return { flagged: false };
+const DEFAULT_MODEL = "gpt-4o-mini";
 
-    // TODO: replace with real moderation if you like
-    const flagged = /(?:kill|suicide|bomb)/i.test(value) || value.length > 8000;
-    return { flagged };
+export const chat = action({
+  args: {
+    messages: v.array(v.object({ role: v.string(), content: v.string() })),
+    model: v.optional(v.string()),
+    temperature: v.optional(v.number()),
+    system: v.optional(v.string()),
+  },
+  handler: async (ctx, { messages, model = DEFAULT_MODEL, temperature = 0.4, system }) => {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const msgs =
+      system && system.trim()
+        ? [{ role: "system", content: system }, ...messages]
+        : messages;
+    const res = await client.chat.completions.create({
+      model,
+      messages: msgs as any,
+      temperature,
+    });
+    const content = res.choices?.[0]?.message?.content ?? "";
+    return { content, model: res.model, usage: res.usage ?? null };
+  },
+});
+
+export const moderate = action({
+  args: { text: v.string() },
+  handler: async (ctx, { text }) => {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const out = await client.moderations.create({
+      model: "omni-moderation-latest",
+      input: text,
+    });
+    const r = out.results?.[0] ?? null;
+    return {
+      flagged: !!r?.flagged,
+      categories: r?.categories ?? null,
+      scores: r?.category_scores ?? null,
+    };
   },
 });
 

@@ -69,17 +69,17 @@ export default defineSchema({
   services: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    price: v.optional(v.number()),
+    price: v.optional(v.float64()),
     deliveryTime: v.optional(v.string()),
-    isPublic: v.boolean(),
-    archived: v.boolean(),
+    isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
     slug: v.optional(v.string()),
-    createdAt: v.number(),
-    createdBy: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
     updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
   })
     .index("by_slug", ["slug"])
     .index("by_archived", ["archived"])
-    .index("by_createdBy", ["createdBy"])
-    .index("by_isPublic_archived", ["isPublic", "archived"]),
+    .index("by_isPublic_archived", ["isPublic", "archived"])
+    .index("by_createdAt", ["createdAt"]),
 });
