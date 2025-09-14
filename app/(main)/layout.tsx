@@ -3,10 +3,9 @@
 import { useEffect } from "react";
 import { useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
-
-import { AssistantLauncher } from "@/components/assistant-launcher";
-import { SiriGlow } from "@/components/siri-glow";
-import { SiriGlowInvert } from "@/components/siri-glow-invert";
+import AssistantLauncher from "@/components/assistant-launcher";
+import SiriGlowRing from "@/components/siri-glow";
+import SiriGlowRingInvert from "@/components/siri-glow-invert";
 import { SearchCommand } from "@/components/search-command";
 import { Navigation } from "./_components/navigation";
 import { EnsureUser } from "@/components/ensure-user";
