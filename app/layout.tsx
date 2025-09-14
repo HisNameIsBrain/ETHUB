@@ -6,9 +6,9 @@ import ClientSEO from "@/components/client-seo";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import Navbar from "@/components/navbar";
+import Navbar from "@/app/(marketing)/_components/navbar";
 import TopSiriLoader from "@/components/top-siri-loader";
-import SiriGlowInvert from "@/components/siri-glow-invert";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import AssistantLauncher from "@/components/assistant-launcher";
 import VoiceVisualizerGate from "@/components/voice-visualizer-gate";
 

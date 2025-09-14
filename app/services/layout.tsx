@@ -1,4 +1,3 @@
-// app/services/layout.tsx
 import * as React from "react";
 
 export default function ServicesSectionLayout({

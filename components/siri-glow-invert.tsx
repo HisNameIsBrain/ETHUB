@@ -31,7 +31,7 @@ function ringMask(thicknessPx: number) {
   return `radial-gradient(circle, transparent calc(50% - ${t}px), #000 calc(50% - ${a}px), #000 calc(50% + ${a}px), transparent calc(50% + ${t}px))`;
 }
 
-export function SiriGlowRingInvert({
+export function SiriGlowInvert({
   className = "",
   reverse = false,
   rotateSec = 3.8,

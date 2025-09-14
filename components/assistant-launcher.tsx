@@ -4,7 +4,7 @@ import * as React from "react";
 import ReactDOM from "react-dom";
 import { Bot, X, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SiriGlowRingInvert } from "@/components/siri-glow-invert";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { speakWithOpenAI } from "@/lib/tts";
@@ -35,7 +35,7 @@ function LauncherButton({ onOpen }: { onOpen: () => void }) {
       }}
     >
       <span className="absolute inset-0 rounded-full bg-neutral-950" />
-      <SiriGlowRingInvert
+      <SiriGlowInvert
         className="inset-[-6%]"
         rotateSec={3.2}
         innerRotateSec={4.4}
@@ -211,7 +211,7 @@ export default function AssistantLauncher() {
             <div className="flex items-center justify-between p-3 border-b">
               <div className="flex items-center gap-3">
                 <div className="relative h-6 w-6 overflow-hidden rounded-full">
-                  <SiriGlowRingInvert
+                  <SiriGlowInvert
                     rotateSec={3.6}
                     innerRotateSec={4.6}
                     blurPx={10}

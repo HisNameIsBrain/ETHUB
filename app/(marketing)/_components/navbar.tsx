@@ -10,7 +10,7 @@ import {
   Menu, X, Sun, Moon
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
-import { SiriGlowRingInvert } from "@/components/siri-glow-invert";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
 
 const NAV = [
   { href: "/services",  label: "Services",  icon: Sparkles },
@@ -55,7 +55,7 @@ function Brand() {
       {/* logo for >= sm screens (OnePlus Nord N20 & desktops) */}
       <span className="relative hidden sm:inline-block">
         <span className="absolute -inset-[14%] opacity-90">
-          <SiriGlowRingInvert
+          <SiriGlowInvert
             rotateSec={4.2}
             innerRotateSec={5.2}
             blurPx={9}
@@ -105,7 +105,7 @@ function ProfileButton() {
   return (
     <div className="relative h-10 w-10">
       <span className="absolute -inset-[10%] pointer-events-none">
-        <SiriGlowRingInvert
+        <SiriGlowInvert
           rotateSec={2.2}
           innerRotateSec={2.2}
           blurPx={5}
