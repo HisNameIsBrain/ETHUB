@@ -1,34 +1,25 @@
-"use client";
-
-import AssistantLauncher from "@/components/assistant-launcher";
-import SiriGlowRing from "@/components/siri-glow";
-import { SiriGlowRingInvert } from "@/components/siri-glow-invert";
-import { Navigation } from "@/app/(main)/_components/navigation";
-import { SearchCommand } from "@/components/search-command";
+// app/services/layout.tsx
+import * as React from "react";
 
 export default function ServicesSectionLayout({
   children,
 }: { children: React.ReactNode }) {
   return (
-    <>
-      <AssistantLauncher />
-      <div className="min-h-screen h-full flex dark:bg-[#1F1F1F]">
-        <SiriGlowRing position="top" />
-        <SiriGlowRingInvert position="bottom" />
-        <Navigation />
-        <div className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-40 border-b bg-background/60 backdrop-blur">
-            <div className="flex h-14 items-center gap-3 px-4">
-              <SearchCommand />
-              <h1 className="text-sm font-semibold tracking-tight">Services</h1>
-            </div>
-          </header>
-          <main className="flex-1 px-4 py-6">{children}</main>
-          <footer className="border-t px-4 py-6 text-xs opacity-70">
-            © {new Date().getFullYear()} ETHUB • All rights reserved
-          </footer>
+    <div className="min-h-screen flex flex-col bg-background dark:bg-[#1F1F1F]">
+      {/* Sticky header: give it a real background + border and a consistent height */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="h-14 flex items-center gap-3 px-4">
         </div>
-      </div>
-    </>
+      </header>
+
+      {/* Offset main content so nothing sits under the header */}
+      <main className="flex-1 px-4 py-6 pt-10">
+        {children}
+      </main>
+
+      <footer className="border-t px-4 py-6 text-xs opacity-70">
+        © {new Date().getFullYear()} ETHUB • All rights reserved
+      </footer>
+    </div>
   );
 }

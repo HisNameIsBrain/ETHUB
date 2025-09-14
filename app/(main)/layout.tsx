@@ -7,7 +7,7 @@ import AssistantLauncher from "@/components/assistant-launcher";
 import SiriGlowRing from "@/components/siri-glow";
 import SiriGlowRingInvert from "@/components/siri-glow-invert";
 import { SearchCommand } from "@/components/search-command";
-import { Navigation } from "./_components/navigation";
+import { Navbar } from "./_components/navbar";
 import { EnsureUser } from "@/components/ensure-user";
 import { Spinner } from "@/components/spinner";
 
@@ -38,7 +38,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <div className="min-h-screen h-full flex dark:bg-[#1F1F1F]">
         <SiriGlow position="top" />
         <SiriGlowInvert position="bottom" />
-        <Navigation />
+        <Navbar />
         <div className="flex-1 flex flex-col">
           <header className="sticky top-0 z-40 border-b bg-background/60 backdrop-blur">
             <div className="flex h-14 items-center gap-3 px-4">

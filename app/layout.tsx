@@ -1,19 +1,26 @@
-// app/layout.tsx
 "use client";
 
 import "./globals.css";
 import { Suspense } from "react";
-import { ThemeProvider } from "next-themes";
+import ClientSEO from "@/components/client-seo";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import Navbar from "@/components/navbar";
 import TopSiriLoader from "@/components/top-siri-loader";
-import ClientSEO from "@/components/client-seo";
+import SiriGlowInvert from "@/components/siri-glow-invert";
+import AssistantLauncher from "@/components/assistant-launcher";
+import VoiceVisualizerGate from "@/components/voice-visualizer-gate";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+type RootLayoutProps = {
+  children: React.ReactNode;
+};
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-dvh bg-background text-foreground antialiased">
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        {/* Client-side title/meta to avoid server metadata */}
         <ClientSEO
           title="ETHUB"
           description="Tech Hub platform"
@@ -23,22 +30,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             { property: "og:description", content: "Tech Hub platform" },
           ]}
         />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ConvexClientProvider>
-            <TooltipProvider>
-              <TopSiriLoader />
-              <main className="flex min-h-[calc(100vh-4rem)] flex-col">
-                <Suspense fallback={null}>{children}</Suspense>
-              </main>
-              <Toaster richColors />
-            </TooltipProvider>
-          </ConvexClientProvider>
-        </ThemeProvider>
+
+        <ConvexClientProvider>
+          <TooltipProvider>
+            {/* Top navigation */}
+            <Navbar />
+
+            {/* Global top UI effects */}
+            <TopSiriLoader />
+            <SiriGlowInvert />
+
+            {/* Page content */}
+            <Suspense fallback={null}>{children}</Suspense>
+
+            {/* Assistant + voice features */}
+            <AssistantLauncher />
+            <VoiceVisualizerGate />
+
+            {/* Global toaster */}
+            <Toaster richColors />
+          </TooltipProvider>
+        </ConvexClientProvider>
       </body>
     </html>
   );
