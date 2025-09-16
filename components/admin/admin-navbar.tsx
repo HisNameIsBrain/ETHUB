@@ -9,7 +9,7 @@ import { Moon, Sun, ChevronDown } from "lucide-react";
 import { Disclosure } from "@headlessui/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SiriGlow } from "@/components/siri-glow";
+import { SiriGlow } from "@/app/(marketing)/_components/siri-glow";
 
 const navItems: { label: string; href: Route }[] = [
   { label: "Dashboard", href: "/services/admin" as Route },
