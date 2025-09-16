@@ -1,15 +1,11 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar,
-} from "recharts";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 
 // Helpers
 function msToHMS(ms: number) {
@@ -22,10 +18,10 @@ function msToHMS(ms: number) {
   return `${ss}s`;
 }
 
-function dayKey(ts: number) {
-  const d = new Date(ts);
-  return format(d, "yyyy-MM-dd");
-}
+const SessionsBarChart = dynamic(
+  () => import("./voice-analytics-chart"), // ↓ created below
+  { ssr: false }
+);
 
 export default function VoiceAnalyticsPage() {
   // Core stats (includes recent sessions array)
@@ -38,26 +34,8 @@ export default function VoiceAnalyticsPage() {
   const [selectedSession, setSelectedSession] = React.useState<string | null>(null);
   const logs = useQuery(
     api.voice.getSessionLogs,
-    selectedSession ? { sessionId: selectedSession as any } : "skip"
+    selectedSession ? ({ sessionId: selectedSession } as any) : "skip"
   );
-
-  // Aggregate sessions/day (last 7 days) from stats.sessions
-  const sessionsPerDay = React.useMemo(() => {
-    const map = new Map<string, number>();
-    const base = stats?.sessions ?? [];
-    for (const s of base) {
-      const k = dayKey(s.startedAt);
-      map.set(k, (map.get(k) ?? 0) + 1);
-    }
-    const days: { day: string; count: number }[] = [];
-    // build 7-day axis
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-      const k = format(d, "yyyy-MM-dd");
-      days.push({ day: format(d, "MMM d"), count: map.get(k) ?? 0 });
-    }
-    return days;
-  }, [stats?.sessions]);
 
   return (
     <div className="p-6 space-y-6">
@@ -77,24 +55,16 @@ export default function VoiceAnalyticsPage() {
         </Card>
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">Avg duration</div>
-          <div className="text-2xl font-semibold">{stats ? msToHMS(stats.avgDurationMs) : "…"}</div>
+          <div className="text-2xl font-semibold">
+            {stats ? msToHMS(stats.avgDurationMs) : "…"}
+          </div>
         </Card>
       </div>
 
-      {/* Sessions per day */}
+      {/* Sessions per day (chart rendered client-only) */}
       <Card className="p-4">
         <div className="mb-3 font-medium">Sessions per Day (last 7 days)</div>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer>
-            <BarChart data={sessionsPerDay}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <SessionsBarChart sessions={stats?.sessions ?? []} />
       </Card>
 
       {/* Recent errors */}
