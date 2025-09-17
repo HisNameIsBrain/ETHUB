@@ -1,38 +1,30 @@
 // lib/tts.ts
-import { voiceBus } from "./voiceBus";
+export async function speakWithOpenAI({
+  text,
+  voice = "alloy",
+  format = "mp3",
+}: {
+  text: string;
+  voice?: string;
+  format?: "mp3" | "wav" | "ogg";
+}) {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice, format }),
+  });
 
-export async function speakWithOpenAI(
-  text: string,
-  voice: string = "alloy",
-  format: "mp3" | "wav" | "ogg" | "pcm" = "mp3",
-  source: string = "AssistantLauncher"
-) {
-  voiceBus.emit("tts:start", { source });
-  try {
-    const res = await fetch("/api/tts", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, voice, format }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    await playBlob(url, source);
-  } catch (err: any) {
-    voiceBus.emit("tts:end", { source, error: String(err?.message ?? err) });
-    throw err;
+  if (!res.ok) {
+    const ct = res.headers.get("content-type") || "";
+    const msg = ct.includes("application/json")
+      ? (await res.json()).error
+      : (await res.text()).slice(0, 500);
+    throw new Error(`TTS failed: ${msg}`);
   }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
-async function playBlob(url: string, source: string) {
-  const audio = new Audio(url);
-  try {
-    await audio.play();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-  audio.onended = () => voiceBus.emit("tts:end", { source, error: null });
-  audio.onerror = () =>
-    voiceBus.emit("tts:end", { source, error: "audio playback error" });
-}
+
+

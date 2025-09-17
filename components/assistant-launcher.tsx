@@ -1,7 +1,7 @@
+// components/assistant-launcher.tsx
 "use client";
 
 import * as React from "react";
-import ReactDOM from "react-dom";
 import { Bot, X, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiriGlowInvert } from "@/components/siri-glow-invert";
@@ -83,14 +83,11 @@ export default function AssistantLauncher() {
   // ensure single mount
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
-    // @ts-ignore
-    if (window[key]) return;
-    // @ts-ignore
-    window[key] = true;
+    if ((window as any)[key]) return;
+    (window as any)[key] = true;
     setMounted(true);
     return () => {
-      // @ts-ignore
-      delete window[key];
+      delete (window as any)[key];
     };
   }, []);
 
@@ -140,199 +137,181 @@ export default function AssistantLauncher() {
     if (!res) return "";
     if (typeof res.content === "string") return res.content;
     if (typeof res.text === "string") return res.text;
+    // Convex action might return { message: { content: string } }
+    if (res.message && typeof res.message.content === "string") return res.message.content;
     return "";
   }
 
   async function send(useAsk = false) {
     const text = input.trim();
     if (!text || busy) return;
+
+    // Add the user message immediately for UI responsiveness.
+    setMessages((m) => [...m, { role: "user", content: text }]);
+    setInput("");
     setBusy(true);
+
     try {
+      // 1) Moderation
       const mod = await moderateAction({ text });
       if (mod?.flagged) {
-        setMessages((m) => [...m, { role: "assistant", content: "Blocked by moderation." }]);
+        setMessages((m) => [
+          ...m,
+          { role: "assistant", content: "Blocked by moderation." },
+        ]);
         return;
       }
 
+      // 2) Pick model: if voice is selected, use a text model for reasoning
       const voiceWanted = model === "gpt-4o-mini-tts";
       const chatModel = voiceWanted ? "gpt-4o-mini" : model;
 
-      let res: any = null;
-
+      // 3) Ask model via Convex actions
+      let res: any;
       if (useAsk) {
-        res = await askAction({
-          prompt: text,
-          model: chatModel,
-          voice: voiceWanted ? "alloy" : undefined,
-          audioFormat: voiceWanted ? "mp3" : undefined,
-        });
-        const output = getTextFromResponse(res);
-        if (output) {
+        res = await askAction({ model: chatModel, prompt: text });
+      } else {
+        const history = [...messages, { role: "user", content: text }];
+        res = await chatAction({ model: chatModel, messages: history });
+      }
+
+      const assistantText = getTextFromResponse(res) || "(no response)";
+      setMessages((m) => [...m, { role: "assistant", content: assistantText }]);
+
+      // 4) Speak (if the Voice model is selected)
+      if (voiceWanted) {
+        try {
+          const url = await speakWithOpenAI({
+            text: assistantText,
+            voice: "alloy",
+            format: "mp3",
+          });
+          const audio = new Audio(url);
+          audio.onended = () => URL.revokeObjectURL(url);
+          // Important: this is still within the button click stack (user gesture),
+          // so most browsers will allow playback.
+          await audio.play();
+        } catch (e: any) {
+          console.error("TTS error:", e);
           setMessages((m) => [
             ...m,
-            { role: "user", content: text },
-            { role: "assistant", content: output },
+            { role: "assistant", content: `TTS error: ${e?.message ?? e}` },
           ]);
-          if (voiceWanted) await speakWithOpenAI(output, "alloy", "mp3");
-        }
-      } else {
-        const next = [...messages, { role: "user", content: text }];
-        setMessages(next);
-        res = await chatAction({ model: chatModel, messages: next });
-        const output = getTextFromResponse(res);
-        if (output) {
-          setMessages((m) => [...m, { role: "assistant", content: output }]);
-          if (voiceWanted) await speakWithOpenAI(output, "alloy", "mp3");
         }
       }
-    } catch (err) {
-      console.error("Assistant error:", err);
-      setMessages((m) => [...m, { role: "assistant", content: "Error talking to assistant." }]);
+    } catch (e: any) {
+      console.error(e);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: `Error: ${e?.message ?? String(e)}` },
+      ]);
     } finally {
-      setInput("");
       setBusy(false);
     }
   }
 
   if (!mounted) return null;
 
-  const launcherButton = <LauncherButton onOpen={() => setOpen(true)} />;
-
-  const voiceMode = model === "gpt-4o-mini-tts";
-  const micActive = !!audioStream;
-
   return (
     <>
-      {ReactDOM.createPortal(launcherButton, document.body)}
-
+      <LauncherButton onOpen={() => setOpen(true)} />
       {open && (
-        <div className="fixed inset-0 z-[96] bg-black/40 backdrop-blur-sm">
-          <div className="absolute bottom-0 right-0 m-4 w-[min(640px,calc(100vw-2rem))] rounded-2xl border bg-background shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-3 border-b">
-              <div className="flex items-center gap-3">
-                <div className="relative h-6 w-6 overflow-hidden rounded-full">
-                  <SiriGlowInvert
-                    rotateSec={3.6}
-                    innerRotateSec={4.6}
-                    blurPx={10}
-                    insetPercent={-4}
-                    opacity={0.8}
-                    thicknessPx={8}
-                    inner
-                  />
-                  <span className="absolute inset-[2px] rounded-full border border-white/30 bg-black/50" />
-                </div>
-                <span className="font-medium">ETHUB Assistant</span>
-              </div>
-
+        <div
+          className="fixed inset-0 z-[96] grid place-items-end p-4 sm:p-6"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b">
               <div className="flex items-center gap-2">
-                <div className="hidden sm:flex flex-wrap gap-2 mr-2">
+                <Bot className="h-5 w-5" />
+                <span className="font-semibold">ETHUB Assistant</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={model}
+                  onChange={(e) => {
+                    modelTouchedRef.current = true;
+                    setModel(e.target.value);
+                  }}
+                  onBlur={() => setModelMenuOpen(false)}
+                  className="rounded-md border bg-background px-2 py-1 text-sm"
+                >
                   {MODEL_OPTIONS.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        modelTouchedRef.current = true;
-                        setModel(m.id);
-                      }}
-                      className={`rounded-full px-3 py-1 text-xs border ${
-                        model === m.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background hover:bg-accent"
-                      }`}
-                    >
+                    <option key={m.id} value={m.id}>
                       {m.label}
-                    </button>
+                    </option>
                   ))}
-                </div>
-
-                {voiceMode ? (
-                  micActive ? (
-                    <Button size="icon" variant="secondary" onClick={stopMic} title="Stop mic">
-                      <MicOff className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button size="icon" onClick={startMic} title="Start mic">
-                      <Mic className="h-4 w-4" />
-                    </Button>
-                  )
-                ) : (
-                  <Button size="icon" variant="outline" disabled title="Voice requires GPT-4o Voice">
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                )}
-
-                <Button size="icon" variant="ghost" onClick={() => setOpen(false)} title="Close">
+                </select>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close"
+                >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            {modelMenuOpen && (
-              <div className="flex flex-wrap gap-2 p-3 border-b bg-muted/40 sm:hidden">
-                {MODEL_OPTIONS.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      modelTouchedRef.current = true;
-                      setModel(m.id);
-                    }}
-                    className={`rounded-full px-3 py-1 text-sm border ${
-                      model === m.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent"
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="max-h-[40vh] overflow-auto p-3 space-y-3">
-              {messages.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Ask me anything. Choose “GPT-4o Voice” to hear replies spoken aloud.
-                </p>
-              )}
+            <div className="max-h-[50vh] overflow-auto p-4 space-y-3 text-sm">
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`rounded-lg px-3 py-2 text-sm ${
+                  className={
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground ml-auto max-w-[85%]"
-                      : "bg-muted mr-auto max-w-[85%]"
-                  }`}
+                      ? "text-right"
+                      : "text-left"
+                  }
                 >
-                  {m.content}
+                  <div
+                    className={[
+                      "inline-block rounded-lg px-3 py-2",
+                      m.role === "user"
+                        ? "bg-foreground/10"
+                        : "bg-background border"
+                    ].join(" ")}
+                  >
+                    {m.content}
+                  </div>
                 </div>
               ))}
+              {!messages.length && (
+                <div className="opacity-70">
+                  Try asking about services, documents, or say “Tell me a joke.”
+                  Select “GPT-4o Voice” to hear replies.
+                </div>
+              )}
             </div>
 
-            <form
-              className="flex items-center gap-2 p-3 border-t"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void send(false);
-              }}
-            >
+            <div className="flex items-center gap-2 border-t p-3">
+              {audioStream ? (
+                <Button size="icon" variant="secondary" onClick={stopMic} aria-label="Stop mic">
+                  <MicOff className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button size="icon" variant="secondary" onClick={startMic} aria-label="Start mic">
+                  <Mic className="h-4 w-4" />
+                </Button>
+              )}
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="flex-1 rounded-md border px-3 py-2 text-sm"
-                placeholder="Type your question…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send(false);
+                  }
+                }}
+                placeholder="Type a message…"
+                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
               />
-              <Button type="submit" disabled={busy}>
-                {busy ? "…" : "Send"}
+              <Button onClick={() => send(false)} disabled={busy || !input.trim()}>
+                {busy ? "Thinking…" : "Send"}
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => void send(true)}
-              >
-                Ask (one-shot)
-              </Button>
-            </form>
+            </div>
           </div>
         </div>
       )}

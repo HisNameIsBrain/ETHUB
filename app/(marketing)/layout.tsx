@@ -17,6 +17,8 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           {children}
         </div>
       </main>
+       <AssistantLauncher />
+       <VoiceVisualizerGate />
      <Footer />
     </div>
   );
