@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as _utils_auth from "../_utils/auth.js";
 import type * as assistant from "../assistant.js";
 import type * as backfill_documents from "../backfill_documents.js";
 import type * as backfill_services from "../backfill_services.js";
@@ -38,6 +39,7 @@ import type * as voice from "../voice.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "_utils/auth": typeof _utils_auth;
   assistant: typeof assistant;
   backfill_documents: typeof backfill_documents;
   backfill_services: typeof backfill_services;

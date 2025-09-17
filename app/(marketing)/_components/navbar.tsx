@@ -69,9 +69,8 @@ export default function Navbar() {
 
         {/* Middle: nav links */}
         <div className="flex items-center gap-1">
-          <NavLink href="/services" label="Services" />
+          <NavLink href="/dashboard/services" label="Services" />
           <NavLink href="/dashboard" label="Dashboard" />
-          <NavLink href="/documents" label="Documents" />
           <NavLink href="/settings" label="Settings" />
         </div>
 
