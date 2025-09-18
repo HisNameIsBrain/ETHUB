@@ -1,6 +1,6 @@
-// components/assistant-launcher.tsx
 "use client";
 
+import ConnectedSiriVisualizer from "@/components/connected-siri-visualizer";
 import * as React from "react";
 import { Bot, X, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,39 @@ import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { speakWithOpenAI } from "@/lib/tts";
+import SiriGlowVisualizer from "@/components/siri-glow-visualizer";
+
+<div className="max-h-[50vh] overflow-auto p-4 space-y-3 text-sm relative">
+  {/* Background Siri visualizer */}
+  <SiriGlowVisualizer
+    className="absolute inset-0 z-0 opacity-60"
+    stream={audioStream}
+    mediaEl={(window as any).__assistantState?.mediaEl}
+    idle={!audioStream && !(window as any).__assistantState?.mediaEl}
+  />
+
+  {/* Foreground chat bubbles */}
+  <div className="relative z-10">
+    {messages.map((m, i) => (
+      <div
+        key={i}
+        className={m.role === "user" ? "text-right" : "text-left"}
+      >
+        <div
+          className={[
+            "inline-block rounded-lg px-3 py-2",
+            m.role === "user" ? "bg-foreground/10" : "bg-background border",
+          ].join(" ")}
+        >
+          {m.content}
+        </div>
+      </div>
+    ))}
+    {!messages.length && (
+      <div className="opacity-70">Try asking something…</div>
+    )}
+  </div>
+</div>
 
 type Role = "system" | "user" | "assistant";
 
@@ -188,8 +221,15 @@ export default function AssistantLauncher() {
           });
           const audio = new Audio(url);
           audio.onended = () => URL.revokeObjectURL(url);
-          // Important: this is still within the button click stack (user gesture),
-          // so most browsers will allow playback.
+
+	   const w = window as any;
+	    w.__assistantState = { ...(w.__assistantState || {}), mediaEl: audio };
+	    (w.__assistantSubscribers as Set<Function> | undefined)?.forEach((cb) =>
+	    cb(w.__assistantState)
+	  );
+
+	await audio.play();
+
           await audio.play();
         } catch (e: any) {
           console.error("TTS error:", e);
@@ -228,6 +268,10 @@ export default function AssistantLauncher() {
               <div className="flex items-center gap-2">
                 <Bot className="h-5 w-5" />
                 <span className="font-semibold">ETHUB Assistant</span>
+
+		<div className="relative h-40 sm:h-48 border-b bg-background/60">
+                 <ConnectedSiriVisualizer />
+		</div>
               </div>
               <div className="flex items-center gap-2">
                 <select
