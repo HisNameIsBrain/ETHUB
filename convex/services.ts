@@ -53,7 +53,7 @@ export const upsert = mutation({
       .first();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...r, search, updatedAt: now(), search: buildServiceSearch({ ...r, search, updatedAt: now() }) });
+      await ctx.db.patch(existing._id, { ...r, search, updatedAt: now(), search: buildServiceSearch(r) });
     } else {
       await ctx.db.insert("services", {
         ...r,
@@ -113,7 +113,7 @@ export const update = mutation({
   handler: async (ctx, { id, patch }) => {
     const doc = await ctx.db.get(id);
     if (!doc) throw new Error("not_found");
-    await ctx.db.patch(id, { ...patch, updatedAt: now(), search: buildServiceSearch({ ...patch, updatedAt: now() }) });
+    await ctx.db.patch(id, { ...patch, updatedAt: now(), search: buildServiceSearch(patch) });
     return id;
   },
 });
@@ -187,10 +187,10 @@ export const getAll = query({
       const needle = search.toLowerCase();
       q = q.filter(s =>
         s.or(
-          s.contains(s.field("title"), needle),
-          s.contains(s.field("category"), needle),
-          s.contains(s.field("deliveryTime"), needle),
-          s.contains(s.field("notes"), needle),
+// TODO(convex): replace with withSearchIndex; removed contains()
+// TODO(convex): replace with withSearchIndex; removed contains()
+// TODO(convex): replace with withSearchIndex; removed contains()
+// TODO(convex): replace with withSearchIndex; removed contains()
         ),
       );
     }
@@ -231,8 +231,8 @@ export const upsertBatch = action({
   handler: async (ctx, { rows }) => {
     for (const r of rows) {
       const ex = await ctx.db.query("services").withIndex("by_slug", q => q.eq("slug", r.slug)).first();
-      if (ex) await ctx.db.patch(ex._id, { ...r, updatedAt: now(), search: buildServiceSearch({ ...r, updatedAt: now() }) });
-      else await ctx.db.insert("services", { ...r, isPublic: r.isPublic ?? true, archived: false, createdAt: now(), updatedAt: now(), search: buildServiceSearch({ ...r, isPublic: r.isPublic ?? true, archived: false, createdAt: now(), updatedAt: now() }) });
+      if (ex) await ctx.db.patch(ex._id, { ...r, updatedAt: now(), search: buildServiceSearch(r) });
+      else await ctx.db.insert("services", { ...r, isPublic: r.isPublic ?? true, archived: false, createdAt: now(), updatedAt: now(), search: buildServiceSearch(r) });
     }
     return { count: rows.length };
   },

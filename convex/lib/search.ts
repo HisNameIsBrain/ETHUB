@@ -1,19 +1,10 @@
-// conve./lib/search.ts
-export type ServiceLike = {
-  title?: string;
-  category?: string;
-  deliveryTime?: string;
-  notes?: string | null;
-  tags?: string[] | null;
-};
-
-export function buildServiceSearch(s: ServiceLike) {
-  const parts = [
-    s?.title ?? "",
-    s?.category ?? "",
-    s?.deliveryTime ?? "",
-    s?.notes ?? "",
-    ...(s?.tags ?? []),
-  ];
-  return parts.join(" ").toLowerCase();
+// convex/lib/search.ts
+export function buildServiceSearch(s: any): string {
+  if (!s) return "";
+  const title = s.title ?? "";
+  const category = s.category ?? "";
+  const deliveryTime = s.deliveryTime ?? "";
+  const notes = s.notes ?? "";
+  const tags = Array.isArray(s.tags) ? s.tags.join(" ") : (s.tags ?? "");
+  return [title, category, deliveryTime, notes, tags].join(" ").toLowerCase().trim();
 }
