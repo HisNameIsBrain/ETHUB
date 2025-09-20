@@ -70,7 +70,7 @@ export const endSession = mutation({
     const sess = await ctx.db.get(sessionId);
     if (!sess) return { ok: true };
 
-    await ctx.db.patch(sessionId, { endedAt: Date.now(), status: "ended", status: "ended" }) });
+    await ctx.db.patch(sessionId, { endedAt: Date.now(), status: "ended" })
 
     await ctx.db.insert("voiceLogs", {
       sessionId,

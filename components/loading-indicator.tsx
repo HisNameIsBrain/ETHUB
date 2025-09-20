@@ -24,7 +24,7 @@ export default function LoadingIndicator() {
  
  return loading ? (
   <div className="fixed top-0 left-0 w-full h-[4px] z-[9999] overflow-hidden">
-   </SiriGlow> height="4px" />
+   <SiriGlow height="4px" />
     </div>
  ) : null;
 }
