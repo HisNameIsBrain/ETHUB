@@ -1,4 +1,4 @@
-// conve@/lib/search.ts
+// conve./lib/search.ts
 export type ServiceLike = {
   title?: string;
   category?: string;

@@ -1,4 +1,4 @@
-import { buildServiceSearch } from "@/lib/search";
+import { buildServiceSearch } from "./lib/search";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -7,7 +7,7 @@ function pack(kind: "input" | "output" | "event", type: string, payload?: any) {
   // We store logs as JSON strings: { type, ...payload }
   const obj = { type, ...(payload ?? {}) };
   return { kind, payloadJson: JSON.stringify(obj), createdAt: Date.now() };
-}
+};
 
 // --- Core: create, log, end, read
 export const startSession = mutation({
@@ -70,7 +70,7 @@ export const endSession = mutation({
     const sess = await ctx.db.get(sessionId);
     if (!sess) return { ok: true };
 
-    await ctx.db.patch(sessionId, { endedAt: Date.now(), status: "ended", search: buildServiceSearch({ endedAt: Date.now(), status: "ended" }) });
+    await ctx.db.patch(sessionId, { endedAt: Date.now(), status: "ended", status: "ended" }) });
 
     await ctx.db.insert("voiceLogs", {
       sessionId,

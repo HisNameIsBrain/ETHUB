@@ -1,4 +1,4 @@
-import { buildServiceSearch } from "@/lib/search";
+import { buildServiceSearch } from "./lib/search";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 

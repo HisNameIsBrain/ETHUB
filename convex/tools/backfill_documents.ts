@@ -1,4 +1,4 @@
-import { buildServiceSearch } from "@/lib/search";
+import { buildServiceSearch } from "./lib/search";
 // convex/tools/backfill_documents.ts
 import { mutation } from "../_generated/server";
 
