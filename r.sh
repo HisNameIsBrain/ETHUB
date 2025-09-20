@@ -1,6 +1,10 @@
-git add -A && git commit -m "checkpoint before services fixes" || true
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 1) Regenerate a tolerant helper: accepts any object shape.
+# 0) safety checkpoint
+git add -A && git commit -m "checkpoint before perl fixes" >/dev/null 2>&1 || true
+
+# 1) Ensure tolerant helper exists (accepts any shape)
 mkdir -p convex/lib
 cat > convex/lib/search.ts <<'EOF'
 // convex/lib/search.ts
@@ -15,31 +19,32 @@ export function buildServiceSearch(s: any): string {
 }
 EOF
 
-# 2) services.ts — remove the accidental duplicate `search` property in patch payloads.
-#    Turns `{ ...r, search, updatedAt: now(), search: buildServiceSearch(...) }`
-#    into `{ ...r, updatedAt: now(), search: buildServiceSearch(...) }`
-sed -i 's/\(\{[^}]*\)search[[:space:]]*,[[:space:]]*updatedAt:[[:space:]]*now()[[:space:]]*,[[:space:]]*search:[[:space:]]*buildServiceSearch/\1updatedAt: now(), search: buildServiceSearch/g' convex/services.ts
+# 2) Fix duplicate "search" property in services.ts patch payloads:
+#    {...r, search, updatedAt: now(), search: buildServiceSearch(...)} -> {...r, updatedAt: now(), search: buildServiceSearch(...)}
+perl -0777 -i -pe 's/\{([^{}]*?)\bsearch\s*,\s*updatedAt\s*:\s*now\(\)\s*,\s*search\s*:\s*buildServiceSearch/\{$1updatedAt: now(), search: buildServiceSearch/sg' convex/services.ts
 
-# 3) services.ts — guarantee inserts include `search: buildServiceSearch(a)`
-sed -i 's/ctx\.db\.insert("services",[[:space:]]*{[[:space:]]*\.\.\.a,/ctx.db.insert("services", { ...a, search: buildServiceSearch(a),/g' convex/services.ts
+# 3) Stop passing oversized objects into buildServiceSearch
+perl -0777 -i -pe 's/buildServiceSearch\(\{\s*[^}]*?\.\.\.r[^}]*?\}\)/buildServiceSearch(r)/sg' convex/services.ts
+perl -0777 -i -pe 's/buildServiceSearch\(\{\s*[^}]*?\.\.\.patch[^}]*?\}\)/buildServiceSearch(patch)/sg' convex/services.ts
 
-# 4) services.ts — stop passing `{ ...r, ... }` / `{ ...patch, ... }` into buildServiceSearch;
-#    pass the object directly. (Now that helper is tolerant, this is optional but cleaner.)
-sed -i 's/buildServiceSearch({[^}]*\.\.\.r[^}]*})/buildServiceSearch(r)/g' convex/services.ts
-sed -i 's/buildServiceSearch({[^}]*\.\.\.patch[^}]*})/buildServiceSearch(patch)/g' convex/services.ts
+# 4) Guarantee inserts include search: buildServiceSearch(a) (only if not already present)
+#    We look for ctx.db.insert("services", { ...a, ... }) WITHOUT "search:"
+perl -0777 -i -pe '
+s/ctx\.db\.insert\("services",\s*\{\s*\.\.\.a,(?![^}]*\bsearch\s*:)/ctx.db.insert("services", { ...a, search: buildServiceSearch(a),/sg
+' convex/services.ts
 
-# 5) Comment out the old (invalid) contains-based filters so TS stops complaining.
-#    You’ll replace this whole block with a proper searchIndex later.
-sed -i 's/^[[:space:]]*s\.contains(.*needle.*),/\/\/ TODO(convex): replace with withSearchIndex; removed contains()/g' convex/services.ts
+# 5) Comment out invalid s.contains(...) filters (you will replace with searchIndex later)
+perl -0777 -i -pe 's/^(\s*)s\.contains\([^\n]*\),/$1\/\/ TODO: replace with withSearchIndex (removed contains)\n/mg' convex/services.ts
 
-# 6) If services logic is inside an action, flip it to a mutation so ctx.db exists.
-#    Handles common import shapes.
-sed -i 's/\baction\s*\/mutation/g' convex/services.ts
-sed -i 's/import\s*{\s*action\s*,\s*query\s*}\s*from ".\/_generated\/server";/import { mutation, query } from ".\/_generated\/server";/g' convex/services.ts
-sed -i 's/import\s*{\s*action\s*}\s*from ".\/_generated\/server";/import { mutation } from ".\/_generated\/server";/g' convex/services.ts
+# 6) If this file was still an action(), flip to mutation() so ctx.db exists (no-op if already ok)
+perl -0777 -i -pe 's/\baction\s*\(/mutation(/g' convex/services.ts
+perl -0777 -i -pe 's/import\s*\{\s*action\s*,\s*query\s*\}\s*from\s*"\.\/_generated\/server";/import { mutation, query } from ".\/_generated\/server";/g' convex/services.ts
+perl -0777 -i -pe 's/import\s*\{\s*action\s*\}\s*from\s*"\.\/_generated\/server";/import { mutation } from ".\/_generated\/server";/g' convex/services.ts
 
-# 7) Fix one lingering bad relative import path (depth=1) in tools backfill.
-sed -i 's|"./lib/search"|"../lib/search"|g' convex/tools/backfill_documents.ts 2>/dev/null || true
+# 7) Fix lingering bad relative import in tools backfill
+[ -f convex/tools/backfill_documents.ts ] && perl -0777 -i -pe 's|"./lib/search"|"../lib/search"|g' convex/tools/backfill_documents.ts || true
 
-# 8) Re-typecheck
+# 8) Show diff and run tsc
+git --no-pager diff -- convex/services.ts convex/tools/backfill_documents.ts || true
+echo "Running tsc..."
 npx tsc || true
