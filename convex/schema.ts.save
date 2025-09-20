@@ -67,24 +67,36 @@ export default defineSchema({
     .index("by_token", ["tokenIdentifier"]),
 
   services: defineTable({
-    slug: v.optional(v.string()),       
-    title: v.string(),        
-    category: v.string(),     
-    deliveryTime: v.string(),  
-    priceCents: v.number(),  
-    currency: v.string(),       
-    sourceUrl: v.string(),    
-    notes: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    isPublic: v.boolean(),
-    archived: v.boolean(),
-    createdAt: v.number(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    price: v.optional(v.float64()),
+    deliveryTime: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
+    slug: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
     updatedAt: v.number(),
-    search: v.string(),
+    createdBy: v.optional(v.string()),
   })
-    .searchIndex("search_all", { searchField: "search" })
     .index("by_slug", ["slug"])
-    .index("by_category", ["category", "archived"])
-    .index("by_isPublic", ["isPublic", "archived"])
+    .index("by_archived", ["archived"])
+    .index("by_isPublic_archived", ["isPublic", "archived"])
     .index("by_createdAt", ["createdAt"]),
+
+seedSservices: defineTable({
+  device: v.string(),
+  status: v.string(),
+  orderPrice: v.number(),
+  price: v.number(),
+  reply: v.string(),
+  comments: v.optional(v.string()),
+  service: v.optional(v.string()),
+  orderDate: v.optional(v.string()), // or v.number() if you store as timestamp
+  replyDate: v.optional(v.string()),
+  createdAt: v.number(),
+  archived: v.boolean(),
+  isPublic: v.boolean(),
+}),
+
+
 });

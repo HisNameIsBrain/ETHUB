@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "@/lib/search";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -69,7 +70,7 @@ export const endSession = mutation({
     const sess = await ctx.db.get(sessionId);
     if (!sess) return { ok: true };
 
-    await ctx.db.patch(sessionId, { endedAt: Date.now(), status: "ended" });
+    await ctx.db.patch(sessionId, { endedAt: Date.now(), status: "ended", search: buildServiceSearch({ endedAt: Date.now(), status: "ended" }) });
 
     await ctx.db.insert("voiceLogs", {
       sessionId,

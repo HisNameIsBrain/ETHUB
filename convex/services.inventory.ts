@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "@/lib/search";
 // convex/services.inventory.ts
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";

@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "@/lib/search";
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
@@ -21,7 +22,7 @@ export const ensureByToken = mutation({
     const now = Date.now();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args, updatedAt: now });
+      await ctx.db.patch(existing._id, { ...args, updatedAt: now, search: buildServiceSearch({ ...args, updatedAt: now }) });
       return existing._id;
     }
 

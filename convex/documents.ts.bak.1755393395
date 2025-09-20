@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "@/lib/search";
 // convex/documents.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
@@ -18,7 +19,7 @@ async function archiveDescendants(ctx: any, ownerId: string, parentId: Id<"docum
     .collect();
   for (const child of children) {
     if (child.userId !== ownerId) continue;
-    await ctx.db.patch(child._id, { isArchived: true, updatedAt: Date.now() });
+    await ctx.db.patch(child._id, { isArchived: true, updatedAt: Date.now(), search: buildServiceSearch({ isArchived: true, updatedAt: Date.now() }) });
     await archiveDescendants(ctx, ownerId, child._id);
   }
 }
@@ -30,7 +31,7 @@ async function restoreDescendants(ctx: any, ownerId: string, parentId: Id<"docum
     .collect();
   for (const child of children) {
     if (child.userId !== ownerId) continue;
-    await ctx.db.patch(child._id, { isArchived: false, updatedAt: Date.now() });
+    await ctx.db.patch(child._id, { isArchived: false, updatedAt: Date.now(), search: buildServiceSearch({ isArchived: false, updatedAt: Date.now() }) });
     await restoreDescendants(ctx, ownerId, child._id);
   }
 }
@@ -111,7 +112,7 @@ export const archive = mutation({
     if (!doc) throw new Error("Document not found");
     if (doc.userId !== userId) throw new Error("Not authorized");
 
-    const patched = await ctx.db.patch(id, { isArchived: true, updatedAt: Date.now() });
+    const patched = await ctx.db.patch(id, { isArchived: true, updatedAt: Date.now(), search: buildServiceSearch({ isArchived: true, updatedAt: Date.now() }) });
     await archiveDescendants(ctx, userId, id);
     return patched;
   },
@@ -155,7 +156,7 @@ export const removeIcon = mutation({
     const doc = await ctx.db.get(id);
     if (!doc) throw new Error("Document not found");
     if (doc.userId !== userId) throw new Error("Unauthorized");
-    return await ctx.db.patch(id, { icon: undefined, updatedAt: Date.now() });
+    return await ctx.db.patch(id, { icon: undefined, updatedAt: Date.now(), search: buildServiceSearch({ icon: undefined, updatedAt: Date.now() }) });
   },
 });
 
@@ -166,7 +167,7 @@ export const removeCoverImage = mutation({
     const doc = await ctx.db.get(id);
     if (!doc) throw new Error("Document not found");
     if (doc.userId !== userId) throw new Error("Unauthorized");
-    return await ctx.db.patch(id, { coverImage: undefined, updatedAt: Date.now() });
+    return await ctx.db.patch(id, { coverImage: undefined, updatedAt: Date.now(), search: buildServiceSearch({ coverImage: undefined, updatedAt: Date.now() }) });
   },
 });
 

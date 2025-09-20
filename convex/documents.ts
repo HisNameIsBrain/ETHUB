@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "@/lib/search";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -24,7 +25,7 @@ async function archiveDescendants(ctx: any, parentId: Id<"documents">) {
     .withIndex("by_parent", (q: any) => q.eq("parentDocument", parentId))
     .collect();
   for (const k of kids) {
-    await ctx.db.patch(k._id, { isArchived: true, updatedAt: Date.now() });
+    await ctx.db.patch(k._id, { isArchived: true, updatedAt: Date.now(), search: buildServiceSearch({ isArchived: true, updatedAt: Date.now() }) });
     await archiveDescendants(ctx, k._id);
   }
 }
@@ -87,7 +88,7 @@ export const archive = mutation({
     const userId = await requireUserId(ctx);
     const doc = await ctx.db.get(id);
     if (!doc || doc.userId !== userId) throw new Error("Not found");
-    await ctx.db.patch(id, { isArchived: true, updatedAt: Date.now() });
+    await ctx.db.patch(id, { isArchived: true, updatedAt: Date.now(), search: buildServiceSearch({ isArchived: true, updatedAt: Date.now() }) });
     await archiveDescendants(ctx, id);
   },
 });
@@ -98,7 +99,7 @@ export const restore = mutation({
     const userId = await requireUserId(ctx);
     const doc = await ctx.db.get(id);
     if (!doc || doc.userId !== userId) throw new Error("Not found");
-    await ctx.db.patch(id, { isArchived: false, updatedAt: Date.now() });
+    await ctx.db.patch(id, { isArchived: false, updatedAt: Date.now(), search: buildServiceSearch({ isArchived: false, updatedAt: Date.now() }) });
   },
 });
 
