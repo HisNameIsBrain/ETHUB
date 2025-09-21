@@ -1,95 +1,196 @@
-import { buildServiceSearch } from "./lib/search";
 import { v } from "convex/values";
-import { query, mutation, action } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import { buildServiceSearch } from "./lib/search";
 
-const now = () => Date.now();
+/* ---------------------------- helpers ---------------------------- */
 
-export const search = query({
-  args: { needle: v.string() },
-  handler: async (ctx, { needle }) => {
-    const term = needle.trim().toLowerCase();
-    if (!term) return [];
+function slugify(input: string) {
+  return (input || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
 
-    return await ctx.db
+async function uniqueSlug(ctx: any, baseTitle: string) {
+  const base = slugify(baseTitle) || "service";
+  let slug = base;
+  let i = 1;
+  while (true) {
+    const ex = await ctx.db
       .query("services")
-      .withSearchIndex("search_all", (q) => q.search("search", term))
-      .collect();
-  },
-});
-
-export const upsert = mutation({
-  args: {
-    r: v.object({
-      slug: v.optional(v.string()),
-      notes: v.optional(v.string()),
-      tags: v.optional(v.array(v.string())),
-      createdAt: v.number(),
-      title: v.string(),
-      updatedAt: v.number(),
-      category: v.string(),
-      deliveryTime: v.string(),
-      priceCents: v.number(),
-      currency: v.string(),
-      sourceUrl: v.string(),
-      isPublic: v.boolean(),
-      archived: v.boolean(),
-      device: v.optional(v.string()), // only if you chose Option B above
-    }),
-  },
-  handler: async (ctx, { r }) => {
-    const search = [
-      r.title,
-      r.category,
-      r.deliveryTime,
-      r.notes ?? "",
-      (r.tags ?? []).join(" "),
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const existing = await ctx.db
-      .query("services")
-      .withIndex("by_slug", (q) => q.eq("slug", r.slug ?? ""))
+      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
       .first();
+    if (!ex) return slug;
+    slug = `${base}-${i++}`;
+  }
+}
 
-    if (existing) {
-      await ctx.db.patch(existing._id, { ...r, search, updatedAt: now(), search: buildServiceSearch(r) });
-    } else {
-      await ctx.db.insert("services", {
-        ...r,
-        search,
-        isPublic: r.isPublic ?? true,
-        archived: false,
-        createdAt: now(),
-        updatedAt: now(),
-      });
+/* ------------------------- admin subjects ------------------------ */
+
+const ADMIN_SUBJECTS = (process.env.ADMIN_SUBJECTS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function isAdminSubject(subject?: string | null) {
+  return !!subject && ADMIN_SUBJECTS.includes(subject);
+}
+
+type IosfilesService = {
+  id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  isPublic?: boolean;
+  [k: string]: unknown;
+};
+
+export const fetchPublicIosfilesServices = action(async () => {
+  const url = `${process.env.IOSFILES_BASE_URL || "https://iosfiles.com"}/api/imei-services`;
+  const res = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(process.env.IOSFILES_API_KEY
+        ? { Authorization: `Bearer ${process.env.IOSFILES_API_KEY}` }
+        : {}),
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`iosfiles fetch failed: ${res.status}`);
+  const data = (await res.json()) as IosfilesService[] | { data: IosfilesService[] };
+
+  const list = Array.isArray(data) ? data : (data as any).data || [];
+  return list
+    .filter((s: any) => s?.isPublic === true)
+    .map((s: any) => ({
+      id: String(s.id),
+      name: String(s.name ?? ""),
+      description: String(s.description ?? ""),
+      price: Number(s.price ?? 0),
+    }));
+});
+
+/* --------------------- batch import (iOS Files) ------------------ */
+
+const itemV = v.object({
+  title: v.string(),
+  description: v.optional(v.string()), // accepted, mapped to notes
+  notes: v.optional(v.string()),
+  price: v.optional(v.number()), // dollars
+  priceCents: v.optional(v.number()), // cents (wins if present)
+  currency: v.optional(v.string()),
+  category: v.optional(v.string()),
+  deliveryTime: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+  sourceUrl: v.optional(v.string()),
+  isPublic: v.optional(v.boolean()),
+  archived: v.optional(v.boolean()),
+  slug: v.optional(v.string()),
+});
+
+export const importServices = mutation({
+  args: { items: v.array(itemV) },
+  handler: async (ctx, { items }) => {
+    const now = Date.now();
+    let inserted = 0,
+      updated = 0;
+
+    for (const raw of items) {
+      const title = raw.title?.trim();
+      if (!title) continue;
+
+      const notes = (raw.description ?? raw.notes) ?? "";
+      const priceCents =
+        typeof raw.priceCents === "number"
+          ? Math.round(raw.priceCents)
+          : typeof raw.price === "number"
+          ? Math.round(raw.price * 100)
+          : 0;
+
+      const wantedSlug =
+        (raw.slug && slugify(raw.slug)) || (await uniqueSlug(ctx, title));
+
+      const existing = await ctx.db
+        .query("services")
+        .withIndex("by_slug", (q: any) => q.eq("slug", wantedSlug))
+        .first();
+
+      const patch = {
+        slug: wantedSlug,
+        title,
+        notes,
+        tags: raw.tags ?? [],
+        category: raw.category ?? "",
+        deliveryTime: raw.deliveryTime ?? "",
+        priceCents,
+        currency: raw.currency ?? "USD",
+        sourceUrl: raw.sourceUrl ?? "",
+        isPublic: raw.isPublic ?? true,
+        archived: raw.archived ?? false,
+        search: buildServiceSearch({
+          title,
+          notes,
+          deliveryTime: raw.deliveryTime,
+          tags: raw.tags,
+        }),
+      };
+
+      if (existing) {
+        await ctx.db.patch(existing._id, { ...patch, updatedAt: now });
+        updated++;
+      } else {
+        await ctx.db.insert("services", { ...patch, createdAt: now, updatedAt: now });
+        inserted++;
+      }
     }
+
+    return { inserted, updated, total: items.length };
   },
 });
 
+/* ---------------------------- mutations -------------------------- */
 
 export const create = mutation({
   args: {
-    slug: v.string(),
     title: v.string(),
-    category: v.string(),
-    deliveryTime: v.string(),
-    priceCents: v.number(),
-    currency: v.string(),
-    sourceUrl: v.string(),
     notes: v.optional(v.string()),
+    priceCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    category: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
   },
-  handler: async (ctx, a) => {
-    const dup = await ctx.db.query("services").withIndex("by_slug", q => q.eq("slug", a.slug)).first();
-    if (dup) throw new Error("slug_taken");
-    return ctx.db.insert("services", {
-      ...a,
-      isPublic: a.isPublic ?? true,
-      archived: false,
-      createdAt: now(),
-      updatedAt: now(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const now = Date.now();
+    const slug = await uniqueSlug(ctx, args.title);
+
+    return await ctx.db.insert("services", {
+      slug,
+      title: args.title,
+      notes: args.notes,
+      tags: args.tags ?? [],
+      category: args.category ?? "",
+      deliveryTime: args.deliveryTime ?? "",
+      priceCents: args.priceCents ?? 0,
+      currency: args.currency ?? "USD",
+      sourceUrl: args.sourceUrl ?? "",
+      isPublic: args.isPublic ?? true,
+      archived: args.archived ?? false,
+      createdAt: now,
+      updatedAt: now,
+      search: buildServiceSearch({
+        title: args.title,
+        notes: args.notes,
+        deliveryTime: args.deliveryTime,
+        tags: args.tags,
+      }),
     });
   },
 });
@@ -97,44 +198,45 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("services"),
-    patch: v.object({
-      title: v.optional(v.string()),
-      category: v.optional(v.string()),
-      deliveryTime: v.optional(v.string()),
-      priceCents: v.optional(v.number()),
-      currency: v.optional(v.string()),
-      sourceUrl: v.optional(v.string()),
-      notes: v.optional(v.string()),
-      tags: v.optional(v.array(v.string())),
-      isPublic: v.optional(v.boolean()),
-      archived: v.optional(v.boolean()),
-    }),
+    title: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    priceCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    category: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
   },
-  handler: async (ctx, { id, patch }) => {
-    const doc = await ctx.db.get(id);
-    if (!doc) throw new Error("not_found");
-    await ctx.db.patch(id, { ...patch, updatedAt: now(), search: buildServiceSearch(patch) });
-    return id;
-  },
-});
+  handler: async (ctx, args) => {
+    const patch: any = { updatedAt: Date.now() };
 
-export const archive = mutation({
-  args: { id: v.id("services") },
-  handler: async (ctx, { id }) => {
-    const doc = await ctx.db.get(id);
-    if (!doc) throw new Error("not_found");
-    await ctx.db.patch(id, { archived: true, isPublic: false, updatedAt: now(), search: buildServiceSearch({ archived: true, isPublic: false, updatedAt: now() }) });
-    return id;
-  },
-});
+    if (args.title !== undefined) {
+      patch.title = args.title;
+      patch.slug = await uniqueSlug(ctx, args.title);
+    }
+    if (args.notes !== undefined) patch.notes = args.notes;
+    if (args.priceCents !== undefined) patch.priceCents = args.priceCents;
+    if (args.currency !== undefined) patch.currency = args.currency;
+    if (args.sourceUrl !== undefined) patch.sourceUrl = args.sourceUrl;
+    if (args.category !== undefined) patch.category = args.category;
+    if (args.deliveryTime !== undefined) patch.deliveryTime = args.deliveryTime;
+    if (args.tags !== undefined) patch.tags = args.tags;
+    if (args.isPublic !== undefined) patch.isPublic = args.isPublic;
+    if (args.archived !== undefined) patch.archived = args.archived;
 
-export const restore = mutation({
-  args: { id: v.id("services") },
-  handler: async (ctx, { id }) => {
-    const doc = await ctx.db.get(id);
-    if (!doc) throw new Error("not_found");
-    await ctx.db.patch(id, { archived: false, updatedAt: now(), search: buildServiceSearch({ archived: false, updatedAt: now() }) });
-    return id;
+    // recompute search when relevant fields change
+    if ("title" in patch || "notes" in patch || "deliveryTime" in patch || "tags" in patch) {
+      patch.search = buildServiceSearch({
+        title: patch.title,
+        notes: patch.notes,
+        deliveryTime: patch.deliveryTime,
+        tags: patch.tags,
+      });
+    }
+
+    await ctx.db.patch(args.id, patch);
   },
 });
 
@@ -142,98 +244,56 @@ export const remove = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
     await ctx.db.delete(id);
-    return id;
+  },
+});
+
+/* ----------------------------- queries --------------------------- */
+
+export const getPublic = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const admin = isAdminSubject(identity?.subject ?? null);
+
+    if (admin) {
+      // Use existing index by_createdAt, filter archived in memory
+      const items = await ctx.db
+        .query("services")
+        .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
+        .collect();
+
+      return items
+        .filter((s: any) => s.archived === false)
+        .sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    }
+
+    // Non-admin: by_isPublic then filter archived
+    const items = await ctx.db
+      .query("services")
+      .withIndex("by_isPublic", (q: any) => q.eq("isPublic", true))
+      .collect();
+
+    return items
+      .filter((s: any) => s.archived === false)
+      .sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   },
 });
 
 export const getById = query({
   args: { id: v.id("services") },
-  handler: async (ctx, { id }) => ctx.db.get(id),
-});
-
-export const getBySlug = query({
-  args: { slug: v.string() },
-  handler: async (ctx, { slug }) =>
-    ctx.db.query("services").withIndex("by_slug", q => q.eq("slug", slug)).first(),
-});
-
-export const getAll = query({
-  args: {
-    search: v.optional(v.string()),
-    category: v.optional(v.string()),
-    isPublic: v.optional(v.boolean()),
-    includeArchived: v.optional(v.boolean()),
-    sort: v.optional(v.union(v.literal("new"), v.literal("price_asc"), v.literal("price_desc"))),
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.id("services")),
-  },
-  handler: async (ctx, args) => {
-    const {
-      search = "",
-      category,
-      isPublic = true,
-      includeArchived = false,
-      sort = "new",
-      limit = 50,
-      cursor,
-    } = args;
-
-    let q = ctx.db.query("services");
-    if (!includeArchived) q = q.filter(s => s.eq(s.field("archived"), false));
-    if (typeof isPublic === "boolean") q = q.filter(s => s.eq(s.field("isPublic"), isPublic));
-    if (category) q = q.filter(s => s.eq(s.field("category"), category));
-
-    if (search.trim()) {
-      const needle = search.toLowerCase();
-      q = q.filter(s =>
-        s.or(
-// TODO(convex): replace with withSearchIndex; removed contains()
-// TODO(convex): replace with withSearchIndex; removed contains()
-// TODO(convex): replace with withSearchIndex; removed contains()
-// TODO(convex): replace with withSearchIndex; removed contains()
-        ),
-      );
-    }
-
-    let results = await q.collect();
-    if (sort === "new") results.sort((a, b) => b.createdAt - a.createdAt);
-    if (sort === "price_asc") results.sort((a, b) => a.priceCents - b.priceCents);
-    if (sort === "price_desc") results.sort((a, b) => b.priceCents - a.priceCents);
-
-    if (cursor) {
-      const i = results.findIndex(r => r._id === cursor);
-      if (i >= 0) results = results.slice(i + 1);
-    }
-    const page = results.slice(0, limit);
-    const nextCursor = results.length > limit ? page[page.length - 1]?._id ?? null : null;
-    return { page, nextCursor };
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
   },
 });
 
-/** Batch upsert (used by scraper) */
-export const upsertBatch = action({
-  args: {
-    rows: v.array(
-      v.object({
-        slug: v.string(),
-        title: v.string(),
-        category: v.string(),
-        deliveryTime: v.string(),
-        priceCents: v.number(),
-        currency: v.string(),
-        sourceUrl: v.string(),
-        notes: v.optional(v.string()),
-        tags: v.optional(v.array(v.string())),
-        isPublic: v.optional(v.boolean()),
-      }),
-    ),
-  },
-  handler: async (ctx, { rows }) => {
-    for (const r of rows) {
-      const ex = await ctx.db.query("services").withIndex("by_slug", q => q.eq("slug", r.slug)).first();
-      if (ex) await ctx.db.patch(ex._id, { ...r, updatedAt: now(), search: buildServiceSearch(r) });
-      else await ctx.db.insert("services", { ...r, isPublic: r.isPublic ?? true, archived: false, createdAt: now(), updatedAt: now(), search: buildServiceSearch(r) });
-    }
-    return { count: rows.length };
+export const getArchived = query({
+  args: {},
+  handler: async (ctx) => {
+    // No by_archived index presumed; read by_createdAt then filter
+    const items = await ctx.db
+      .query("services")
+      .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
+      .collect();
+    return items.filter((s: any) => s.archived === true);
   },
 });

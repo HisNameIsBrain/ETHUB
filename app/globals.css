@@ -117,3 +117,35 @@ body,
 .animate-siriGlow {
   animation: siriGlow 6s linear infinite;
 }
+.ethub-chat {
+  position: relative;
+  box-shadow:
+    0 0 5px rgba(0, 200, 255, 0.7),
+    0 0 10px rgba(255, 0, 200, 0.6),
+    0 0 15px rgba(0, 255, 180, 0.5);
+}
+
+.ethub-chat::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg,
+    rgba(0, 200, 255, 0.2),
+    rgba(255, 0, 200, 0.2),
+    rgba(0, 255, 180, 0.2),
+    rgba(0, 200, 255, 0.2)
+  );
+  opacity: 0.22;
+  z-index: 0;
+  animation: siriGlow 10s linear infinite;
+}
+
+.ethub-chat > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes siriGlow {
+  to { transform: rotate(360deg); }
+}

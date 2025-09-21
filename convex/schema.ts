@@ -68,19 +68,20 @@ export default defineSchema({
 
   services: defineTable({
     slug: v.optional(v.string()),       
-    title: v.string(),        
-    category: v.string(),     
-    deliveryTime: v.string(),  
-    priceCents: v.number(),  
-    currency: v.string(),       
-    sourceUrl: v.string(),    
+    title: v.optional(v.string()),        
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),     
+    deliveryTime: v.optional(v.string()),  
+    priceCents: v.optional(v.number()),  
+    currency: v.optional(v.string()),       
+    sourceUrl: v.optional(v.string()),    
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     isPublic: v.boolean(),
     archived: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    search: v.string(),
+    search: v.optional(v.string()),
   })
     .searchIndex("search_all", { searchField: "search" })
     .index("by_slug", ["slug"])

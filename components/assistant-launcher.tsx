@@ -36,12 +36,12 @@ function LauncherButton({ onOpen }: { onOpen: () => void }) {
     >
       <span className="absolute inset-0 rounded-full bg-neutral-950" />
       <SiriGlowInvert
-        className="inset-[-6%]"
+        className="inset-[]"
         rotateSec={3.2}
         innerRotateSec={4.4}
-        blurPx={14}
-        insetPercent={-6}
-        opacity={0.85}
+        blurPx={5}
+        insetPercent={0}
+        opacity={0.95}
         thicknessPx={11}
         inner
         colors={[
@@ -132,7 +132,6 @@ export default function AssistantLauncher() {
     setAudioStream(null);
   }, []);
   React.useEffect(() => () => stopMic(), [stopMic]);
-
   function getTextFromResponse(res: any): string {
     if (!res) return "";
     if (typeof res.content === "string") return res.content;
@@ -145,7 +144,6 @@ export default function AssistantLauncher() {
   async function send(useAsk = false) {
     const text = input.trim();
     if (!text || busy) return;
-
     // Add the user message immediately for UI responsiveness.
     setMessages((m) => [...m, { role: "user", content: text }]);
     setInput("");
@@ -195,6 +193,7 @@ export default function AssistantLauncher() {
           console.error("TTS error:", e);
           setMessages((m) => [
             ...m,
+
             { role: "assistant", content: `TTS error: ${e?.message ?? e}` },
           ]);
         }
@@ -219,11 +218,11 @@ export default function AssistantLauncher() {
         <div
           className="fixed inset-0 z-[96] grid place-items-end p-4 sm:p-6"
           onClick={() => setOpen(false)}
-        >
-          <div
-            className="w-full max-w-xl rounded-2xl border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+        >  
+           <div
+           className="ethub-chat w-full max-w-xl rounded-2xl border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-xl overflow-hidden"
+           onClick={(e) => e.stopPropagation()}
+           >
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <div className="flex items-center gap-2">
                 <Bot className="h-5 w-5" />
@@ -239,6 +238,13 @@ export default function AssistantLauncher() {
                   onBlur={() => setModelMenuOpen(false)}
                   className="rounded-md border bg-background px-2 py-1 text-sm"
                 >
+		<Button
+		  size="sm"
+		  variant="outline"
+		   onClick={() => downloadJSONL(messages)}
+		>
+		  Export JSONL
+		</Button>
                   {MODEL_OPTIONS.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.label}
@@ -280,8 +286,7 @@ export default function AssistantLauncher() {
               ))}
               {!messages.length && (
                 <div className="opacity-70">
-                  Try asking about services, documents, or say “Tell me a joke.”
-                  Select “GPT-4o Voice” to hear replies.
+                "What devices are currently pending to work on?" , "My iPhone isn't charging anymore"
                 </div>
               )}
             </div>

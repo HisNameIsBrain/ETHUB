@@ -1,119 +1,174 @@
 // convex/scrape_iosfiles.ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
-/** Normalize text -> slug */
-function toSlug(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
+/**
+ * Minimal CSV parser that honors quoted fields and commas inside quotes.
+ * Expects the first line to be headers.
+ */
+function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQuotes = false;
 
-function dollarsToCents(s: string): number {
-  const m = s.match(/\$?\s*([\d,]+(?:\.\d{1,2})?)/i);
-  if (!m) return 0;
-  return Math.round(parseFloat(m[1].replace(/,/g, "")) * 100);
-}
+  const pushField = () => {
+    cur.push(field);
+    field = "";
+  };
+  const pushRow = () => {
+    rows.push(cur);
+    cur = [];
+  };
 
-/** Extract rows like: "Service ... Delivery time ... Price" tables */
-function parseServices(html: string, sourceUrl: string) {
-  const rows: Array<{
-    slug: string;
-    title: string;
-    category: string;
-    deliveryTime: string;
-    priceCents: number;
-    currency: string;
-    sourceUrl: string;
-    notes?: string;
-    tags?: string[];
-  }> = [];
-
-  // Identify category blocks by headings around the table
-  // e.g., "Rent Tools", "IMEI services", etc.
-  const categoryBlocks = html.split(/<h\d[^>]*>|<\/h\d>/i);
-  // Fallback: whole page scan if heading split fails
-  const scanTargets = categoryBlocks.length > 1 ? categoryBlocks : [html];
-
-  for (const block of scanTargets) {
-    // Guess category from preceding text
-    const catMatch = block.match(/^(?:[^<]{0,120})/);
-    const categoryGuess = (catMatch?.[0] ?? "").replace(/\s+/g, " ").trim() || "IMEI services";
-
-    // Find table-like lines (service, delivery, price) in plain text
-    const text = block
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    // Heuristic: capture triplets like "... Instant $9.00"
-    const tripletRe = /([A-Za-z0-9\[\]\-\(\)\/\.\+ :,&]+?)\s+(Instant|INSTANT|[0-9]+-?[0-9]*\s*(?:Min(?:utes)?|Hours?|Days?))\s+\$[\d\.,]+/g;
-    let m: RegExpExecArray | null;
-    while ((m = tripletRe.exec(text))) {
-      const title = m[1].trim();
-      const delivery = m[2].replace(/INSTANT/i, "Instant");
-      // Find nearest price to this match window
-      const tail = text.slice(m.index, m.index + m[0].length + 40);
-      const priceMatch = tail.match(/\$\s*[\d\.,]+/);
-      const priceCents = dollarsToCents(priceMatch ? priceMatch[0] : "$0");
-      const row = {
-        slug: toSlug(title),
-        title,
-        category: /rent/i.test(categoryGuess) ? "Rent Tools" : "IMEI services",
-        deliveryTime: delivery,
-        priceCents,
-        currency: "USD",
-        sourceUrl,
-      };
-      // De-dupe by slug
-      if (!rows.some(r => r.slug === row.slug)) rows.push(row);
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        const peek = text[i + 1];
+        if (peek === '"') {
+          field += '"'; // escaped quote
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true;
+      } else if (c === ",") {
+        pushField();
+      } else if (c === "\n") {
+        pushField();
+        pushRow();
+      } else if (c === "\r") {
+        // normalize CRLF -> handled by \n
+      } else {
+        field += c;
+      }
     }
   }
+  // flush last field/row
+  pushField();
+  if (cur.length > 1 || (cur.length === 1 && cur[0] !== "")) pushRow();
 
-  // Harden known items from the page (ensures at least these import even if parsing shifts)
-  // CHEETAH TOOL RENT block etc. (seen publicly)
-  const known = [
-    ["CHEETAH TOOL RENT [ 4 Hours ]", "Instant", "$8.00", "Rent Tools"],
-    ["MDM FIX TOOL RENT [ 6 Hours ]", "Instant", "$9.00", "Rent Tools"],
-    ["UNLOCK TOOL RENT [6 Hour]", "Instant", "$8.00", "Rent Tools"],
-    ["KG Killer Tool Rent [4 Hours ]", "5-20 Minutes", "$8.00", "Rent Tools"],
-    ["TSM TOOL RENT 12 Hour", "Minutes", "$9.00", "Rent Tools"],
-    ["Hydra Tool Rent (Without Dongle) [12 Hour]", "Minutes", "$9.70", "Rent Tools"],
-  ];
-  for (const [title, delivery, price, category] of known) {
-    const slug = toSlug(title);
-    if (!rows.some(r => r.slug === slug)) {
-      rows.push({
-        slug,
-        title,
-        category,
-        deliveryTime: delivery,
-        priceCents: dollarsToCents(String(price)),
-        currency: "USD",
-        sourceUrl,
-      });
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h) => h.trim());
+  const out: Record<string, string>[] = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const obj: Record<string, string> = {};
+    for (let c = 0; c < headers.length; c++) {
+      obj[headers[c]] = (row[c] ?? "").trim();
     }
+    out.push(obj);
   }
-
-  return rows;
+  return out;
 }
 
-export const fetchAndUpsert = action({
-  args: {},
-  handler: async (ctx) => {
-    const sourceUrl = "https://www.iosfiles.com/imei-services";
-    const res = await fetch(sourceUrl, { method: "GET" });
-    if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
-    const html = await res.text();
+/**
+ * Normalize a parsed CSV/JSON row to the shape expected by services.importServices.
+ * Accepts either {title, description, price, ...} or {title, notes, priceCents, ...}.
+ */
+function normalizeRow(row: Record<string, any>) {
+  const num = (v: any) => (v === "" || v == null ? undefined : Number(v));
+  const bool = (v: any) =>
+    v === true || v === "true" || v === "TRUE" || v === "1" ? true :
+    v === false || v === "false" || v === "FALSE" || v === "0" ? false : undefined;
 
-    const rows = parseServices(html, sourceUrl);
-    if (!rows.length) return { upserted: 0, warning: "No rows parsed" };
+  const tags =
+    typeof row.tags === "string"
+      ? row.tags.split("|").map((s) => s.trim()).filter(Boolean)
+      : Array.isArray(row.tags)
+      ? row.tags
+      : undefined;
 
-    // Reuse your services.upsertBatch
-    // @ts-ignore — call within same action boundary if exported here
-    const upsert = await ctx.runAction("services:upsertBatch", { rows });
-    return upsert;
+  return {
+    title: row.title ?? row.name,
+    description: row.description, // importer maps description->notes
+    notes: row.notes,
+    price: num(row.price),
+    priceCents: num(row.priceCents),
+    currency: row.currency,
+    category: row.category,
+    deliveryTime: row.deliveryTime,
+    tags,
+    sourceUrl: row.sourceUrl,
+    isPublic: bool(row.isPublic),
+    archived: bool(row.archived),
+    slug: row.slug,
+  };
+}
+
+/**
+ * Action: ingest files picked on iOS (Files app).
+ * The client should read file text and send it here.
+ */
+export const ingestIosFiles = action({
+  args: {
+    files: v.array(
+      v.object({
+        name: v.string(),
+        // raw text contents of the file
+        text: v.string(),
+        // optional MIME (e.g. "text/csv" or "application/json")
+        mime: v.optional(v.string()),
+      })
+    ),
+    // optional: limit batch size
+    batchSize: v.optional(v.number()),
+  },
+  handler: async (ctx, { files, batchSize }) => {
+    const BATCH = Math.max(1, Math.min(batchSize ?? 200, 1000));
+    let total = 0;
+    let inserted = 0;
+    let updated = 0;
+    const perFile: Array<{ name: string; rows: number; inserted: number; updated: number }> = [];
+
+    for (const f of files) {
+      const lower = f.name.toLowerCase();
+      const isJson = (f.mime?.includes("json") ?? false) || lower.endsWith(".json");
+      const isCsv  = (f.mime?.includes("csv") ?? false) || lower.endsWith(".csv");
+
+      let rows: any[] = [];
+      try {
+        if (isJson) {
+          const data = JSON.parse(f.text);
+          rows = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+        } else if (isCsv) {
+          const csvRows = parseCsv(f.text);
+          rows = csvRows;
+        } else {
+          // try to auto-detect: JSON first, fallback to CSV
+          try {
+            const data = JSON.parse(f.text);
+            rows = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+          } catch {
+            rows = parseCsv(f.text);
+          }
+        }
+      } catch (e: any) {
+        throw new Error(`Failed to parse "${f.name}": ${e?.message ?? String(e)}`);
+      }
+
+      // normalize
+      const items = rows.map((r) => normalizeRow(r)).filter((r) => r.title && typeof r.title === "string");
+      total += items.length;
+
+      // batch call importServices
+      for (let i = 0; i < items.length; i += BATCH) {
+        const chunk = items.slice(i, i + BATCH);
+        const res = await ctx.runMutation(api.services.importServices, { items: chunk });
+        inserted += res.inserted;
+        updated += res.updated;
+      }
+
+      perFile.push({ name: f.name, rows: items.length, inserted: 0, updated: 0 }); // aggregate totals already tracked
+    }
+
+    return { files: perFile, inserted, updated, total, batchSize: BATCH };
   },
 });

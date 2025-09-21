@@ -1,6 +1,21 @@
-// app/api/tts/route.ts
 import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
+import { experimental_generateSpeech as generateSpeech } from "ai";
+import { openai } from "@ai-sdk/openai";
 
+export const runtime = "edge";
+
+export async function POST(req: NextRequest) {
+  const { text } = await req.json();
+  const audio = await generateSpeech({
+    model: openai.speech("gpt-4o-mini-tts"), // voice TTS model
+    voice: "alloy",                          // pick a voice
+    text,
+  });
+  return new Response(audio.toReadableStream(), {
+    headers: { "Content-Type": "audio/mpeg" },
+  });
+}
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 

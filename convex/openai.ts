@@ -1,15 +1,24 @@
-// convex/openai.ts
-import OpenAI from "openai";
+type ChatRole = "user" | "system" | "assistant";
+type ChatMessage = { role: ChatRole; content: string };
+import { DEFAULT_MODEL } from "./openaiModels";
 import { v } from "convex/values";
 import { action, type ActionCtx } from "./_generated/server";
+import OpenAI from "openai";
+
+export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+export async function getFineTuneJob(jobId: string) {
+  const job = await openai.fineTuning.jobs.retrieve(jobId);
+  return job;
+}
 
 const OPENAI_MODELS = new Set([
   "gpt-4o-mini",
   "gpt-4o",
   "gpt-4.1-mini",
-  "gpt-4.1",
-  "o3-mini",
 ]);
+
+
 
 const audioFormatValidator = v.union(
   v.literal("mp3"),
@@ -33,6 +42,17 @@ function assertModel(model: string) {
   }
 }
 
+export const getFineTuneStatus = action({
+  args: { jobId: v.string() },
+  handler: async (ctx: ActionCtx, { jobId }: { jobId: string }) => {
+    const job = await openai.fineTuning.jobs.retrieve(jobId);
+    return {
+      status: job.status,
+      fine_tuned_model: job.fine_tuned_model ?? null,
+    };
+  }
+});
+
 /** Chat (multi-turn) — ACTION */
 export const chat = action({
   args: {
@@ -43,7 +63,7 @@ export const chat = action({
   },
   handler: async (
     ctx: ActionCtx,
-    { messages, model = DEFAULT_MODEL, temperature = 0.4, system }
+    { messages, model = DEFAULT_MODEL, temperature = 0.4, system }: { messages: ChatMessage[]; model?: string; temperature?: number; system?: string }
   ) => {
     assertModel(model);
     const client = getClient();
@@ -67,7 +87,7 @@ export const chat = action({
 /** Moderation — ACTION */
 export const moderate = action({
   args: { text: v.string() },
-  handler: async (ctx: ActionCtx, { text }) => {
+  handler: async (ctx: ActionCtx, { text }: { text: string }) => {
     const client = getClient();
     const out = await client.moderations.create({
       model: "omni-moderation-latest",
