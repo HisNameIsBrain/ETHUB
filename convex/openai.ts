@@ -1,8 +1,6 @@
-type ChatRole = "user" | "system" | "assistant";
-type ChatMessage = { role: ChatRole; content: string };
 import { DEFAULT_MODEL } from "./openaiModels";
 import { v } from "convex/values";
-import { action, type ActionCtx } from "./_generated/server";
+import { action, type ActionCtx } from "@/convex/_generated/server";
 import OpenAI from "openai";
 
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -11,14 +9,14 @@ export async function getFineTuneJob(jobId: string) {
   const job = await openai.fineTuning.jobs.retrieve(jobId);
   return job;
 }
-
 const OPENAI_MODELS = new Set([
   "gpt-4o-mini",
   "gpt-4o",
   "gpt-4.1-mini",
 ]);
 
-
+type ChatRole = "user" | "system" | "assistant";
+type ChatMessage = { role: ChatRole; content: string }
 
 const audioFormatValidator = v.union(
   v.literal("mp3"),

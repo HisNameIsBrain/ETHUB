@@ -1,321 +1,300 @@
-// components/assistant-launcher.tsx
 "use client";
 
 import * as React from "react";
-import { Bot, X, Mic, MicOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { speakWithOpenAI } from "@/lib/tts";
+import { api } from "@/convex/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+} from "@/components/ui/select";
+import { X, Send, Bot, Loader2 } from "lucide-react";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
 
 type Role = "system" | "user" | "assistant";
 
-const MODEL_OPTIONS = [
+const OPENAI_MODEL_OPTIONS = [
   { id: "gpt-4o-mini", label: "GPT-4o mini" },
   { id: "gpt-4o", label: "GPT-4o" },
   { id: "gpt-4.1-mini", label: "GPT-4.1 mini" },
   { id: "gpt-4.1", label: "GPT-4.1" },
   { id: "o3-mini", label: "o3 mini" },
-  { id: "gpt-4o-mini-tts", label: "GPT-4o Voice" },
 ] as const;
 
-const DEFAULT_MODEL = MODEL_OPTIONS[0].id as (typeof MODEL_OPTIONS)[number]["id"];
+/* ----- keyboard detection: center vs bottom anchoring on mobile ----- */
+function useKeyboardOpen(thresholdPx = 150) {
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    const update = () => {
+      const winH = window.innerHeight;
+      const currH = vv ? vv.height : winH;
+      setOpen(winH - currH > thresholdPx);
+    };
+    update();
+    window.addEventListener("resize", update);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+    };
+  }, [thresholdPx]);
+  return open;
+}
 
-function LauncherButton({ onOpen }: { onOpen: () => void }) {
+/* ----- big Siri rainbow behind the panel (visible but tasteful) ----- */
+function GlowBackdrop({ spinning = true }: { spinning?: boolean }) {
   return (
-    <button
-      aria-label="Open Assistant"
-      onClick={onOpen}
-      className="z-[95] h-16 w-16 rounded-full relative overflow-hidden isolate grid place-items-center text-white shadow-[0_10px_40px_rgba(0,0,0,0.45)]"
-      style={{
-        position: "fixed",
-        right: "max(1rem, env(safe-area-inset-right))",
-        bottom: "max(1rem, env(safe-area-inset-bottom))",
-      }}
-    >
-      <span className="absolute inset-0 rounded-full bg-neutral-950" />
-      <SiriGlowInvert
-        className="inset-[]"
-        rotateSec={3.2}
-        innerRotateSec={4.4}
-        blurPx={5}
-        insetPercent={0}
-        opacity={0.95}
-        thicknessPx={11}
-        inner
-        colors={[
-          "rgba(255,242,0,0.9)",
-          "rgba(255,138,0,0.9)",
-          "rgba(255,0,122,0.9)",
-          "rgba(122,0,255,0.9)",
-          "rgba(0,72,255,0.9)",
-          "rgba(0,162,255,0.9)",
-          "rgba(0,255,162,0.9)",
-          "rgba(160,255,0,0.9)",
-        ]}
-      />
-      <span className="absolute inset-[3px] rounded-full bg-neutral-950/95 border border-white/10" />
-      <Bot className="relative z-[1] h-7 w-7" />
-    </button>
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <div className="absolute left-1/2 top-1/2 h-[1200px] w-[1200px] -translate-x-1/2 -translate-y-1/2">
+        <SiriGlowInvert
+          rotateSec={spinning ? 18 : 0}
+          innerRotateSec={spinning ? 24 : 0}
+          blurPx={30}
+          insetPercent={-12}
+          opacity={0.35}
+          thicknessPx={26}
+          inner
+          colors={[
+            "rgba(255,242,0,0.95)",
+            "rgba(255,138,0,0.95)",
+            "rgba(255,0,122,0.95)",
+            "rgba(122,0,255,0.95)",
+            "rgba(0,72,255,0.95)",
+            "rgba(0,162,255,0.95)",
+            "rgba(0,255,162,0.95)",
+            "rgba(160,255,0,0.95)",
+          ]}
+          style={{ willChange: "transform", transform: "translateZ(0)" }}
+          className="absolute inset-0"
+        />
+      </div>
+      {/* light gloss so text stays readable while color shows through */}
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-[1.5px] mix-blend-overlay" />
+    </div>
   );
 }
 
 export default function AssistantLauncher() {
+  /* ---- declare all hooks before any returns (no hooks-order bugs) ---- */
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
-  const [model, setModel] = React.useState<string>(DEFAULT_MODEL);
+  const [model, setModel] = React.useState<string>(OPENAI_MODEL_OPTIONS[0].id);
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [messages, setMessages] = React.useState<Array<{ role: Role; content: string }>>([]);
-
-  const [modelMenuOpen, setModelMenuOpen] = React.useState(true);
-  const modelTouchedRef = React.useRef(false);
-
-  const [audioStream, setAudioStream] = React.useState<MediaStream | null>(null);
-  const mediaRef = React.useRef<MediaStream | null>(null);
 
   const chatAction = useAction(api.openai.chat);
   const askAction = useAction(api.openai.ask);
   const moderateAction = useAction(api.openai.moderate);
 
-  // ensure single mount
+  // prevent duplicate mounts
   React.useEffect(() => {
-    const key = "__ETHUB_ASSISTANT_LAUNCHER__";
-    if ((window as any)[key]) return;
-    (window as any)[key] = true;
+    const k = "__ETHUB_ASSISTANT_LAUNCHER__";
+    // @ts-ignore
+    if (window[k]) return;
+    // @ts-ignore
+    window[k] = true;
     setMounted(true);
     return () => {
-      delete (window as any)[key];
+      // @ts-ignore
+      delete window[k];
     };
   }, []);
 
-  // auto-close model menu after a moment
-  React.useEffect(() => {
-    if (!open) return;
-    setModelMenuOpen(true);
-    modelTouchedRef.current = false;
-    const t = setTimeout(() => {
-      if (!modelTouchedRef.current) setModelMenuOpen(false);
-    }, 2500);
-    return () => clearTimeout(t);
-  }, [open]);
+  const keyboardOpen = useKeyboardOpen(150);
 
-  // publish model + audioStream globally for VoiceVisualizerGate
-  React.useEffect(() => {
-    const w = globalThis as any;
-    w.__assistantState = { ...(w.__assistantState || {}), model, audioStream };
-    w.__onAssistantStateChange =
-      w.__onAssistantStateChange ||
-      ((cb: (s: any) => void) => {
-        (w.__assistantSubscribers ||= new Set()).add(cb);
-        return () => (w.__assistantSubscribers as Set<Function>).delete(cb);
-      });
-    (w.__assistantSubscribers as Set<Function> | undefined)?.forEach((cb) =>
-      cb(w.__assistantState)
+  // click-away handler that doesn't close when interacting with Radix portals
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const onBackdropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const path = (e.nativeEvent as any).composedPath?.() as EventTarget[] | undefined;
+    if (!path) return setOpen(false);
+    // If the click was inside the panel, ignore
+    if (panelRef.current && path.includes(panelRef.current)) return;
+    // If clicking a Radix portal/popper, ignore (keeps Select open)
+    const clickedRadix = path.some(
+      (el) =>
+        el instanceof HTMLElement &&
+        (el.dataset?.radixPopperContentWrapper !== undefined ||
+          el.getAttribute?.("data-radix-portal") !== null ||
+          el.id?.includes?.("radix-"))
     );
-    (w as any).VoiceVisualizerComponent =
-      (w as any).VoiceVisualizerComponent || undefined;
-  }, [model, audioStream]);
-
-  // mic controls (for visualizer and future VAD)
-  const startMic = React.useCallback(async () => {
-    if (mediaRef.current) return;
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRef.current = s;
-    setAudioStream(s);
-  }, []);
-  const stopMic = React.useCallback(() => {
-    mediaRef.current?.getTracks().forEach((t) => t.stop());
-    mediaRef.current = null;
-    setAudioStream(null);
-  }, []);
-  React.useEffect(() => () => stopMic(), [stopMic]);
-  function getTextFromResponse(res: any): string {
-    if (!res) return "";
-    if (typeof res.content === "string") return res.content;
-    if (typeof res.text === "string") return res.text;
-    // Convex action might return { message: { content: string } }
-    if (res.message && typeof res.message.content === "string") return res.message.content;
-    return "";
-  }
+    if (clickedRadix) return;
+    setOpen(false);
+  };
 
   async function send(useAsk = false) {
     const text = input.trim();
     if (!text || busy) return;
-    // Add the user message immediately for UI responsiveness.
-    setMessages((m) => [...m, { role: "user", content: text }]);
-    setInput("");
     setBusy(true);
-
     try {
-      // 1) Moderation
-      const mod = await moderateAction({ text });
-      if (mod?.flagged) {
-        setMessages((m) => [
-          ...m,
-          { role: "assistant", content: "Blocked by moderation." },
-        ]);
+      const mod = await moderateAction({ input: text });
+      if ((mod as any)?.flagged) {
+        setMessages((m) => [...m, { role: "assistant", content: "Blocked by moderation." }]);
         return;
       }
-
-      // 2) Pick model: if voice is selected, use a text model for reasoning
-      const voiceWanted = model === "gpt-4o-mini-tts";
-      const chatModel = voiceWanted ? "gpt-4o-mini" : model;
-
-      // 3) Ask model via Convex actions
-      let res: any;
+      let res: { content?: string } | null = null;
       if (useAsk) {
-        res = await askAction({ model: chatModel, prompt: text });
+        res = (await askAction({ prompt: text, model })) as any;
       } else {
-        const history = [...messages, { role: "user", content: text }];
-        res = await chatAction({ model: chatModel, messages: history });
+        const next = [...messages, { role: "user", content: text }];
+        setMessages(next);
+        res = (await chatAction({ model, messages: next })) as any;
       }
-
-      const assistantText = getTextFromResponse(res) || "(no response)";
-      setMessages((m) => [...m, { role: "assistant", content: assistantText }]);
-
-      // 4) Speak (if the Voice model is selected)
-      if (voiceWanted) {
-        try {
-          const url = await speakWithOpenAI({
-            text: assistantText,
-            voice: "alloy",
-            format: "mp3",
-          });
-          const audio = new Audio(url);
-          audio.onended = () => URL.revokeObjectURL(url);
-          // Important: this is still within the button click stack (user gesture),
-          // so most browsers will allow playback.
-          await audio.play();
-        } catch (e: any) {
-          console.error("TTS error:", e);
-          setMessages((m) => [
-            ...m,
-
-            { role: "assistant", content: `TTS error: ${e?.message ?? e}` },
-          ]);
-        }
-      }
-    } catch (e: any) {
+      if (res?.content) setMessages((m) => [...m, { role: "assistant", content: res!.content! }]);
+    } catch (e) {
       console.error(e);
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", content: `Error: ${e?.message ?? String(e)}` },
-      ]);
+      setMessages((m) => [...m, { role: "assistant", content: "Error talking to assistant." }]);
     } finally {
+      setInput("");
       setBusy(false);
     }
   }
 
   if (!mounted) return null;
 
+  // centered when keyboard closed; pinned near bottom when keyboard open
+  const panelPos = keyboardOpen
+    ? "fixed left-1/2 bottom-[max(1rem,env(safe-area-inset-bottom))] -translate-x-1/2"
+    : "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2";
+
   return (
     <>
-      <LauncherButton onOpen={() => setOpen(true)} />
+      {/* Launcher button */}
+      {!open && (
+        <button
+          aria-label="Open Assistant"
+          onClick={() => setOpen(true)}
+          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[95] h-16 w-16 rounded-full border border-white/10 bg-neutral-950 text-white shadow-[0_10px_40px_rgba(0,0,0,0.45)] overflow-hidden isolate grid place-items-center"
+        >
+          <SiriGlowInvert
+            rotateSec={3.2}
+            innerRotateSec={4.4}
+            blurPx={14}
+            insetPercent={-6}
+            opacity={0.85}
+            thicknessPx={11}
+            inner
+          />
+          <Bot className="relative h-7 w-7" />
+        </button>
+      )}
+
+      {/* Overlay + panel */}
       {open && (
-        <div
-          className="fixed inset-0 z-[96] grid place-items-end p-4 sm:p-6"
-          onClick={() => setOpen(false)}
-        >  
-           <div
-           className="ethub-chat w-full max-w-xl rounded-2xl border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-xl overflow-hidden"
-           onClick={(e) => e.stopPropagation()}
-           >
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-              <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5" />
-                <span className="font-semibold">ETHUB Assistant</span>
+        <div className="fixed inset-0 z-[96] bg-black/40 backdrop-blur-sm" onMouseDown={onBackdropMouseDown}>
+          <div
+            ref={panelRef}
+            className={`${panelPos} z-[97] w-[min(720px,calc(100vw-2rem))] rounded-2xl
+                        border border-white/25 shadow-2xl overflow-hidden relative
+                        bg-white/60 backdrop-blur-md`}  // glass base so rainbow reads & text is legible
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* visible rotating Siri glow behind the content */}
+            <GlowBackdrop spinning={!busy} />
+
+            {/* Header */}
+            <div className="relative z-[1] flex items-center justify-between p-3 border-b border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="relative h-6 w-6 overflow-hidden rounded-full">
+                  <SiriGlowInvert
+                    rotateSec={3.6}
+                    innerRotateSec={4.6}
+                    blurPx={10}
+                    insetPercent={-4}
+                    opacity={0.8}
+                    thicknessPx={8}
+                    inner
+                  />
+                  <span className="absolute inset-[2px] rounded-full border border-white/30 bg-black/50" />
+                </div>
+                <span className="font-medium">ETHUB Assistant</span>
               </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={model}
-                  onChange={(e) => {
-                    modelTouchedRef.current = true;
-                    setModel(e.target.value);
-                  }}
-                  onBlur={() => setModelMenuOpen(false)}
-                  className="rounded-md border bg-background px-2 py-1 text-sm"
-                >
-		<Button
-		  size="sm"
-		  variant="outline"
-		   onClick={() => downloadJSONL(messages)}
-		>
-		  Export JSONL
-		</Button>
-                  {MODEL_OPTIONS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setOpen(false)}
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
+              <Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="Close">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Controls */}
+            <div className="relative z-[1] p-3 border-b border-white/15 bg-white/45 backdrop-blur-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-1">
+                  <Select value={model} onValueChange={setModel}>
+                    <SelectTrigger aria-label="Model">
+                      <SelectValue placeholder="Model" />
+                    </SelectTrigger>
+                    {/* z-index so dropdown floats above panel & overlay */}
+                    <SelectContent align="end" className="z-[999]">
+                      {OPENAI_MODEL_OPTIONS.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-1">
+                  <Input placeholder="System (locked in code)" disabled value="" onChange={() => {}} />
+                </div>
               </div>
             </div>
 
-            <div className="max-h-[50vh] overflow-auto p-4 space-y-3 text-sm">
+            {/* Messages */}
+            <div className="relative z-[1] max-h-[45vh] overflow-y-auto p-3 space-y-3">
+              {messages.length === 0 && (
+                <div className="text-sm text-black/70">
+                  New chat. Select a model and ask your question.
+                </div>
+              )}
               {messages.map((m, i) => (
                 <div
                   key={i}
                   className={
                     m.role === "user"
-                      ? "text-right"
-                      : "text-left"
+                      ? "ml-auto max-w-[85%] rounded-2xl bg-white/90 text-black px-3 py-2"
+                      : "mr-auto max-w-[85%] rounded-2xl bg-black/55 text-white px-3 py-2 backdrop-blur"
                   }
                 >
-                  <div
-                    className={[
-                      "inline-block rounded-lg px-3 py-2",
-                      m.role === "user"
-                        ? "bg-foreground/10"
-                        : "bg-background border"
-                    ].join(" ")}
-                  >
-                    {m.content}
-                  </div>
+                  {m.content}
                 </div>
               ))}
-              {!messages.length && (
-                <div className="opacity-70">
-                "What devices are currently pending to work on?" , "My iPhone isn't charging anymore"
+              {busy && (
+                <div className="mr-auto inline-flex items-center gap-2 rounded-2xl bg-black/40 text-white px-3 py-2 text-sm backdrop-blur">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Thinking…
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 border-t p-3">
-              {audioStream ? (
-                <Button size="icon" variant="secondary" onClick={stopMic} aria-label="Stop mic">
-                  <MicOff className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button size="icon" variant="secondary" onClick={startMic} aria-label="Start mic">
-                  <Mic className="h-4 w-4" />
-                </Button>
-              )}
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send(false);
-                  }
-                }}
-                placeholder="Type a message…"
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-              />
-              <Button onClick={() => send(false)} disabled={busy || !input.trim()}>
-                {busy ? "Thinking…" : "Send"}
-              </Button>
+            {/* Composer */}
+            <div className="relative z-[1] p-3 border-t border-white/15 bg-white/45 backdrop-blur-sm">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type a message…"
+                  rows={keyboardOpen ? 4 : 3}
+                  className="bg-white/70 text-black placeholder:text-black/60 border-white/30"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void send(false);
+                    }
+                  }}
+                />
+                <div className="flex flex-col gap-2">
+                  <Button onClick={() => void send(false)} disabled={busy || !input.trim()}>
+                    <Send className="h-4 w-4 mr-2" /> Chat
+                  </Button>
+                  <Button variant="outline" onClick={() => void send(true)} disabled={busy || !input.trim()}>
+                    <Send className="h-4 w-4 mr-2" /> Ask
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

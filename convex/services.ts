@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { buildServiceSearch } from "./lib/search";
+import { mutation, query, id} from "convex/_generated/server";
+import { buildServiceSearch } from "convex/lib/search";
 
 /* ---------------------------- helpers ---------------------------- */
 
