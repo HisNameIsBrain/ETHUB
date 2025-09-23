@@ -1,6 +1,6 @@
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { mutation, query, id, ctx} from "convex/_generated/server";
-import { buildServiceSearch } from "convex/lib/search";
+import { buildServiceSearch } from "./lib/search";
 
 /* ---------------------------- helpers ---------------------------- */
 
@@ -37,144 +37,29 @@ function isAdminSubject(subject?: string | null) {
   return !!subject && ADMIN_SUBJECTS.includes(subject);
 }
 
-type IosfilesService = {
-  id: string;
-  name: string;
-  description?: string;
-  price?: number;
-  isPublic?: boolean;
-  [k: string]: unknown;
-};
-
-export const fetchPublicIosfilesServices = action(async () => {
-  const url = `${process.env.IOSFILES_BASE_URL || "https://iosfiles.com"}/api/imei-services`;
-  const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(process.env.IOSFILES_API_KEY
-        ? { Authorization: `Bearer ${process.env.IOSFILES_API_KEY}` }
-        : {}),
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`iosfiles fetch failed: ${res.status}`);
-  const data = (await res.json()) as IosfilesService[] | { data: IosfilesService[] };
-
-  const list = Array.isArray(data) ? data : (data as any).data || [];
-  return list
-    .filter((s: any) => s?.isPublic === true)
-    .map((s: any) => ({
-      id: String(s.id),
-      name: String(s.name ?? ""),
-      description: String(s.description ?? ""),
-      price: Number(s.price ?? 0),
-    }));
-});
-
-/* --------------------- batch import (iOS Files) ------------------ */
-
-const itemV = v.object({
-  title: v.string(),
-  description: v.optional(v.string()), // accepted, mapped to notes
-  notes: v.optional(v.string()),
-  price: v.optional(v.number()), // dollars
-  priceCents: v.optional(v.number()), // cents (wins if present)
-  currency: v.optional(v.string()),
-  category: v.optional(v.string()),
-  deliveryTime: v.optional(v.string()),
-  tags: v.optional(v.array(v.string())),
-  sourceUrl: v.optional(v.string()),
-  isPublic: v.optional(v.boolean()),
-  archived: v.optional(v.boolean()),
-  slug: v.optional(v.string()),
-});
-
-export const importServices = mutation({
-  args: { items: v.array(itemV) },
-  handler: async (ctx, { items }) => {
-    const now = Date.now();
-    let inserted = 0,
-      updated = 0;
-
-    for (const raw of items) {
-      const title = raw.title?.trim();
-      if (!title) continue;
-
-      const notes = (raw.description ?? raw.notes) ?? "";
-      const priceCents =
-        typeof raw.priceCents === "number"
-          ? Math.round(raw.priceCents)
-          : typeof raw.price === "number"
-          ? Math.round(raw.price * 100)
-          : 0;
-
-      const wantedSlug =
-        (raw.slug && slugify(raw.slug)) || (await uniqueSlug(ctx, title));
-
-      const existing = await ctx.db
-        .query("services")
-        .withIndex("by_slug", (q: any) => q.eq("slug", wantedSlug))
-        .first();
-
-      const patch = {
-        slug: wantedSlug,
-        title,
-        notes,
-        tags: raw.tags ?? [],
-        category: raw.category ?? "",
-        deliveryTime: raw.deliveryTime ?? "",
-        priceCents,
-        currency: raw.currency ?? "USD",
-        sourceUrl: raw.sourceUrl ?? "",
-        isPublic: raw.isPublic ?? true,
-        archived: raw.archived ?? false,
-        search: buildServiceSearch({
-          title,
-          notes,
-          deliveryTime: raw.deliveryTime,
-          tags: raw.tags,
-        }),
-      };
-
-      if (existing) {
-        await ctx.db.patch(existing._id, { ...patch, updatedAt: now });
-        updated++;
-      } else {
-        await ctx.db.insert("services", { ...patch, createdAt: now, updatedAt: now });
-        inserted++;
-      }
-    }
-
-    return { inserted, updated, total: items.length };
-  },
-});
-
 /* ---------------------------- mutations -------------------------- */
 
 export const create = mutation({
   args: {
     title: v.string(),
     notes: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    category: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()),
     priceCents: v.optional(v.number()),
     currency: v.optional(v.string()),
     sourceUrl: v.optional(v.string()),
-    category: v.optional(v.string()),
-    deliveryTime: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
     isPublic: v.optional(v.boolean()),
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     const now = Date.now();
     const slug = await uniqueSlug(ctx, args.title);
 
     return await ctx.db.insert("services", {
       slug,
       title: args.title,
-      notes: args.notes,
+      notes: args.notes ?? "",
       tags: args.tags ?? [],
       category: args.category ?? "",
       deliveryTime: args.deliveryTime ?? "",
@@ -200,12 +85,12 @@ export const update = mutation({
     id: v.id("services"),
     title: v.optional(v.string()),
     notes: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    category: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()),
     priceCents: v.optional(v.number()),
     currency: v.optional(v.string()),
     sourceUrl: v.optional(v.string()),
-    category: v.optional(v.string()),
-    deliveryTime: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
     isPublic: v.optional(v.boolean()),
     archived: v.optional(v.boolean()),
   },
@@ -217,16 +102,16 @@ export const update = mutation({
       patch.slug = await uniqueSlug(ctx, args.title);
     }
     if (args.notes !== undefined) patch.notes = args.notes;
+    if (args.tags !== undefined) patch.tags = args.tags;
+    if (args.category !== undefined) patch.category = args.category;
+    if (args.deliveryTime !== undefined) patch.deliveryTime = args.deliveryTime;
     if (args.priceCents !== undefined) patch.priceCents = args.priceCents;
     if (args.currency !== undefined) patch.currency = args.currency;
     if (args.sourceUrl !== undefined) patch.sourceUrl = args.sourceUrl;
-    if (args.category !== undefined) patch.category = args.category;
-    if (args.deliveryTime !== undefined) patch.deliveryTime = args.deliveryTime;
-    if (args.tags !== undefined) patch.tags = args.tags;
     if (args.isPublic !== undefined) patch.isPublic = args.isPublic;
     if (args.archived !== undefined) patch.archived = args.archived;
 
-    // recompute search when relevant fields change
+    // refresh search if relevant fields change
     if ("title" in patch || "notes" in patch || "deliveryTime" in patch || "tags" in patch) {
       patch.search = buildServiceSearch({
         title: patch.title,
@@ -249,36 +134,6 @@ export const remove = mutation({
 
 /* ----------------------------- queries --------------------------- */
 
-export const getPublic = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const admin = isAdminSubject(identity?.subject ?? null);
-
-    if (admin) {
-      // Use existing index by_createdAt, filter archived in memory
-      const items = await ctx.db
-        .query("services")
-        .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
-        .collect();
-
-      return items
-        .filter((s: any) => s.archived === false)
-        .sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    }
-
-    // Non-admin: by_isPublic then filter archived
-    const items = await ctx.db
-      .query("services")
-      .withIndex("by_isPublic", (q: any) => q.eq("isPublic", true))
-      .collect();
-
-    return items
-      .filter((s: any) => s.archived === false)
-      .sort((a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-  },
-});
-
 export const getById = query({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
@@ -286,14 +141,66 @@ export const getById = query({
   },
 });
 
+export const getPublic = query({
+  args: {
+    needle: v.optional(v.string()),
+    sort: v.optional(v.string()), // "price_asc" | "price_desc"
+  },
+  handler: async (ctx, { needle, sort }) => {
+    const admin = isAdminSubject((await ctx.auth.getUserIdentity())?.subject ?? null);
+
+    let items: any[];
+    if (needle && needle.trim()) {
+      // Prefer a search index if you've defined one:
+      // .withSearchIndex("search_all", q => q.search("search", needle.toLowerCase()))
+      items = await ctx.db
+        .query("services")
+        .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
+        .collect();
+      const n = needle.toLowerCase();
+      items = items.filter((s) => (s.search ?? "").includes(n));
+    } else {
+      items = await ctx.db
+        .query("services")
+        .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
+        .collect();
+    }
+
+    // Non-admins only see public + non-archived
+    if (!admin) items = items.filter((s) => s.isPublic && !s.archived);
+    else items = items.filter((s) => !s.archived);
+
+    // Safe sorting
+    if (sort === "price_asc") {
+      items.sort((a, b) => (a.priceCents ?? Infinity) - (b.priceCents ?? Infinity));
+    } else if (sort === "price_desc") {
+      items.sort((a, b) => (b.priceCents ?? -Infinity) - (a.priceCents ?? -Infinity));
+    } else {
+      // default: newest first
+      items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    }
+
+    return items;
+  },
+});
+
 export const getArchived = query({
   args: {},
   handler: async (ctx) => {
-    // No by_archived index presumed; read by_createdAt then filter
     const items = await ctx.db
       .query("services")
       .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
       .collect();
-    return items.filter((s: any) => s.archived === true);
+    return items.filter((s) => s.archived === true);
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    return await ctx.db
+      .query("services")
+      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+      .first();
   },
 });

@@ -1,50 +1,25 @@
-import { DEFAULT_MODEL } from "./openaiModels";
+// convex/openai.ts
+import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { action, type ActionCtx } from "@/convex/_generated/server";
 import OpenAI from "openai";
+
+// If you keep a central list, import it; otherwise define here.
+// import { DEFAULT_MODEL } from "./openaiModels";
+const DEFAULT_MODEL = "gpt-4o-mini" as const;
+
+/* -------------------------- model allowlists -------------------------- */
 
 const CHAT_MODELS = new Set(["gpt-4o-mini","gpt-4o","gpt-4.1-mini","gpt-4.1","o3-mini"]);
 const TTS_MODELS  = new Set(["gpt-4o-mini-tts"]);
-function assertModel(model: string, allowed: Set<string>, purpose: string) {
-  if (!allowed.has(model)) throw new Error(`Unsupported model: ${model} for ${purpose}`);
+
+function assertChatModel(model: string) {
+  if (!CHAT_MODELS.has(model)) throw new Error(`Unsupported chat model: ${model}`);
+}
+function assertTtsModel(model: string) {
+  if (!TTS_MODELS.has(model)) throw new Error(`Unsupported TTS model: ${model}`);
 }
 
-export const speak = action({
-  args: { text: v.string(), voice: v.optional(v.string()), model: v.optional(v.string()) },
-  handler: async (_ctx: ActionCtx, { text, voice = "verse", model = "gpt-4o-mini-tts" }) => {
-    assertModel(model, TTS_MODELS, "tts");
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-    // Older SDKs: 'format' may not be typed; runtime works.
-    // @ts-ignore
-    const r = await client.audio.speech.create({ model, voice, input: text, format: "mp3" });
-    const buf = Buffer.from(await r.arrayBuffer());
-    return { audio: buf.toString("base64") }; // base64 MP3
-  },
-});
-
-export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-export async function getFineTuneJob(jobId: string) {
-  const job = await openai.fineTuning.jobs.retrieve(jobId);
-  return job;
-}
-const OPENAI_MODELS = new Set([
-  "gpt-4o-mini",
-  "gpt-4o",
-  "gpt-4.1-mini",
-]);
-
-type ChatRole = "user" | "system" | "assistant";
-type ChatMessage = { role: ChatRole; content: string }
-
-const audioFormatValidator = v.union(
-  v.literal("mp3"),
-  v.literal("wav"),
-  v.literal("ogg"),
-  v.literal("pcm")
-);
-
-const DEFAULT_MODEL = "gpt-4o-mini";
+/* ------------------------------ client ------------------------------- */
 
 function getClient() {
   const key = process.env.OPENAI_API_KEY;
@@ -52,37 +27,35 @@ function getClient() {
   return new OpenAI({ apiKey: key });
 }
 
-/** Shared guard so we fail fast on bad model names */
-function assertModel(model: string) {
-  if (!OPENAI_MODELS.has(model)) {
-    throw new Error(`Unsupported model: ${model}`);
-  }
-}
+export const openai = getClient();
 
-export const getFineTuneStatus = action({
-  args: { jobId: v.string() },
-  handler: async (ctx: ActionCtx, { jobId }: { jobId: string }) => {
-    const job = await openai.fineTuning.jobs.retrieve(jobId);
-    return {
-      status: job.status,
-      fine_tuned_model: job.fine_tuned_model ?? null,
-    };
-  }
+/* -------------------------------- TTS -------------------------------- */
+
+export const speak = action({
+  args: { text: v.string(), voice: v.optional(v.string()), model: v.optional(v.string()) },
+  handler: async (_ctx, { text, voice = "verse", model = "gpt-4o-mini-tts" }) => {
+    assertTtsModel(model);
+    const client = getClient();
+    // @ts-ignore older SDKs: 'format' type may lag behind runtime support
+    const r = await client.audio.speech.create({ model, voice, input: text, format: "mp3" });
+    const buf = Buffer.from(await r.arrayBuffer());
+    return { audio: buf.toString("base64") }; // base64 MP3
+  },
 });
 
-/** Chat (multi-turn) — ACTION */
+/* ------------------------------ Chat --------------------------------- */
+
+type ChatMessage = { role: "user" | "system" | "assistant"; content: string };
+
 export const chat = action({
   args: {
-    messages: v.array(v.object({ role: v.string(), content: v.string() })),
+    messages: v.array(v.object({ role: v.string(), content: v.string() })), // runtime validated
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
     system: v.optional(v.string()),
   },
-  handler: async (
-    ctx: ActionCtx,
-    { messages, model = DEFAULT_MODEL, temperature = 0.4, system }: { messages: ChatMessage[]; model?: string; temperature?: number; system?: string }
-  ) => {
-    assertModel(model);
+  handler: async (_ctx, { messages, model = DEFAULT_MODEL, temperature = 0.4, system }) => {
+    assertChatModel(model);
     const client = getClient();
 
     const msgs =
@@ -101,10 +74,11 @@ export const chat = action({
   },
 });
 
-/** Moderation — ACTION */
+/* ---------------------------- Moderation ----------------------------- */
+
 export const moderate = action({
   args: { text: v.string() },
-  handler: async (ctx: ActionCtx, { text }: { text: string }) => {
+  handler: async (_ctx, { text }) => {
     const client = getClient();
     const out = await client.moderations.create({
       model: "omni-moderation-latest",
@@ -119,28 +93,26 @@ export const moderate = action({
   },
 });
 
-/** Ask (one-shot prompt) — ACTION */
+/* ------------------------------- Ask -------------------------------- */
+
+const audioFormatValidator = v.union(
+  v.literal("mp3"),
+  v.literal("wav"),
+  v.literal("ogg"),
+  v.literal("pcm")
+);
+
 export const ask = action({
   args: {
     prompt: v.string(),
     model: v.optional(v.string()),
     system: v.optional(v.string()),
-    voice: v.optional(v.string()), // metadata only; TTS is handled on Next.js side
+    voice: v.optional(v.string()),
     audioFormat: v.optional(audioFormatValidator),
     temperature: v.optional(v.number()),
   },
-  handler: async (
-    ctx: ActionCtx,
-    {
-      prompt,
-      model = DEFAULT_MODEL,
-      system,
-      voice,
-      audioFormat = "mp3",
-      temperature = 0.2,
-    }
-  ) => {
-    assertModel(model);
+  handler: async (_ctx, { prompt, model = DEFAULT_MODEL, system, voice, audioFormat = "mp3", temperature = 0.2 }) => {
+    assertChatModel(model);
     const client = getClient();
 
     const messages: OpenAI.ChatCompletionMessageParam[] = [];
@@ -158,9 +130,7 @@ export const ask = action({
       text,
       modelUsed: res.model ?? model,
       usage: res.usage ?? null,
-      tts: voice
-        ? { requested: true, voice, format: audioFormat }
-        : { requested: false },
+      tts: voice ? { requested: true, voice, format: audioFormat } : { requested: false },
     };
   },
 });
