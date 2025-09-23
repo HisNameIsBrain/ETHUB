@@ -45,15 +45,15 @@ function ProfileButtonLg() {
   return (
     <div className="relative h-12 w-12">
       <span className="absolute -inset-[12%] pointer-events-none">
-	<SiriGlowInvert
-	  rotateSec={3.6}
-	  innerRotateSec={4.6}
-	  blurPx={10}
-	  insetPercent={0}
-	  opacity={0.85}
-	  thicknessPx={9}
-	  inner
-/>
+        <SiriGlowInvert
+          rotateSec={3.6}
+          innerRotateSec={4.6}
+          blurPx={2}
+          insetPercent={0}
+          opacity={0.22}
+          thicknessPx={5}
+          inner
+        />
       </span>
       <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
         <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />

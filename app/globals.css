@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes siri-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+@keyframes siri-spin-rev { from { transform: rotate(360deg) } to { transform: rotate(0deg) } }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-siriGlowInvert,
+  [style*="siri-spin"] {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@keyframes siriGlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-siriGlow {
+  animation: siriGlow 6s linear infinite;
+}
+
 html,
 body,
 :root {

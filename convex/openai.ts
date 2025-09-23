@@ -3,6 +3,25 @@ import { v } from "convex/values";
 import { action, type ActionCtx } from "@/convex/_generated/server";
 import OpenAI from "openai";
 
+const CHAT_MODELS = new Set(["gpt-4o-mini","gpt-4o","gpt-4.1-mini","gpt-4.1","o3-mini"]);
+const TTS_MODELS  = new Set(["gpt-4o-mini-tts"]);
+function assertModel(model: string, allowed: Set<string>, purpose: string) {
+  if (!allowed.has(model)) throw new Error(`Unsupported model: ${model} for ${purpose}`);
+}
+
+export const speak = action({
+  args: { text: v.string(), voice: v.optional(v.string()), model: v.optional(v.string()) },
+  handler: async (_ctx: ActionCtx, { text, voice = "verse", model = "gpt-4o-mini-tts" }) => {
+    assertModel(model, TTS_MODELS, "tts");
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+    // Older SDKs: 'format' may not be typed; runtime works.
+    // @ts-ignore
+    const r = await client.audio.speech.create({ model, voice, input: text, format: "mp3" });
+    const buf = Buffer.from(await r.arrayBuffer());
+    return { audio: buf.toString("base64") }; // base64 MP3
+  },
+});
+
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function getFineTuneJob(jobId: string) {

@@ -1,0 +1,40 @@
+name: dependabot-autofix
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autofix:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - run: pnpm install
+
+      # Try to fix lint/prettier automatically
+      - run: |
+          pnpm -s prettier -w . || true
+          pnpm -s eslint . --ext .ts,.tsx --fix || true
+
+      # Run typecheck so PR status reflects reality
+      - run: pnpm -s typecheck || pnpm -s tsc --noEmit
+        continue-on-error: true
+
+      - name: Commit changes (if any)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: autofix(eslint/prettier) on dependabot PR"

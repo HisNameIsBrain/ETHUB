@@ -9,7 +9,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import { MenuIcon } from "lucide-react";
 import { Banner } from "@/app/(main)/_components/banner";
 import { Menu } from "@/app/(main)/_components/menu";
-
 interface NavbarProps {
   isCollapsed: boolean;
   onResetWidth: () => void;

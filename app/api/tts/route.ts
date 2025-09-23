@@ -1,30 +1,8 @@
+// app/api/tts/route.ts
 import type { NextRequest } from "next/server";
-import { NextRequest } from "next/server";
-import { experimental_generateSpeech as generateSpeech } from "ai";
-import { openai } from "@ai-sdk/openai";
 
-export const runtime = "edge";
-
-export async function POST(req: NextRequest) {
-  const { text } = await req.json();
-  const audio = await generateSpeech({
-    model: openai.speech("gpt-4o-mini-tts"), // voice TTS model
-    voice: "alloy",                          // pick a voice
-    text,
-  });
-  return new Response(audio.toReadableStream(), {
-    headers: { "Content-Type": "audio/mpeg" },
-  });
-}
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
-
-// Health check: confirm middleware + routing are correct in browser
-export async function GET() {
-  return Response.json({ ok: true, route: "/api/tts" }, {
-    headers: { "cache-control": "no-store" },
-  });
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,8 +13,11 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return new Response("OPENAI_API_KEY not set", { status: 500 });
+    if (!apiKey) {
+      return new Response("OPENAI_API_KEY not set", { status: 500 });
+    }
 
+    // Call OpenAI TTS (Edge-safe: fetch + Web APIs only)
     const upstream = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
@@ -52,8 +33,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (!upstream.ok) {
-      // bubble up provider error text (JSON or text) to the client
-      return new Response(await upstream.text(), { status: upstream.status });
+      // Pass through provider error for easier debugging
+      const errText = await upstream.text();
+      return new Response(errText, { status: upstream.status });
     }
 
     const buf = await upstream.arrayBuffer();
@@ -70,9 +52,17 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message ?? "Unknown error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e?.message ?? "Unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
+}
+
+// Health check (handy in browser or uptime checks)
+export async function GET() {
+  return Response.json(
+    { ok: true, route: "/api/tts", runtime, dynamic },
+    { headers: { "cache-control": "no-store" } }
+  );
 }

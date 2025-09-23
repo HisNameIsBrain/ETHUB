@@ -7,8 +7,8 @@ import { UserButton } from "@clerk/nextjs";
 import {
   Tooltip, TooltipContent, TooltipTrigger, TooltipProvider,
 } from "@/components/ui/tooltip";
-import SiriGlowInvert from "@/components/siri-glow-invert";
-
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
+import { AssistantLauncher  } from "@/components/assistant-launcher";
 function NavLink({
   href,
   label,
@@ -61,7 +61,7 @@ export default function Navbar() {
 
             <div className="relative h-10 w-10">
               <span className="absolute -inset-[12%] pointer-events-none">
-                <SiriGlowInvert className="" />
+                <SiriGlowInvert />
               </span>
               <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10">
                 <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />
