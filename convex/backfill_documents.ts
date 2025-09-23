@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "./lib/search";
 import { mutation } from "./_generated/server";
 
 export const backfillDocumentTimestamps = mutation({

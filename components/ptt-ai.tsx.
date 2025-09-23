@@ -1,0 +1,30 @@
+"use client";
+import { useState, useRef } from "react";
+
+export default function PushToTalk({ onText }: { onText: (t: string) => void }) {
+  const [rec, setRec] = useState<SpeechRecognition | null>(null);
+  const interim = useRef("");
+
+  function start() {
+    const SR = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const r: SpeechRecognition = new SR();
+    r.lang = "en-US";
+    r.interimResults = true;
+    r.continuous = false;
+    r.onresult = (e) => {
+      const t = Array.from(e.results).map(r => r[0].transcript).join(" ");
+      interim.current = t;
+    };
+    r.onend = () => { onText(interim.current.trim()); interim.current = ""; };
+    r.start();
+    setRec(r);
+  }
+
+  function stop() { rec?.stop(); }
+
+  return (
+    <button onMouseDown={start} onMouseUp={stop} className="px-3 py-2 rounded border">
+      Hold to talk
+    </button>
+  );
+}

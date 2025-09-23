@@ -1,5 +1,5 @@
 import * as React from "react";
-
+import AssistantLauncher from "@/components/assistant-launcher";
 export default function ServicesSectionLayout({
   children,
 }: { children: React.ReactNode }) {
@@ -15,7 +15,7 @@ export default function ServicesSectionLayout({
       <main className="flex-1 px-4 py-6 pt-10">
         {children}
       </main>
-
+	<AssistantLauncher/>
       <footer className="border-t px-4 py-6 text-xs opacity-70">
         © {new Date().getFullYear()} ETHUB • All rights reserved
       </footer>

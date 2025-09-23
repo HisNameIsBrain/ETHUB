@@ -1,0 +1,12 @@
+--- a/convex/services_import.ts
++++ b/convex/services_import.ts
+@@
+-import type { ServiceRow } from "../servicesRows";
++// If you really need the type, fix the path or inline it locally.
++// import type { ServiceRow } from "../servicesRows";
+
++import { action } from "./_generated/server";
++import { v } from "convex/values";
+@@
+-  args: { rows: v.array(v.any()) }, // or mirror ServiceRow with v.object
++  args: { rows: v.array(v.any()) }, // replace with v.object(...) if you want strict validation

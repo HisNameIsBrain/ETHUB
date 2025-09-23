@@ -1,3 +1,4 @@
+// components/assistant-launcher.tsx
 "use client";
 
 import * as React from "react";
@@ -22,6 +23,44 @@ const MODEL_OPTIONS = [
 
 const DEFAULT_MODEL = MODEL_OPTIONS[0].id as (typeof MODEL_OPTIONS)[number]["id"];
 
+/* ---------- Small, flowing rainbow glow behind assistant bubbles ---------- */
+function AIBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mr-auto max-w-[85%]">
+      {/* Glow backdrop clipped to the bubble */}
+      <div className="absolute -inset-2 -z-10 overflow-hidden rounded-3xl">
+        <SiriGlowInvert
+          className="absolute inset-0"
+          rotateSec={16}
+          innerRotateSec={22}
+          blurPx={14}
+          insetPercent={-6}
+          opacity={0.28}
+          thicknessPx={18}
+          inner
+          colors={[
+            "rgba(255,242,0,0.95)",
+            "rgba(255,138,0,0.95)",
+            "rgba(255,0,122,0.95)",
+            "rgba(122,0,255,0.95)",
+            "rgba(0,72,255,0.95)",
+            "rgba(0,162,255,0.95)",
+            "rgba(0,255,162,0.95)",
+            "rgba(160,255,0,0.95)",
+          ]}
+          style={{ willChange: "transform", transform: "translateZ(0)" }}
+        />
+        {/* gentle gloss for readability */}
+        <div className="absolute inset-0 bg-white/12 backdrop-blur-[1.5px] mix-blend-overlay" />
+      </div>
+
+      <div className="rounded-2xl bg-black/55 text-white px-3 py-2 text-sm backdrop-blur">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function LauncherButton({ onOpen }: { onOpen: () => void }) {
   return (
     <button
@@ -36,7 +75,7 @@ function LauncherButton({ onOpen }: { onOpen: () => void }) {
     >
       <span className="absolute inset-0 rounded-full bg-neutral-950" />
       <SiriGlowInvert
-        className="inset-[-6%]"
+        className="absolute inset-0"
         rotateSec={3.2}
         innerRotateSec={4.4}
         blurPx={14}
@@ -62,6 +101,7 @@ function LauncherButton({ onOpen }: { onOpen: () => void }) {
 }
 
 export default function AssistantLauncher() {
+  // Declare hooks before any returns (avoid hook order errors)
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
@@ -73,6 +113,18 @@ export default function AssistantLauncher() {
   const [modelMenuOpen, setModelMenuOpen] = React.useState(true);
   const modelTouchedRef = React.useRef(false);
 
+  // Speak replies toggle (persisted)
+  const [speakReplies, setSpeakReplies] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("__speakReplies__") === "1";
+  });
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("__speakReplies__", speakReplies ? "1" : "0");
+    }
+  }, [speakReplies]);
+
+  // Optional mic (used if your "GPT-4o Voice" model is selected)
   const [audioStream, setAudioStream] = React.useState<MediaStream | null>(null);
   const mediaRef = React.useRef<MediaStream | null>(null);
 
@@ -105,24 +157,7 @@ export default function AssistantLauncher() {
     return () => clearTimeout(t);
   }, [open]);
 
-  // publish model + audioStream globally for VoiceVisualizerGate
-  React.useEffect(() => {
-    const w = globalThis as any;
-    w.__assistantState = { ...(w.__assistantState || {}), model, audioStream };
-    w.__onAssistantStateChange =
-      w.__onAssistantStateChange ||
-      ((cb: (s: any) => void) => {
-        (w.__assistantSubscribers ||= new Set()).add(cb);
-        return () => (w.__assistantSubscribers as Set<Function>).delete(cb);
-      });
-    (w.__assistantSubscribers as Set<Function> | undefined)?.forEach((cb) =>
-      cb(w.__assistantState)
-    );
-    (w as any).VoiceVisualizerComponent =
-      (w as any).VoiceVisualizerComponent || undefined;
-  }, [model, audioStream]);
-
-  // mic controls (for visualizer and future VAD)
+  // mic controls (for visualizer / future VAD)
   const startMic = React.useCallback(async () => {
     if (mediaRef.current) return;
     const s = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -154,8 +189,9 @@ export default function AssistantLauncher() {
         return;
       }
 
-      const voiceWanted = model === "gpt-4o-mini-tts";
-      const chatModel = voiceWanted ? "gpt-4o-mini" : model;
+      // If speaking is on, we can map to a TTS-friendly model for /ask
+      const wantsTTS = speakReplies;
+      const chatModel = wantsTTS ? "gpt-4o-mini" : model;
 
       let res: any = null;
 
@@ -163,8 +199,8 @@ export default function AssistantLauncher() {
         res = await askAction({
           prompt: text,
           model: chatModel,
-          voice: voiceWanted ? "alloy" : undefined,
-          audioFormat: voiceWanted ? "mp3" : undefined,
+          voice: wantsTTS ? "alloy" : undefined,
+          audioFormat: wantsTTS ? "mp3" : undefined,
         });
         const output = getTextFromResponse(res);
         if (output) {
@@ -173,7 +209,7 @@ export default function AssistantLauncher() {
             { role: "user", content: text },
             { role: "assistant", content: output },
           ]);
-          if (voiceWanted) await speakWithOpenAI(output, "alloy", "mp3");
+          if (wantsTTS) await speakWithOpenAI(output, "alloy", "mp3");
         }
       } else {
         const next = [...messages, { role: "user", content: text }];
@@ -182,7 +218,7 @@ export default function AssistantLauncher() {
         const output = getTextFromResponse(res);
         if (output) {
           setMessages((m) => [...m, { role: "assistant", content: output }]);
-          if (voiceWanted) await speakWithOpenAI(output, "alloy", "mp3");
+          if (wantsTTS) await speakWithOpenAI(output, "alloy", "mp3");
         }
       }
     } catch (err) {
@@ -197,7 +233,6 @@ export default function AssistantLauncher() {
   if (!mounted) return null;
 
   const launcherButton = <LauncherButton onOpen={() => setOpen(true)} />;
-
   const voiceMode = model === "gpt-4o-mini-tts";
   const micActive = !!audioStream;
 
@@ -208,6 +243,7 @@ export default function AssistantLauncher() {
       {open && (
         <div className="fixed inset-0 z-[96] bg-black/40 backdrop-blur-sm">
           <div className="absolute bottom-0 right-0 m-4 w-[min(640px,calc(100vw-2rem))] rounded-2xl border bg-background shadow-2xl overflow-hidden">
+            {/* Header */}
             <div className="flex items-center justify-between p-3 border-b">
               <div className="flex items-center gap-3">
                 <div className="relative h-6 w-6 overflow-hidden rounded-full">
@@ -226,25 +262,27 @@ export default function AssistantLauncher() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="hidden sm:flex flex-wrap gap-2 mr-2">
-                  {MODEL_OPTIONS.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        modelTouchedRef.current = true;
-                        setModel(m.id);
-                      }}
-                      className={`rounded-full px-3 py-1 text-xs border ${
-                        model === m.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background hover:bg-accent"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                {/* speak replies toggle */}
+                <button
+                  type="button"
+                  onClick={() => setSpeakReplies((v) => !v)}
+                  aria-label={speakReplies ? "Disable speak replies" : "Enable speak replies"}
+                  title={speakReplies ? "Disable speak replies" : "Enable speak replies"}
+                  className={`relative h-9 w-9 grid place-items-center rounded-md border transition
+                    ${speakReplies ? "bg-indigo-600/90 text-white border-indigo-500"
+                                   : "bg-background hover:bg-accent"}`}
+                >
+                  <span className={`transition-transform duration-200 ${speakReplies ? "scale-110" : "scale-100"}`}>
+                    {/* simple speaker icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 5L6 9H3v6h3l5 4V5z"/>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    </svg>
+                  </span>
+                </button>
 
+                {/* optional mic control (only relevant if using the Voice model) */}
                 {voiceMode ? (
                   micActive ? (
                     <Button size="icon" variant="secondary" onClick={stopMic} title="Stop mic">
@@ -267,6 +305,7 @@ export default function AssistantLauncher() {
               </div>
             </div>
 
+            {/* Inline model menu (mobile) */}
             {modelMenuOpen && (
               <div className="flex flex-wrap gap-2 p-3 border-b bg-muted/40 sm:hidden">
                 {MODEL_OPTIONS.map((m) => (
@@ -288,26 +327,28 @@ export default function AssistantLauncher() {
               </div>
             )}
 
+            {/* Messages */}
             <div className="max-h-[40vh] overflow-auto p-3 space-y-3">
               {messages.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Ask me anything. Choose “GPT-4o Voice” to hear replies spoken aloud.
+                  Ask me anything. Toggle 🔊 to hear replies aloud.
                 </p>
               )}
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`rounded-lg px-3 py-2 text-sm ${
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground ml-auto max-w-[85%]"
-                      : "bg-muted mr-auto max-w-[85%]"
-                  }`}
-                >
-                  {m.content}
-                </div>
-              ))}
+              {messages.map((m, i) =>
+                m.role === "user" ? (
+                  <div
+                    key={i}
+                    className="rounded-lg px-3 py-2 text-sm bg-primary text-primary-foreground ml-auto max-w-[85%]"
+                  >
+                    {m.content}
+                  </div>
+                ) : (
+                  <AIBubble key={i}>{m.content}</AIBubble>
+                )
+              )}
             </div>
 
+            {/* Composer */}
             <form
               className="flex items-center gap-2 p-3 border-t"
               onSubmit={(e) => {

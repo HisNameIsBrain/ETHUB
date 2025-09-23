@@ -1,3 +1,4 @@
+import { buildServiceSearch } from "./lib/search";
 // convex/migrations.backfill-docs.ts
 import { mutation, QueryCtx } from "./_generated/server";
 

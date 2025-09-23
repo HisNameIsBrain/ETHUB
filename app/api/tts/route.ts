@@ -1,31 +1,68 @@
 // app/api/tts/route.ts
-import OpenAI from "openai";
+import type { NextRequest } from "next/server";
 
-export async function POST(req: Request) {
-  const { text, voice = "alloy", format = "mp3" } = await req.json();
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
-  if (!process.env.OPENAI_API_KEY) {
-    return new Response("OPENAI_API_KEY missing", { status: 500 });
+export async function POST(req: NextRequest) {
+  try {
+    const { text, voice = "alloy", format = "mp3" } = await req.json();
+
+    if (!text || typeof text !== "string") {
+      return new Response("Missing `text`", { status: 400 });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return new Response("OPENAI_API_KEY not set", { status: 500 });
+    }
+
+    // Call OpenAI TTS (Edge-safe: fetch + Web APIs only)
+    const upstream = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini-tts",
+        voice,
+        input: text,
+        format, // "mp3" | "wav" | "ogg"
+      }),
+    });
+
+    if (!upstream.ok) {
+      // Pass through provider error for easier debugging
+      const errText = await upstream.text();
+      return new Response(errText, { status: upstream.status });
+    }
+
+    const buf = await upstream.arrayBuffer();
+    const contentType =
+      format === "wav" ? "audio/wav" :
+      format === "ogg" ? "audio/ogg" :
+      "audio/mpeg";
+
+    return new Response(buf, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (e: any) {
+    return new Response(
+      JSON.stringify({ error: e?.message ?? "Unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
+}
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  const speech = await client.audio.speech.create({
-    model: "gpt-4o-mini-tts",
-    voice,
-    input: text,
-    format, // "mp3" | "wav" | "ogg" | "pcm"
-  });
-
-  const buf = await speech.arrayBuffer();
-  const mime =
-    format === "wav"
-      ? "audio/wav"
-      : format === "ogg"
-      ? "audio/ogg"
-      : format === "pcm"
-      ? "audio/wave" // browser-compatible PCM container
-      : "audio/mpeg";
-
-  return new Response(buf, { headers: { "content-type": mime } });
+// Health check (handy in browser or uptime checks)
+export async function GET() {
+  return Response.json(
+    { ok: true, route: "/api/tts", runtime, dynamic },
+    { headers: { "cache-control": "no-store" } }
+  );
 }
