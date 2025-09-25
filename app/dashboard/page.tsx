@@ -5,14 +5,17 @@ import * as React from "react";
 import { useMemo, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { File, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ServicesTable } from "@/components/services-table";
 import { toast } from "sonner";
+
+
+const createService = useMutation(api.services.create);
+const services = useQuery(api.services.isPublic);
 
 type Service = {
   _id: string;

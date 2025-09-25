@@ -1,0 +1,242 @@
+// convex/scrape_iosfiles.ts
+// Scrape https://iosfiles.com/imei-services and sync via services_import mutations.
+// Returns { files: ServiceRow[] }.
+
+import { action, type ActionCtx } from "./_generated/server";
+import { v } from "convex/values";
+import { api } from "./_generated/api";
+import * as cheerio from "cheerio";
+import type { ServiceRow } from "./services_import";
+
+/** Live-scrape the catalog and sync DB (upsert + archiveMissing). */
+export const importFromIosfiles = action({
+  args: {},
+  handler: async (ctx: ActionCtx) => {
+    const LIST_URL = "https://iosfiles.com/imei-services";
+    const html = await fetchText(LIST_URL);
+    const services = scrapeCatalog(html, LIST_URL);
+
+    await ctx.runMutation(api.services_import.upsertMany, { rows: services });
+    await ctx.runMutation(api.services_import.archiveMissing, {
+      keepSlugs: services.map((s) => s.slug),
+    });
+
+    return { files: services };
+  },
+});
+
+/** Ingest CSV/JSON from client, normalize to ServiceRow, upsert, and return { files } */
+export const ingestIosFiles = action({
+  args: {
+    files: v.array(
+      v.object({
+        name: v.string(),
+        text: v.string(),
+        mime: v.optional(v.string()),
+      })
+    ),
+    batchSize: v.optional(v.number()),
+  },
+  handler: async (ctx, { files, batchSize }) => {
+    const BATCH = Math.max(1, Math.min(batchSize ?? 200, 1000));
+    const all: ServiceRow[] = [];
+
+    for (const f of files) {
+      const lower = f.name.toLowerCase();
+      const isJson = (f.mime?.includes("json") ?? false) || lower.endsWith(".json");
+      const isCsv  = (f.mime?.includes("csv") ?? false) || lower.endsWith(".csv");
+
+      let rows: Record<string, any>[] = [];
+      try {
+        if (isJson) {
+          const data = JSON.parse(f.text);
+          rows = Array.isArray(data) ? data : Array.isArray((data as any).items) ? (data as any).items : [];
+        } else if (isCsv) {
+          rows = parseCsv(f.text);
+        } else {
+          try {
+            const data = JSON.parse(f.text);
+            rows = Array.isArray(data) ? data : Array.isArray((data as any).items) ? (data as any).items : [];
+          } catch {
+            rows = parseCsv(f.text);
+          }
+        }
+      } catch (e: any) {
+        throw new Error(`Failed to parse "${f.name}": ${e?.message ?? String(e)}`);
+      }
+
+      for (const r of rows) {
+        const n = normalizeIncomingRow(r);
+        if (n) all.push(n);
+      }
+    }
+
+    for (let i = 0; i < all.length; i += BATCH) {
+      await ctx.runMutation(api.services_import.upsertMany, { rows: all.slice(i, i + BATCH) });
+    }
+
+    return { files: all };
+  },
+});
+
+/* -------------------- scraping helpers -------------------- */
+
+function scrapeCatalog(html: string, baseUrl: string): ServiceRow[] {
+  const $ = cheerio.load(html);
+  const anchors = $('a[href*="/imei-service/"]');
+
+  const seen = new Set<string>();
+  const items: ServiceRow[] = [];
+
+  anchors.each((_i, el) => {
+    const a = $(el);
+    const href = a.attr("href") || "";
+    const abs = new URL(href, baseUrl).toString();
+    const rawTitle = cleanText(a.text());
+    if (!href || !rawTitle) return;
+
+    const lineText = cleanText(
+      a.parent().text() ||
+      `${a.text()} ${a.next().text()} ${a.parent().next().text()}`
+    );
+
+    const deliveryTime = extractDelivery(lineText) ?? "Varies";
+    const priceCents   = extractPriceCents(lineText) ?? 0;
+
+    const slug = slugFromUrlOrTitle(abs, rawTitle);
+    if (seen.has(slug)) return;
+    seen.add(slug);
+
+    items.push({
+      slug,
+      title: normalizeTitle(rawTitle),
+      category: "IMEI services",
+      deliveryTime,
+      priceCents,
+      currency: "USD",
+      sourceUrl: abs,
+      tags: deriveTags(rawTitle),
+    });
+  });
+
+  items.sort((a, b) => a.title.localeCompare(b.title));
+  return items;
+}
+
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: { "user-agent": "Mozilla/5.0 (ETHUB/Convex sync)" },
+  });
+  if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
+  return await res.text();
+}
+
+function slugFromUrlOrTitle(absUrl: string, title: string): string {
+  try {
+    const last = new URL(absUrl).pathname.split("/").filter(Boolean).pop();
+    if (last && /[a-z0-9-]/i.test(last)) return toSlug(last);
+  } catch {}
+  return toSlug(title);
+}
+function toSlug(s: string): string {
+  return s.toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
+}
+function cleanText(s?: string | null): string {
+  return (s ?? "").replace(/\s+/g, " ").trim();
+}
+function normalizeTitle(t: string): string {
+  return t.replace(/\s-\s+/g, " - ").trim();
+}
+function extractPriceCents(line: string): number | undefined {
+  const m = line.replace(",", ".").match(/(\d+(?:\.\d{1,2})?)/);
+  if (!m) return undefined;
+  const dollars = parseFloat(m[1]);
+  if (Number.isNaN(dollars)) return undefined;
+  return Math.round(dollars * 100);
+}
+function extractDelivery(line: string): string | undefined {
+  const m = line.match(/\b(instant|0-?\d+\s*min(?:utes)?|[0-9]+-?[0-9]*\s*(?:min|minutes|h|hours|day|days)|varies|1-5\s*minutes?)\b/i);
+  return m?.[0];
+}
+function deriveTags(title: string): string[] {
+  const t = title.toLowerCase();
+  const tags = new Set<string>();
+  [
+    "checker","icloud","fmi","gsma","simlock","carrier","unlock","mdm",
+    "warranty","activation","mac","ipad","iphone","policy","ios","bypass","tool","rent",
+  ].forEach((k) => { if (t.includes(k)) tags.add(k); });
+  return [...tags];
+}
+
+/* -------------------- CSV/JSON helpers -------------------- */
+
+function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  const pushField = () => { cur.push(field); field = ""; };
+  const pushRow = () => { rows.push(cur); cur = []; };
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        const peek = text[i + 1];
+        if (peek === '"') { field += '"'; i++; } else { inQuotes = false; }
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ",") pushField();
+      else if (c === "\n") { pushField(); pushRow(); }
+      else if (c === "\r") { /* ignore */ }
+      else field += c;
+    }
+  }
+  pushField();
+  if (cur.length > 1 || (cur.length === 1 && cur[0] !== "")) pushRow();
+
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h) => h.trim());
+  const out: Record<string, string>[] = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const obj: Record<string, string> = {};
+    for (let c = 0; c < headers.length; c++) obj[headers[c]] = (row[c] ?? "").trim();
+    out.push(obj);
+  }
+  return out;
+}
+
+function normalizeIncomingRow(row: Record<string, any>): ServiceRow | null {
+  const num = (x: any) => (x === "" || x == null ? undefined : Number(x));
+  const tags = Array.isArray(row.tags)
+    ? row.tags
+    : typeof row.tags === "string"
+      ? row.tags.split("|").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+  const priceCents =
+    num(row.priceCents) ??
+    (num(row.price) != null ? Math.round(Number(row.price) * 100) : 0);
+
+  const title: string | undefined = row.title ?? row.name;
+  const sourceUrl: string | undefined = row.sourceUrl ?? row.url ?? row.link;
+  if (!title || !sourceUrl) return null;
+
+  const slug: string = row.slug
+    ? toSlug(String(row.slug))
+    : slugFromUrlOrTitle(String(sourceUrl), String(title));
+
+  return {
+    slug,
+    title: String(title),
+    category: String(row.category ?? "IMEI services"),
+    deliveryTime: String(row.deliveryTime ?? "Varies"),
+    priceCents: Number.isFinite(priceCents) ? Number(priceCents) : 0,
+    currency: "USD",
+    sourceUrl: String(sourceUrl),
+    tags: tags.map(String),
+  };
+}

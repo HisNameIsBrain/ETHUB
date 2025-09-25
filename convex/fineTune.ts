@@ -1,4 +1,5 @@
-// convex/fineTune.ts (example action)
+"use node";
+
 import OpenAI from "openai";
 import { v } from "convex/values";
 import { action } from "./_generated/server";

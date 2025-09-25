@@ -1,4 +1,4 @@
-
+"use client";
 import "./globals.css";
 import { Suspense } from "react";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";

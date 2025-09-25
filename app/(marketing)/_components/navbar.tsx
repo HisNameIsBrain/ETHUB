@@ -67,10 +67,10 @@ export default function Navbar() {
   const [open, setOpen] = React.useState(false);
 
   const nav = [
-    { href: "/services", label: "Services", Icon: Sparkles },
+    { href: "/dashboard/services", label: "Services", Icon: Sparkles },
     { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
     { href: "/documents", label: "Documents", Icon: FileText },
-    { href: "/settings", label: "Settings", Icon: Cog },
+    { href: "/dashboard/settings", label: "Settings", Icon: Cog },
   ];
 
   return (

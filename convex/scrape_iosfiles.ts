@@ -1,318 +1,10 @@
-import { action, mutation, type ActionCtx } from "./_generated/server";
+// convex/scrape_iosfiles.ts
+import { action } from "./_generated/server";
 import { v } from "convex/values";
-import * as cheerio from "cheerio";
+import { api } from "./_generated/api";
 
-/* =========================
-   Types & Validators
-   ========================= */
-
-export const ServiceRowV = v.object({
-  slug: v.string(),
-  title: v.string(),
-  category: v.string(),       // e.g. "IMEI services"
-  deliveryTime: v.string(),   // e.g. "0-1 min" | "Instant" | "Varies"
-  priceCents: v.number(),     // integer cents
-  currency: v.literal("USD"), // keep USD for now
-  sourceUrl: v.string(),
-  tags: v.array(v.string()),
-});
-
-export type ServiceRow = {
-  slug: string;
-  title: string;
-  category: string;
-  deliveryTime: string;
-  priceCents: number;
-  currency: "USD";
-  sourceUrl: string;
-  tags: string[];
-};
-
-/* =========================
-   Mutations (DB writes)
-   ========================= */
-
-export const upsertMany = mutation({
-  args: { rows: v.array(ServiceRowV) },
-  handler: async (ctx, { rows }) => {
-    for (const r of rows) {
-      const existing = await ctx.db
-        .query("services")
-        .withIndex("by_slug", (q) => q.eq("slug", r.slug))
-        .unique();
-
-      if (existing) {
-        await ctx.db.patch(existing._id, {
-          title: r.title,
-          category: r.category,
-          deliveryTime: r.deliveryTime,
-          priceCents: r.priceCents,
-          currency: r.currency,
-          sourceUrl: r.sourceUrl,
-          tags: r.tags,
-          isPublic: true,
-          archived: false,
-        });
-      } else {
-        await ctx.db.insert("services", {
-          ...r,
-          isPublic: true,
-          archived: false,
-        });
-      }
-    }
-  },
-});
-
-export const archiveMissing = mutation({
-  args: { keepSlugs: v.array(v.string()) },
-  handler: async (ctx, { keepSlugs }) => {
-    const keep = new Set(keepSlugs);
-    const cur = await ctx.db.query("services").collect();
-    for (const s of cur) {
-      if (s.isPublic && !keep.has(s.slug)) {
-        await ctx.db.patch(s._id, { archived: true });
-      }
-    }
-  },
-});
-
-/* =========================
-   Actions (web fetch / ingest)
-   ========================= */
-
-/**
- * Scrape https://iosfiles.com/imei-services and return { files: ServiceRow[] }.
- * Also upserts into the `services` table and archives missing rows.
- */
-export const importFromIosfiles = action({
-  args: {},
-  handler: async (ctx: ActionCtx) => {
-    const LIST_URL = "https://iosfiles.com/imei-services";
-    const html = await fetchText(LIST_URL);
-    const services = scrapeCatalog(html, LIST_URL);
-
-    // Upsert to DB
-    await ctx.runMutation<typeof upsertMany>("scrape_iosfiles:upsertMany", {
-      rows: services,
-    });
-
-    // Archive things no longer on the page
-    await ctx.runMutation<typeof archiveMissing>("scrape_iosfiles:archiveMissing", {
-      keepSlugs: services.map((s) => s.slug),
-    });
-
-    // Return wrapped object (your requested shape)
-    return { files: services };
-  },
-});
-
-/**
- * Action: ingest files (CSV or JSON) from a client and upsert.
- * Returns { files: ServiceRow[] } after normalization.
- */
-export const ingestIosFiles = action({
-  args: {
-    files: v.array(
-      v.object({
-        name: v.string(),
-        text: v.string(),           // raw file text
-        mime: v.optional(v.string()) // "text/csv" | "application/json" | ...
-      })
-    ),
-    batchSize: v.optional(v.number()),
-  },
-  handler: async (ctx, { files, batchSize }) => {
-    const BATCH = Math.max(1, Math.min(batchSize ?? 200, 1000));
-
-    const all: ServiceRow[] = [];
-    for (const f of files) {
-      const lower = f.name.toLowerCase();
-      const isJson = (f.mime?.includes("json") ?? false) || lower.endsWith(".json");
-      const isCsv  = (f.mime?.includes("csv") ?? false) || lower.endsWith(".csv");
-
-      let rows: Record<string, any>[] = [];
-      try {
-        if (isJson) {
-          const data = JSON.parse(f.text);
-          rows = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
-        } else if (isCsv) {
-          rows = parseCsv(f.text);
-        } else {
-          try {
-            const data = JSON.parse(f.text);
-            rows = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
-          } catch {
-            rows = parseCsv(f.text);
-          }
-        }
-      } catch (e: any) {
-        throw new Error(`Failed to parse "${f.name}": ${e?.message ?? String(e)}`);
-      }
-
-      // Normalize each incoming row to ServiceRow, skipping invalids
-      const normalized: ServiceRow[] = [];
-      for (const r of rows) {
-        const n = normalizeIncomingRow(r);
-        if (n) normalized.push(n);
-      }
-
-      all.push(...normalized);
-    }
-
-    // Optional chunked upsert
-    for (let i = 0; i < all.length; i += BATCH) {
-      const chunk = all.slice(i, i + BATCH);
-      await ctx.runMutation<typeof upsertMany>("scrape_iosfiles:upsertMany", { rows: chunk });
-    }
-
-    // Optionally archive missing after ingest:
-    // await ctx.runMutation<typeof archiveMissing>("scrape_iosfiles:archiveMissing", {
-    //   keepSlugs: all.map((s) => s.slug),
-    // });
-
-    return { files: all };
-  },
-});
-
-/* =========================
-   Scraper (Cheerio)
-   ========================= */
-
-function scrapeCatalog(html: string, baseUrl: string): ServiceRow[] {
-  const $ = cheerio.load(html);
-  // Strategy: find links to individual services, infer delivery & price from nearby text.
-  const anchors = $('a[href*="/imei-service/"]');
-
-  const seen = new Set<string>();
-  const items: ServiceRow[] = [];
-
-  anchors.each((_i, el) => {
-    const a = $(el);
-    const href = a.attr("href") || "";
-    const abs = new URL(href, baseUrl).toString();
-    const rawTitle = cleanText(a.text());
-    if (!href || !rawTitle) return;
-
-    const lineText = cleanText(
-      a.parent().text() ||
-      `${a.text()} ${a.next().text()} ${a.parent().next().text()}`
-    );
-
-    const deliveryTime = extractDelivery(lineText) ?? "Varies";
-    const priceCents = extractPriceCents(lineText) ?? 0;
-
-    const slug = slugFromUrlOrTitle(abs, rawTitle);
-    if (seen.has(slug)) return;
-    seen.add(slug);
-
-    items.push({
-      slug,
-      title: normalizeTitle(rawTitle),
-      category: "IMEI services",
-      deliveryTime,
-      priceCents,
-      currency: "USD",
-      sourceUrl: abs,
-      tags: deriveTags(rawTitle),
-    });
-  });
-
-  // de-dupe already handled with seen; sort for deterministic output
-  items.sort((a, b) => a.title.localeCompare(b.title));
-  return items;
-}
-
-/* =========================
-   Helpers
-   ========================= */
-
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "user-agent": "Mozilla/5.0 (ETHUB/Convex sync)" },
-  });
-  if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
-  return await res.text();
-}
-
-// Quasi-stable slug: prefer last path segment, else title
-function slugFromUrlOrTitle(absUrl: string, title: string): string {
-  try {
-    const last = new URL(absUrl).pathname.split("/").filter(Boolean).pop();
-    if (last && /[a-z0-9-]/i.test(last)) return toSlug(last);
-  } catch {}
-  return toSlug(title);
-}
-
-function toSlug(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-}
-
-function cleanText(s?: string | null): string {
-  return (s ?? "").replace(/\s+/g, " ").trim();
-}
-
-function normalizeTitle(t: string): string {
-  return t.replace(/\s-\s+/g, " - ").trim();
-}
-
-// Extract "$0.25" / "0.25 USD" / "Price: 2.60" → cents
-function extractPriceCents(line: string): number | undefined {
-  const m = line.replace(",", ".").match(/(\d+(?:\.\d{1,2})?)/);
-  if (!m) return undefined;
-  const dollars = parseFloat(m[1]);
-  if (Number.isNaN(dollars)) return undefined;
-  return Math.round(dollars * 100);
-}
-
-function extractDelivery(line: string): string | undefined {
-  const m = line.match(
-    /\b(instant|0-?\d+\s*min(?:utes)?|[0-9]+-?[0-9]*\s*(?:min|minutes|h|hours|day|days)|varies|1-5\s*minutes?)\b/i
-  );
-  return m?.[0];
-}
-
-function deriveTags(title: string): string[] {
-  const t = title.toLowerCase();
-  const tags = new Set<string>();
-  [
-    "checker",
-    "icloud",
-    "fmi",
-    "gsma",
-    "simlock",
-    "carrier",
-    "unlock",
-    "mdm",
-    "warranty",
-    "activation",
-    "mac",
-    "ipad",
-    "iphone",
-    "policy",
-    "ios",
-    "bypass",
-    "tool",
-    "rent",
-  ].forEach((k) => {
-    if (t.includes(k)) tags.add(k);
-  });
-  return [...tags];
-}
-
-/* =========================
-   CSV / JSON normalization
-   ========================= */
-
-/**
- * Minimal CSV parser that honors quoted fields and commas in quotes.
- * Expects the first line to be headers.
- */
+/* ---------------------------- tiny CSV parser ---------------------------- */
+/** Handles quotes and commas inside quotes. First line = headers. */
 function parseCsv(text: string): Record<string, string>[] {
   const rows: string[][] = [];
   let cur: string[] = [];
@@ -328,18 +20,16 @@ function parseCsv(text: string): Record<string, string>[] {
       if (c === '"') {
         const peek = text[i + 1];
         if (peek === '"') { field += '"'; i++; } else { inQuotes = false; }
-      } else {
-        field += c;
-      }
+      } else field += c;
     } else {
       if (c === '"') inQuotes = true;
       else if (c === ",") pushField();
       else if (c === "\n") { pushField(); pushRow(); }
-      else if (c === "\r") { /* swallow CR */ }
+      else if (c === "\r") {/* ignore CR */}
       else field += c;
     }
   }
-  // flush last field/row
+  // flush last cell/row
   pushField();
   if (cur.length > 1 || (cur.length === 1 && cur[0] !== "")) pushRow();
 
@@ -355,41 +45,143 @@ function parseCsv(text: string): Record<string, string>[] {
   return out;
 }
 
-/**
- * Normalize arbitrary incoming object to ServiceRow.
- * Accepts either:
- *  - priceCents (preferred), or
- *  - price (dollars -> converted to cents)
- * If title/sourceUrl are missing, row is skipped.
- */
-function normalizeIncomingRow(row: Record<string, any>): ServiceRow | null {
-  const num = (x: any) => (x === "" || x == null ? undefined : Number(x));
-  const tags = Array.isArray(row.tags)
-    ? row.tags
-    : typeof row.tags === "string"
+/* ------------------------------ normalizer ------------------------------ */
+function normalizeRow(row: Record<string, any>) {
+  const num = (v: any) => (v === "" || v == null ? undefined : Number(v));
+  const bool = (v: any) =>
+    v === true || v === "true" || v === "TRUE" || v === "1" ? true :
+    v === false || v === "false" || v === "FALSE" || v === "0" ? false : undefined;
+
+  const tags =
+    typeof row.tags === "string"
       ? row.tags.split("|").map((s) => s.trim()).filter(Boolean)
-      : [];
+      : Array.isArray(row.tags)
+      ? row.tags
+      : undefined;
 
-  const priceCents =
-    num(row.priceCents) ??
-    (num(row.price) != null ? Math.round(Number(row.price) * 100) : 0);
-
-  const title: string | undefined = row.title ?? row.name;
-  const sourceUrl: string | undefined = row.sourceUrl ?? row.url ?? row.link;
-  if (!title || !sourceUrl) return null;
-
-  const slug: string = row.slug
-    ? toSlug(String(row.slug))
-    : slugFromUrlOrTitle(String(sourceUrl), String(title));
+  const title = (row.title ?? row.name ?? "").toString().trim();
 
   return {
-    slug,
-    title: String(title),
-    category: String(row.category ?? "IMEI services"),
-    deliveryTime: String(row.deliveryTime ?? "Varies"),
-    priceCents: Number.isFinite(priceCents) ? Number(priceCents) : 0,
-    currency: "USD",
-    sourceUrl: String(sourceUrl),
-    tags: tags.map(String),
+    // upsert args (all optional; upsert will auto-generate slug if absent)
+    slug: row.slug ? String(row.slug).trim() : undefined,
+    title: title || undefined,
+    notes: row.notes ?? row.description ?? undefined,
+    tags,
+    category: row.category ?? undefined,
+    deliveryTime: row.deliveryTime ?? undefined,
+    priceCents:
+      row.priceCents != null
+        ? num(row.priceCents)
+        : row.price != null
+        ? (typeof row.price === "number" ? Math.round(row.price * 100) : num(row.price) && Math.round(Number(row.price) * 100))
+        : undefined,
+    currency: row.currency ?? "USD",
+    sourceUrl: row.sourceUrl ?? undefined,
+    isPublic: bool(row.isPublic),
+    archived: bool(row.archived),
   };
 }
+
+/* ----------------------------- main action ------------------------------ */
+export const ingestIosFiles = action({
+  args: {
+    files: v.array(
+      v.object({
+        name: v.string(),
+        text: v.string(),               // raw file contents
+        mime: v.optional(v.string()),   // e.g. "text/csv" or "application/json"
+      })
+    ),
+    // archive any currently-public service not present in the uploaded slugs
+    archiveMissing: v.optional(v.boolean()),
+    // batch size for upserts
+    batchSize: v.optional(v.number()),
+  },
+  handler: async (ctx, { files, archiveMissing = false, batchSize }) => {
+    const BATCH = Math.max(1, Math.min(batchSize ?? 200, 1000));
+
+    let totalRows = 0;
+    let upserts = 0;
+    const keepSlugs = new Set<string>();
+    const perFile: Array<{ name: string; rows: number }> = [];
+
+    // parse and upsert
+    for (const f of files) {
+      const lower = f.name.toLowerCase();
+      const isJson = (f.mime?.includes("json") ?? false) || lower.endsWith(".json");
+      const isCsv  = (f.mime?.includes("csv") ?? false) || lower.endsWith(".csv");
+
+      let rows: any[] = [];
+      try {
+        if (isJson) {
+          const data = JSON.parse(f.text);
+          rows = Array.isArray(data) ? data : (Array.isArray((data as any).items) ? (data as any).items : []);
+        } else if (isCsv) {
+          rows = parseCsv(f.text);
+        } else {
+          // attempt JSON, else CSV
+          try {
+            const data = JSON.parse(f.text);
+            rows = Array.isArray(data) ? data : (Array.isArray((data as any).items) ? (data as any).items : []);
+          } catch {
+            rows = parseCsv(f.text);
+          }
+        }
+      } catch (e: any) {
+        throw new Error(`Failed to parse "${f.name}": ${e?.message ?? String(e)}`);
+      }
+
+      // normalize
+      const items = rows.map((r) => normalizeRow(r)).filter((r) => r.title && typeof r.title === "string");
+      totalRows += items.length;
+
+      // collect slugs to keep (when present)
+      for (const it of items) {
+        const s = it.slug;
+        if (s && typeof s === "string" && s.trim()) keepSlugs.add(s.trim());
+      }
+
+      // batch upsert via mutation
+      for (let i = 0; i < items.length; i += BATCH) {
+        const chunk = items.slice(i, i + BATCH);
+        for (const it of chunk) {
+          await ctx.runMutation(api.services.upsert, it);
+          upserts++;
+        }
+      }
+
+      perFile.push({ name: f.name, rows: items.length });
+    }
+
+    // optionally archive missing (public) services
+    let archived = 0;
+    if (archiveMissing) {
+      // Pull a big page of services; adjust limit if your catalog is larger.
+      const listing = await ctx.runQuery(api.services.fetch, {
+        needle: undefined,
+        offset: 0,
+        limit: 10000,
+        sort: "created_desc",
+        onlyPublic: true,
+      });
+
+      for (const s of listing.services) {
+        const slug: string = (s as any).slug ?? "";
+        if (!slug) continue;
+        if (!keepSlugs.has(slug)) {
+          await ctx.runMutation(api.services.update, { id: (s as any)._id, archived: true, isPublic: false });
+          archived++;
+        }
+      }
+    }
+
+    return {
+      files: perFile,
+      totalRows,
+      upserts,
+      archived,
+      keptSlugs: keepSlugs.size,
+      batchSize: BATCH,
+    };
+  },
+});
