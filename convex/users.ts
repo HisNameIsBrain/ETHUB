@@ -12,22 +12,25 @@ export const create = mutation({
     // Uniqueness checks
     const emailClash = await ctx.db
       .query("users")
-      .withIndex("by_email", q => q.eq("email", email))
+      .withIndex("by_email", (q: any) => q.eq("email", email))
       .first();
     if (emailClash) throw new Error("Email already exists");
 
     if (username) {
       const usernameClash = await ctx.db
         .query("users")
-        .withIndex("by_username", q => q.eq("username", username))
+        .withIndex("by_username", (q: any) => q.eq("username", username))
         .first();
       if (usernameClash) throw new Error("Username already exists");
     }
 
     const now = Date.now();
     return await ctx.db.insert("users", {
-      email, name, username: username ?? undefined,
-      createdAt: now, updatedAt: now,
+      email,
+      name,
+      username: username ?? undefined,
+      createdAt: now,
+      updatedAt: now,
     });
   },
 });
@@ -43,10 +46,10 @@ export const update = mutation({
   handler: async (ctx, { id, email, name, username }) => {
     const patch: any = { updatedAt: Date.now() };
 
-    if (email) {
+    if (email !== undefined) {
       const emailClash = await ctx.db
         .query("users")
-        .withIndex("by_email", q => q.eq("email", email))
+        .withIndex("by_email", (q: any) => q.eq("email", email))
         .first();
       if (emailClash && emailClash._id !== id) throw new Error("Email already exists");
       patch.email = email;
@@ -56,7 +59,7 @@ export const update = mutation({
       if (username) {
         const usernameClash = await ctx.db
           .query("users")
-          .withIndex("by_username", q => q.eq("username", username))
+          .withIndex("by_username", (q: any) => q.eq("username", username))
           .first();
         if (usernameClash && usernameClash._id !== id) throw new Error("Username already exists");
         patch.username = username;
@@ -77,7 +80,7 @@ export const list = query({
   handler: async (ctx, { offset = 0, limit = 50 }) => {
     const rows = await ctx.db
       .query("users")
-      .withIndex("by_createdAt", q => q.gte("createdAt", 0))
+      .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
       .collect();
     const total = rows.length;
     const slice = rows.slice(offset, offset + limit);
@@ -95,23 +98,25 @@ export const getById = query({
 export const getByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) =>
-    ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).first(),
+    ctx.db.query("users").withIndex("by_email", (q: any) => q.eq("email", email)).first(),
 });
 
 /** DELETE */
 export const remove = mutation({
   args: { id: v.id("users") },
-  handler: async (ctx, { id }) => { await ctx.db.delete(id); },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
 });
 
-/** Seed: insert a test user (like your SQL example) */
+/** Seed: insert a test user */
 export const seedTestUser = mutation({
   args: {},
   handler: async (ctx) => {
     const email = "test@example.com";
     const exists = await ctx.db
       .query("users")
-      .withIndex("by_email", q => q.eq("email", email))
+      .withIndex("by_email", (q: any) => q.eq("email", email))
       .first();
     if (exists) return exists._id;
 
@@ -124,4 +129,4 @@ export const seedTestUser = mutation({
       updatedAt: now,
     });
   },
-}
+});

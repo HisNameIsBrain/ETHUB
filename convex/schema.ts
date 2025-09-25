@@ -32,54 +32,74 @@ export default defineSchema({
     code: v.optional(v.string()),
     latencyMs: v.optional(v.number()),
     createdAt: v.number(),
-  }),
+}),
+
+documents: defineTable({
+  title: v.string(),
+  content: v.optional(v.string()),
+  parentDocument: v.optional(v.id("documents")),
+  isPublished: v.optional(v.boolean()),
+  isArchived: v.boolean(),
+  slug: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  search: v.string(),
+})
+  .index("by_createdAt", ["createdAt"])
+  .index("by_parent", ["parentDocument"])
+  .index("by_isPublished", ["isPublished"])
+  .index("by_isArchived", ["isArchived"])
+  .index("by_slug", ["slug"]),
 
   users: defineTable({
-    email: v.string(),            // NOT NULL
+    userId: v.optional(v.string()),
+    tokenIdentifier: v.string(),
+    email: v.optional(v.string()),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    imageUrl: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+    search: v.string(),
   })
-    .index("by_email", ["email"])         // unique in logic (enforced in mutations)
-    .index("by_username", ["username"])   // optional unique
-    .index("by_createdAt", ["createdAt"]),
-  }),
+    .index("by_userId", ["userId"])
+    .index("by_tokenIdentifier", ["tokenIdentifier"]),
 
   documents: defineTable({
-    userId: v.string(),
     title: v.string(),
     content: v.optional(v.string()),
     parentDocument: v.optional(v.id("documents")),
-    isArchived: v.boolean(),
     isPublished: v.optional(v.boolean()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
+    isArchived: v.boolean(),
+    slug: v.optional(v.string()),
+    search: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    userId: v.string(),                
     coverImage: v.optional(v.string()),
-    icon: v.optional(v.string()),
   })
-    .index("by_userId", ["userId"])
+    .index("by_createdAt", ["createdAt"])
     .index("by_parent", ["parentDocument"])
-    .index("by_isArchived", ["isArchived"]),
+    .index("by_isPublished", ["isPublished", "updatedAt"])
+    .index("by_isArchived", ["isArchived", "updatedAt"])
+    .index("by_slug", ["slug"])
+    .index("by_userId", ["userId", "updatedAt"])
+    .searchIndex("search_all", { searchField: "search" }),
 
   services: defineTable({
-    id: v.optional(v.strings())
-    slug: v.optional(v.string()),       
-    title: v.optional(v.string()),        
+    slug: v.string(),
+    name: v.string(),
     description: v.optional(v.string()),
-    category: v.optional(v.string()),     
-    deliveryTime: v.optional(v.string()),  
-    priceCents: v.optional(v.number()),  
-    currency: v.optional(v.string()),       
-    sourceUrl: v.optional(v.string()),    
-    notes: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
     isPublic: v.boolean(),
-    archived: v.boolean(),
+    archived: v.optional(v.boolean()),
+    createdAt: v.number(),
     search: v.optional(v.string()),
   })
-    .searchIndex("search_all", { searchField: "search" })
     .index("by_slug", ["slug"])
-    .index("by_category", ["category", "archived"])
-    .index("by_isPublic", ["isPublic", "archived"])
+    .index("by_isPublic", ["isPublic"])
+    .index("by_createdAt", ["createdAt"])                 
+    .index("by_isPublic_archived", ["isPublic", "archived"])
+    .searchIndex("search_all", { searchField: "search" }),
 });

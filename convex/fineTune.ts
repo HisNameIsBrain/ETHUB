@@ -1,5 +1,3 @@
-"use node";
-
 import OpenAI from "openai";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
@@ -33,7 +31,7 @@ export const startFineTune = action({
     const seed = args.seed ?? 314159;
 
     // 1) Build JSONL in a temp file
-    const jsonl = toJSONL(normalizeConversations(args.conversations));
+    const jsonl = toJSONL(args.conversations);
     const tmpDir = "/tmp";
     const filePath = path.join(tmpDir, `dataset-${Date.now()}.jsonl`);
     fs.writeFileSync(filePath, jsonl, "utf8");
@@ -63,26 +61,19 @@ export const startFineTune = action({
       base_model: model,
       // When the job finishes, OpenAI fills in job.fine_tuned_model
       // You can poll for that with another action.
+
+ };
+export const getFineTuneStatus = action({
+  args: { jobId: v.string() },
+  handler: async (ctx, { jobId }) => {
+    const job = await openai.fineTuning.jobs.retrieve(jobId);
+    // Optionally also read recent events/logs:
+    // const events = await openai.fineTuning.jobs.listEvents({ fine_tuning_job_id: jobId, limit: 20 });
+    return {
+      status: job.status,                 // queued | running | succeeded | failed | cancelled
+      fine_tuned_model: job.fine_tuned_model ?? null,
     };
   }
 });
-
-type ChatRole = "user" | "system" | "assistant";
-type NormalizedMsg = { role: ChatRole; content: string };
-type NormalizedConv = { messages: NormalizedMsg[] };
-
-/**
- * Coerce loose role strings to the allowed union for training JSONL.
- * Unknown roles are downgraded to "user".
- */
-function normalizeConversations(
-  input: { messages: { role: string; content: string }[] }[]
-): NormalizedConv[] {
-  const allowed: ChatRole[] = ["user", "system", "assistant"];
-  return input.map(c => ({
-    messages: c.messages.map(m => ({
-      content: m.content,
-      role: (allowed.includes(m.role as ChatRole) ? m.role : "user") as ChatRole
-    }))
-  }));
-}
+  }
+});
