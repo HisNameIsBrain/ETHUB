@@ -34,6 +34,18 @@ export default defineSchema({
     createdAt: v.number(),
   }),
 
+  users: defineTable({
+    email: v.string(),            // NOT NULL
+    name: v.optional(v.string()),
+    username: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_email", ["email"])         // unique in logic (enforced in mutations)
+    .index("by_username", ["username"])   // optional unique
+    .index("by_createdAt", ["createdAt"]),
+  }),
+
   documents: defineTable({
     userId: v.string(),
     title: v.string(),
@@ -50,23 +62,8 @@ export default defineSchema({
     .index("by_parent", ["parentDocument"])
     .index("by_isArchived", ["isArchived"]),
 
-  users: defineTable({
-    userId: v.string(),
-    name: v.optional(v.string()),
-    email: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    role: v.optional(v.string()),
-    username: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    tokenIdentifier: v.optional(v.string()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_email", ["email"])
-    .index("by_token", ["tokenIdentifier"]),
-
   services: defineTable({
+    id: v.optional(v.strings())
     slug: v.optional(v.string()),       
     title: v.optional(v.string()),        
     description: v.optional(v.string()),
@@ -79,13 +76,10 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     isPublic: v.boolean(),
     archived: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
     search: v.optional(v.string()),
   })
     .searchIndex("search_all", { searchField: "search" })
     .index("by_slug", ["slug"])
     .index("by_category", ["category", "archived"])
     .index("by_isPublic", ["isPublic", "archived"])
-    .index("by_createdAt", ["createdAt"]),
 });

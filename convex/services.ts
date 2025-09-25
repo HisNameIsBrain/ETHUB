@@ -1,4 +1,3 @@
-// convex/services.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { buildServiceSearch } from "./lib/search";
@@ -16,6 +15,8 @@ function slugify(input: string) {
 async function uniqueSlug(ctx: any, baseTitle: string) {
   const base = slugify(baseTitle) || "service";
   let slug = base, i = 1;
+  // ensure slug not taken
+  // (uses by_slug index; if you don't have it, switch to createdAt scan)
   while (true) {
     const ex = await ctx.db
       .query("services")
@@ -64,8 +65,6 @@ export const create = mutation({
       sourceUrl: args.sourceUrl ?? "",
       isPublic: args.isPublic ?? true,
       archived: args.archived ?? false,
-      createdAt: now,
-      updatedAt: now,
       search: buildServiceSearch({
         title: args.title,
         notes: args.notes,
@@ -132,7 +131,7 @@ export const remove = mutation({
 });
 
 /* ----------------------------- upsert ---------------------------- */
-/** Update by id/slug or insert new (auto-slug from title) */
+/** Update by id/slug or insert new (auto-slug from title). */
 export const upsert = mutation({
   args: {
     id: v.optional(v.id("services")),
@@ -210,8 +209,6 @@ export const upsert = mutation({
       sourceUrl: args.sourceUrl ?? "",
       isPublic: args.isPublic ?? true,
       archived: args.archived ?? false,
-      createdAt: now,
-      updatedAt: now,
       search: buildServiceSearch({
         title,
         notes: args.notes,
@@ -220,80 +217,6 @@ export const upsert = mutation({
       }),
     };
     return await ctx.db.insert("services", doc);
-  },
-});
-
-/* ------------------------------ fetch ---------------------------- */
-/** Paged list with optional search & sorting.
- * sort: "created_desc" (default) | "created_asc" | "price_asc" | "price_desc"
- */
-export const fetch = query({
-  args: {
-    needle: v.optional(v.string()),
-    offset: v.optional(v.number()),
-    limit: v.optional(v.number()),
-    sort: v.optional(v.string()),
-    onlyPublic: v.optional(v.boolean()),
-  },
-  handler: async (ctx, { needle, offset = 0, limit = 20, sort = "created_desc", onlyPublic = true }) => {
-    const id = await ctx.auth.getUserIdentity();
-    const admin = isAdminSubject(id?.subject ?? null);
-
-    let rows: any[] = [];
-    const hasNeedle = !!needle && needle.trim().length > 0;
-
-    if (hasNeedle) {
-      const n = needle!.toLowerCase();
-      // Prefer a search index if defined; fallback to scan+filter
-      try {
-        // @ts-ignore present only if defined in schema
-        rows = await ctx.db
-          .query("services")
-          .withSearchIndex("search_all", (q: any) => q.search("search", n))
-          .collect();
-      } catch {
-        rows = await ctx.db
-          .query("services")
-          .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
-          .collect();
-        rows = rows.filter((s) => (s.search ?? "").includes(n));
-      }
-    } else {
-      rows = await ctx.db
-        .query("services")
-        .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
-        .collect();
-    }
-
-    // visibility
-    if (onlyPublic && !admin) rows = rows.filter((s) => s.isPublic && !s.archived);
-    else rows = rows.filter((s) => !s.archived);
-
-    // sorting
-    switch (sort) {
-      case "created_asc":
-        rows.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-        break;
-      case "price_asc":
-        rows.sort((a, b) => (a.priceCents ?? Infinity) - (b.priceCents ?? Infinity));
-        break;
-      case "price_desc":
-        rows.sort((a, b) => (b.priceCents ?? -Infinity) - (a.priceCents ?? -Infinity));
-        break;
-      case "created_desc":
-      default:
-        rows.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    }
-
-    const total = rows.length;
-    const services = rows.slice(offset, offset + limit);
-    return {
-      services,
-      total,
-      offset,
-      newOffset: Math.min(offset + limit, total),
-      hasMore: offset + limit < total,
-    };
   },
 });
 

@@ -2,32 +2,10 @@
 
 import { useState } from "react"; import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, } from "@clerk/nextjs";
-
-
-
 export default function SettingsPage() { return ( 
 
 <div className="min-h-screen bg-background"> <SignedIn> <AuthedSettings /> </SignedIn>
 
-<SignedOut>
-    <div className="mx-auto max-w-md px-6 py-16 text-center">
-      <h1 className="text-2xl font-semibold">You need to sign in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Access your account settings after authentication.
-      </p>
-      <div className="mt-6 inline-flex items-center gap-3">
-        <SignInButton mode="modal">
-          <Button>Sign in</Button>
-        </SignInButton>
-        <Link href="/">
-          <Button variant="outline">Go home</Button>
-        </Link>
-      </div>
-    </div>
-  </SignedOut>
-</div>
-
-)}; 
 
 
 function AuthedSettings() { const { user } = useUser();
