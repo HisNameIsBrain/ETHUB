@@ -1,13 +1,8 @@
-// convex/openai.ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import OpenAI from "openai";
 
-// If you keep a central list, import it; otherwise define here.
-// import { DEFAULT_MODEL } from "./openaiModels";
 const DEFAULT_MODEL = "gpt-4o-mini" as const;
-
-/* -------------------------- model allowlists -------------------------- */
 
 const CHAT_MODELS = new Set(["gpt-4o-mini","gpt-4o","gpt-4.1-mini","gpt-4.1","o3-mini"]);
 const TTS_MODELS  = new Set(["gpt-4o-mini-tts"]);
@@ -19,37 +14,31 @@ function assertTtsModel(model: string) {
   if (!TTS_MODELS.has(model)) throw new Error(`Unsupported TTS model: ${model}`);
 }
 
-/* ------------------------------ client ------------------------------- */
-
 function getClient() {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("Missing OPENAI_API_KEY");
   return new OpenAI({ apiKey: key });
 }
 
-export const openai = getClient();
-
 /* -------------------------------- TTS -------------------------------- */
-
 export const speak = action({
   args: { text: v.string(), voice: v.optional(v.string()), model: v.optional(v.string()) },
   handler: async (_ctx, { text, voice = "verse", model = "gpt-4o-mini-tts" }) => {
     assertTtsModel(model);
     const client = getClient();
-    // @ts-ignore older SDKs: 'format' type may lag behind runtime support
+    // @ts-ignore format may lag typing in SDKs
     const r = await client.audio.speech.create({ model, voice, input: text, format: "mp3" });
     const buf = Buffer.from(await r.arrayBuffer());
-    return { audio: buf.toString("base64") }; // base64 MP3
+    return { audio: buf.toString("base64") };
   },
 });
 
 /* ------------------------------ Chat --------------------------------- */
-
 type ChatMessage = { role: "user" | "system" | "assistant"; content: string };
 
 export const chat = action({
   args: {
-    messages: v.array(v.object({ role: v.string(), content: v.string() })), // runtime validated
+    messages: v.array(v.object({ role: v.string(), content: v.string() })),
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
     system: v.optional(v.string()),
@@ -75,7 +64,6 @@ export const chat = action({
 });
 
 /* ---------------------------- Moderation ----------------------------- */
-
 export const moderate = action({
   args: { text: v.string() },
   handler: async (_ctx, { text }) => {
@@ -94,7 +82,6 @@ export const moderate = action({
 });
 
 /* ------------------------------- Ask -------------------------------- */
-
 const audioFormatValidator = v.union(
   v.literal("mp3"),
   v.literal("wav"),

@@ -1,6 +1,4 @@
-// convex/services.ts
 import { mutation, query } from "./_generated/server";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { buildServiceSearch } from "./lib/search";
 
@@ -14,45 +12,17 @@ function slugify(input: string) {
     .replace(/(^-|-$)+/g, "");
 }
 
-async function uniqueSlug(ctx: MutationCtx | QueryCtx, baseTitle: string) {
+async function uniqueSlug(ctx: any, baseTitle: string) {
   const base = slugify(baseTitle) || "service";
   let slug = base, i = 1;
-  // requires index: services.by_slug on "slug"
   while (true) {
     const ex = await ctx.db
       .query("services")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
       .first();
     if (!ex) return slug;
     slug = `${base}-${i++}`;
   }
-}
-
-/** Admin allow-lists (no DB migration needed). Set in env:
- *  ADMIN_SUBJECTS=user_abc,user_def
- *  ADMIN_EMAILS=you@example.com,admin@site.com
- */
-const ADMIN_SUBJECTS = (process.env.ADMIN_SUBJECTS ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
-
-function isAdminIdentity(subject?: string | null, email?: string | null) {
-  const bySubject = !!subject && ADMIN_SUBJECTS.includes(subject);
-  const byEmail = !!email && ADMIN_EMAILS.includes(email.toLowerCase());
-  return bySubject || byEmail;
-}
-
-async function requireAdmin(ctx: MutationCtx | QueryCtx) {
-  const id = await ctx.auth.getUserIdentity();
-  if (!id) throw new Error("Unauthorized");
-  if (!isAdminIdentity(id.subject, id.email ?? null)) throw new Error("Forbidden");
-  return id;
 }
 
 /* ----------------------------- create ---------------------------- */
@@ -71,7 +41,6 @@ export const create = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const who = await requireAdmin(ctx);
     const now = Date.now();
     const slug = await uniqueSlug(ctx, args.title);
 
@@ -89,7 +58,6 @@ export const create = mutation({
       archived: args.archived ?? false,
       createdAt: now,
       updatedAt: now,
-      createdBy: who.subject, // track who created
       search: buildServiceSearch({
         title: args.title,
         notes: args.notes,
@@ -117,8 +85,7 @@ export const update = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const patch: Record<string, unknown> = { updatedAt: Date.now() };
+    const patch: any = { updatedAt: Date.now() };
 
     if (args.title !== undefined) {
       patch.title = args.title;
@@ -135,12 +102,12 @@ export const update = mutation({
     if (args.archived !== undefined) patch.archived = args.archived;
 
     if ("title" in patch || "notes" in patch || "deliveryTime" in patch || "tags" in patch) {
-      const existing = await ctx.db.get(args.id);
-      const title = (patch.title as string | undefined) ?? existing?.title ?? "";
-      const notes = (patch.notes as string | undefined) ?? existing?.notes ?? "";
-      const deliveryTime = (patch.deliveryTime as string | undefined) ?? existing?.deliveryTime ?? "";
-      const tags = (patch.tags as string[] | undefined) ?? existing?.tags ?? [];
-      patch.search = buildServiceSearch({ title, notes, deliveryTime, tags });
+      patch.search = buildServiceSearch({
+        title: patch.title,
+        notes: patch.notes,
+        deliveryTime: patch.deliveryTime,
+        tags: patch.tags,
+      });
     }
 
     await ctx.db.patch(args.id, patch);
@@ -152,13 +119,12 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
-    await requireAdmin(ctx);
     await ctx.db.delete(id);
   },
 });
 
 /* ----------------------------- upsert ---------------------------- */
-/** Update by id/slug or insert new (auto-slug from title) */
+/** Update by id/slug or insert new (auto-slug from title). */
 export const upsert = mutation({
   args: {
     id: v.optional(v.id("services")),
@@ -175,55 +141,50 @@ export const upsert = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
     const now = Date.now();
 
-    // 1) Upsert by id
     if (args.id) {
-      const patch: Record<string, unknown> = { ...args, updatedAt: now };
+      const patch: any = { ...args, updatedAt: now };
       delete patch.id;
 
       if (args.title !== undefined) {
         patch.title = args.title;
         patch.slug = await uniqueSlug(ctx, args.title);
       }
-
       if ("title" in patch || "notes" in patch || "deliveryTime" in patch || "tags" in patch) {
-        // fetch existing to compose search fields correctly
-        const ex = await ctx.db.get(args.id);
-        const title = (patch.title as string | undefined) ?? ex?.title ?? "";
-        const notes = (patch.notes as string | undefined) ?? ex?.notes ?? "";
-        const deliveryTime = (patch.deliveryTime as string | undefined) ?? ex?.deliveryTime ?? "";
-        const tags = (patch.tags as string[] | undefined) ?? ex?.tags ?? [];
-        patch.search = buildServiceSearch({ title, notes, deliveryTime, tags });
+        patch.search = buildServiceSearch({
+          title: patch.title,
+          notes: patch.notes,
+          deliveryTime: patch.deliveryTime,
+          tags: patch.tags,
+        });
       }
 
       await ctx.db.patch(args.id, patch);
       return args.id;
     }
 
-    // 2) Upsert by slug, if provided
     const slugIn = args.slug?.trim();
     if (slugIn) {
       const ex = await ctx.db
         .query("services")
-        .withIndex("by_slug", (q) => q.eq("slug", slugIn))
+        .withIndex("by_slug", (q: any) => q.eq("slug", slugIn))
         .first();
       if (ex) {
-        const patch: Record<string, unknown> = { ...args, updatedAt: now };
+        const patch: any = { ...args, updatedAt: now };
         if ("title" in patch || "notes" in patch || "deliveryTime" in patch || "tags" in patch) {
-          const title = (patch.title as string | undefined) ?? ex.title ?? "";
-          const notes = (patch.notes as string | undefined) ?? ex.notes ?? "";
-          const deliveryTime = (patch.deliveryTime as string | undefined) ?? ex.deliveryTime ?? "";
-          const tags = (patch.tags as string[] | undefined) ?? ex.tags ?? [];
-          patch.search = buildServiceSearch({ title, notes, deliveryTime, tags });
+          patch.search = buildServiceSearch({
+            title: patch.title ?? ex.title,
+            notes: patch.notes ?? ex.notes,
+            deliveryTime: patch.deliveryTime ?? ex.deliveryTime,
+            tags: patch.tags ?? ex.tags,
+          });
         }
         await ctx.db.patch(ex._id, patch);
         return ex._id;
       }
     }
 
-    // 3) Insert new
     const title = args.title ?? "Untitled";
     const slug = slugIn || (await uniqueSlug(ctx, title));
     const doc = {
@@ -253,8 +214,7 @@ export const upsert = mutation({
 
 /* ------------------------------ fetch ---------------------------- */
 /** Paged list with optional search & sorting.
- * sort: "created_desc" (default) | "created_asc" | "price_asc" | "price_desc"
- * Non-admins default to only public & non-archived.
+ * sort: "created_desc" | "created_asc" | "price_asc" | "price_desc"
  */
 export const fetch = query({
   args: {
@@ -264,45 +224,35 @@ export const fetch = query({
     sort: v.optional(v.string()),
     onlyPublic: v.optional(v.boolean()),
   },
-  handler: async (
-    ctx,
-    { needle, offset = 0, limit = 20, sort = "created_desc", onlyPublic = true }
-  ) => {
-    const id = await ctx.auth.getUserIdentity();
-    const admin = isAdminIdentity(id?.subject ?? null, id?.email ?? null);
-
+  handler: async (ctx, { needle, offset = 0, limit = 20, sort = "created_desc", onlyPublic = true }) => {
     let rows: any[] = [];
     const hasNeedle = !!needle && needle.trim().length > 0;
 
     if (hasNeedle) {
       const n = needle!.toLowerCase();
-      // Prefer a search index if defined; fallback to scan+filter
       try {
-        // @ts-ignore Present only if defined as a search index in schema
+        // prefer search index if present
+        // @ts-ignore: exists only if search index enabled
         rows = await ctx.db
           .query("services")
-          .withSearchIndex("search_all", (q) => q.search("search", n))
+          .withSearchIndex("search_all", (q: any) => q.search("search", n))
           .collect();
       } catch {
         rows = await ctx.db
           .query("services")
-          .withIndex("by_createdAt", (q) => q.gte("createdAt", 0))
+          .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
           .collect();
-        rows = rows.filter((s) => (s.search ?? "").toLowerCase().includes(n));
+        rows = rows.filter((s) => (s.search ?? "").includes(n));
       }
     } else {
       rows = await ctx.db
         .query("services")
-        .withIndex("by_createdAt", (q) => q.gte("createdAt", 0))
+        .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
         .collect();
     }
 
     // visibility
-    if (onlyPublic && !admin) {
-      rows = rows.filter((s) => s.isPublic && !s.archived);
-    } else {
-      rows = rows.filter((s) => !s.archived);
-    }
+    rows = onlyPublic ? rows.filter((s) => s.isPublic && !s.archived) : rows.filter((s) => !s.archived);
 
     // sorting
     switch (sort) {
@@ -334,17 +284,6 @@ export const fetch = query({
 
 /* --------------------------- convenience -------------------------- */
 
-export const getPublic = query({
-  args: {},
-  handler: async (ctx) => {
-    const items = await ctx.db
-      .query("services")
-      .withIndex("by_isPublic_archived", (q) => q.eq("isPublic", true).eq("archived", false))
-      .collect();
-    return items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-  },
-});
-
 export const getById = query({
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => ctx.db.get(id),
@@ -353,7 +292,7 @@ export const getById = query({
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) =>
-    ctx.db.query("services").withIndex("by_slug", (q) => q.eq("slug", slug)).first(),
+    ctx.db.query("services").withIndex("by_slug", (q: any) => q.eq("slug", slug)).first(),
 });
 
 export const getArchived = query({
@@ -361,7 +300,7 @@ export const getArchived = query({
   handler: async (ctx) => {
     const items = await ctx.db
       .query("services")
-      .withIndex("by_createdAt", (q) => q.gte("createdAt", 0))
+      .withIndex("by_createdAt", (q: any) => q.gte("createdAt", 0))
       .collect();
     return items.filter((s) => s.archived === true);
   },

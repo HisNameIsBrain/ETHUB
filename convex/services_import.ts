@@ -1,4 +1,3 @@
-// convex/services_import.ts
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -48,6 +47,7 @@ export const upsertMany = mutation({
           tags: r.tags ?? existing.tags ?? [],
           isPublic: true,
           archived: false,
+          updatedAt: now,
         });
       } else {
         await ctx.db.insert("services", {
@@ -61,10 +61,12 @@ export const upsertMany = mutation({
           tags: r.tags ?? [],
           isPublic: true,
           archived: false,
+          createdAt: now,
+          updatedAt: now,
+          // Optional: compute `search` if you want
           // search: buildServiceSearch({ title: r.title, deliveryTime: r.deliveryTime, tags: r.tags }),
         });
       }
     }
   },
 });
-

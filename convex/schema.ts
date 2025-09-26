@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  /* -------------------------- Voice telemetry -------------------------- */
   voiceSessions: defineTable({
     userId: v.string(),
     status: v.union(v.literal("active"), v.literal("ended")),
@@ -32,74 +33,62 @@ export default defineSchema({
     code: v.optional(v.string()),
     latencyMs: v.optional(v.number()),
     createdAt: v.number(),
-}),
+  }),
 
-documents: defineTable({
-  title: v.string(),
-  content: v.optional(v.string()),
-  parentDocument: v.optional(v.id("documents")),
-  isPublished: v.optional(v.boolean()),
-  isArchived: v.boolean(),
-  slug: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  search: v.string(),
-})
-  .index("by_createdAt", ["createdAt"])
-  .index("by_parent", ["parentDocument"])
-  .index("by_isPublished", ["isPublished"])
-  .index("by_isArchived", ["isArchived"])
-  .index("by_slug", ["slug"]),
-
+  /* ------------------------------- Users -------------------------------- */
   users: defineTable({
-    userId: v.optional(v.string()),
-    tokenIdentifier: v.string(),
-    email: v.optional(v.string()),
+    email: v.optional(v.string()),                    // required per your latest file
     name: v.optional(v.string()),
     username: v.optional(v.string()),
+    createdAt: v.float64(),
+    updatedAt: v.float64(),
     imageUrl: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-    search: v.string(),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_tokenIdentifier", ["tokenIdentifier"]),
+    userId: v.optional(v.string()),
+role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
+    tokenIdentifier: v.optional(v.string()),
+})
+    .index("by_email", ["email"])
+    .index("by_username", ["username"])
+    .index("by_createdAt", ["createdAt"]),
 
+  /* ----------------------------- Documents ------------------------------ */
   documents: defineTable({
+    userId: v.string(),
     title: v.string(),
     content: v.optional(v.string()),
     parentDocument: v.optional(v.id("documents")),
-    isPublished: v.optional(v.boolean()),
     isArchived: v.boolean(),
-    slug: v.optional(v.string()),
-    search: v.string(),
+    isPublished: v.optional(v.boolean()),
+    createdAt: v.number(),                // make required for consistency
+    updatedAt: v.number(),
+    coverImage: v.optional(v.string()),
+    icon: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_parent", ["parentDocument"])
+    .index("by_isArchived", ["isArchived"]),
+
+  /* ------------------------------ Services ------------------------------ */
+  services: defineTable({
+    slug: v.optional(v.string()),         // some code treats it optional on insert
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),  // legacy alias for notes; safe to keep
+    notes: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    category: v.optional(v.string()),
+    deliveryTime: v.optional(v.string()),
+    priceCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    isPublic: v.boolean(),
+    archived: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    userId: v.string(),                
-    coverImage: v.optional(v.string()),
-  })
-    .index("by_createdAt", ["createdAt"])
-    .index("by_parent", ["parentDocument"])
-    .index("by_isPublished", ["isPublished", "updatedAt"])
-    .index("by_isArchived", ["isArchived", "updatedAt"])
-    .index("by_slug", ["slug"])
-    .index("by_userId", ["userId", "updatedAt"])
-    .searchIndex("search_all", { searchField: "search" }),
-
-  services: defineTable({
-    slug: v.string(),
-    name: v.string(),
-    description: v.optional(v.string()),
-    isPublic: v.boolean(),
-    archived: v.optional(v.boolean()),
-    createdAt: v.number(),
-    search: v.optional(v.string()),
+    search: v.optional(v.string()),       // flattened text blob (for search index)
   })
     .index("by_slug", ["slug"])
+    .index("by_category", ["category"])
     .index("by_isPublic", ["isPublic"])
-    .index("by_createdAt", ["createdAt"])                 
-    .index("by_isPublic_archived", ["isPublic", "archived"])
+    .index("by_createdAt", ["createdAt"])
     .searchIndex("search_all", { searchField: "search" }),
 });

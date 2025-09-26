@@ -1,10 +1,8 @@
-// convex/scrape_iosfiles.ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
 /* ---------------------------- tiny CSV parser ---------------------------- */
-/** Handles quotes and commas inside quotes. First line = headers. */
 function parseCsv(text: string): Record<string, string>[] {
   const rows: string[][] = [];
   let cur: string[] = [];
@@ -25,11 +23,10 @@ function parseCsv(text: string): Record<string, string>[] {
       if (c === '"') inQuotes = true;
       else if (c === ",") pushField();
       else if (c === "\n") { pushField(); pushRow(); }
-      else if (c === "\r") {/* ignore CR */}
+      else if (c === "\r") { /* ignore */ }
       else field += c;
     }
   }
-  // flush last cell/row
   pushField();
   if (cur.length > 1 || (cur.length === 1 && cur[0] !== "")) pushRow();
 
@@ -47,10 +44,10 @@ function parseCsv(text: string): Record<string, string>[] {
 
 /* ------------------------------ normalizer ------------------------------ */
 function normalizeRow(row: Record<string, any>) {
-  const num = (v: any) => (v === "" || v == null ? undefined : Number(v));
-  const bool = (v: any) =>
-    v === true || v === "true" || v === "TRUE" || v === "1" ? true :
-    v === false || v === "false" || v === "FALSE" || v === "0" ? false : undefined;
+  const num = (x: any) => (x === "" || x == null ? undefined : Number(x));
+  const bool = (x: any) =>
+    x === true || x === "true" || x === "TRUE" || x === "1" ? true :
+    x === false || x === "false" || x === "FALSE" || x === "0" ? false : undefined;
 
   const tags =
     typeof row.tags === "string"
@@ -62,7 +59,6 @@ function normalizeRow(row: Record<string, any>) {
   const title = (row.title ?? row.name ?? "").toString().trim();
 
   return {
-    // upsert args (all optional; upsert will auto-generate slug if absent)
     slug: row.slug ? String(row.slug).trim() : undefined,
     title: title || undefined,
     notes: row.notes ?? row.description ?? undefined,
@@ -73,7 +69,7 @@ function normalizeRow(row: Record<string, any>) {
       row.priceCents != null
         ? num(row.priceCents)
         : row.price != null
-        ? (typeof row.price === "number" ? Math.round(row.price * 100) : num(row.price) && Math.round(Number(row.price) * 100))
+        ? (typeof row.price === "number" ? Math.round(row.price * 100) : (num(row.price) != null ? Math.round(Number(row.price) * 100) : undefined))
         : undefined,
     currency: row.currency ?? "USD",
     sourceUrl: row.sourceUrl ?? undefined,
@@ -88,13 +84,11 @@ export const ingestIosFiles = action({
     files: v.array(
       v.object({
         name: v.string(),
-        text: v.string(),               // raw file contents
-        mime: v.optional(v.string()),   // e.g. "text/csv" or "application/json"
+        text: v.string(),
+        mime: v.optional(v.string()),
       })
     ),
-    // archive any currently-public service not present in the uploaded slugs
     archiveMissing: v.optional(v.boolean()),
-    // batch size for upserts
     batchSize: v.optional(v.number()),
   },
   handler: async (ctx, { files, archiveMissing = false, batchSize }) => {
@@ -105,7 +99,6 @@ export const ingestIosFiles = action({
     const keepSlugs = new Set<string>();
     const perFile: Array<{ name: string; rows: number }> = [];
 
-    // parse and upsert
     for (const f of files) {
       const lower = f.name.toLowerCase();
       const isJson = (f.mime?.includes("json") ?? false) || lower.endsWith(".json");
@@ -119,7 +112,6 @@ export const ingestIosFiles = action({
         } else if (isCsv) {
           rows = parseCsv(f.text);
         } else {
-          // attempt JSON, else CSV
           try {
             const data = JSON.parse(f.text);
             rows = Array.isArray(data) ? data : (Array.isArray((data as any).items) ? (data as any).items : []);
@@ -131,17 +123,14 @@ export const ingestIosFiles = action({
         throw new Error(`Failed to parse "${f.name}": ${e?.message ?? String(e)}`);
       }
 
-      // normalize
       const items = rows.map((r) => normalizeRow(r)).filter((r) => r.title && typeof r.title === "string");
       totalRows += items.length;
 
-      // collect slugs to keep (when present)
       for (const it of items) {
         const s = it.slug;
         if (s && typeof s === "string" && s.trim()) keepSlugs.add(s.trim());
       }
 
-      // batch upsert via mutation
       for (let i = 0; i < items.length; i += BATCH) {
         const chunk = items.slice(i, i + BATCH);
         for (const it of chunk) {
@@ -153,10 +142,8 @@ export const ingestIosFiles = action({
       perFile.push({ name: f.name, rows: items.length });
     }
 
-    // optionally archive missing (public) services
     let archived = 0;
     if (archiveMissing) {
-      // Pull a big page of services; adjust limit if your catalog is larger.
       const listing = await ctx.runQuery(api.services.fetch, {
         needle: undefined,
         offset: 0,

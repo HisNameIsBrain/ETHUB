@@ -29,7 +29,7 @@ import type * as migration from "../migration.js";
 import type * as modelRoute from "../modelRoute.js";
 import type * as openai from "../openai.js";
 import type * as openaiModels from "../openaiModels.js";
-import type * as scrape_iosfiles from "../scrape_iosfiles.js";
+import type * as scrape_files from "../scrape_files.js";
 import type * as services from "../services.js";
 import type * as services_import from "../services_import.js";
 import type * as tools_backfill_documents from "../tools/backfill_documents.js";
@@ -61,7 +61,7 @@ declare const fullApi: ApiFromModules<{
   modelRoute: typeof modelRoute;
   openai: typeof openai;
   openaiModels: typeof openaiModels;
-  scrape_iosfiles: typeof scrape_iosfiles;
+  scrape_files: typeof scrape_files;
   services: typeof services;
   services_import: typeof services_import;
   "tools/backfill_documents": typeof tools_backfill_documents;

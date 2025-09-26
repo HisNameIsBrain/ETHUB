@@ -1,10 +1,19 @@
 // convex/lib/search.ts
-export function buildServiceSearch(s: any): string {
-  if (!s) return "";
-  const title = s.title ?? "";
-  const category = s.category ?? "";
-  const deliveryTime = s.deliveryTime ?? "";
-  const notes = s.notes ?? "";
-  const tags = Array.isArray(s.tags) ? s.tags.join(" ") : (s.tags ?? "");
-  return [title, category, deliveryTime, notes, tags].join(" ").toLowerCase().trim();
+/** Minimal, stable search blob builder used by services. */
+export function buildServiceSearch(input: {
+  title?: string;
+  notes?: string;
+  deliveryTime?: string;
+  tags?: string[];
+}) {
+  const parts: string[] = [];
+  if (input.title) parts.push(input.title);
+  if (input.notes) parts.push(input.notes);
+  if (input.deliveryTime) parts.push(input.deliveryTime);
+  if (Array.isArray(input.tags)) parts.push(input.tags.join(" "));
+  return parts
+    .join(" ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
