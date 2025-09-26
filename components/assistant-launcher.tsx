@@ -2,49 +2,165 @@
 
 import * as React from "react";
 import ReactDOM from "react-dom";
-import { Bot, X, Mic, MicOff } from "lucide-react";
+import { X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { speakWithOpenAI } from "@/lib/tts";
+import { GlowChatPanel } from "@/components/assistant/GlowChatPanel";
+
+export default function Assistant() {
+  const [messages, setMessages] = React.useState<{role:"user"|"assistant";content:string}[]>([]);
+  const [busy, setBusy] = React.useState(false);
+  const [audioEl, setAudioEl] = React.useState<HTMLAudioElement | null>(null);
+
+  const chat = useAction(api.openai.chat);
+
+  async function onSend(text: string) {
+    setBusy(true);
+    try {
+      setMessages((m) => [...m, { role: "user", content: text }]);
+      const res = await chat({ messages: [...messages, { role: "user", content: text }] });
+      const answer = typeof res?.content === "string" ? res.content : (res?.text ?? "");
+      setMessages((m) => [...m, { role: "assistant", content: answer }]);
+
+      // Play TTS and keep the <audio> for the visualizer
+      const audio = await speakWithOpenAI(answer, "alloy", "mp3", { returnAudioEl: true });
+      setAudioEl(audio); // wave panel will analyze this audio element
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  React.useEffect(() => {
+    const onClose = () => {/* mount/unmount your overlay here if you have one */};
+    window.addEventListener("ethub:assistant:close", onClose);
+    return () => window.removeEventListener("ethub:assistant:close", onClose);
+  }, []);
+
+  return (
+    <GlowChatPanel
+      messages={messages}
+      busy={busy}
+      onSend={onSend}
+      audioEl={audioEl}
+    />
+  );
+}
 
 type Role = "system" | "user" | "assistant";
-const SYSTEM_PROMPT = {
+
+// Fixed, non-editable system prompt focused on mobile repair.
+const SYSTEM_PROMPT: { role: Role; content: string } = {
   role: "system",
-  content: `You are a specialized AI assistant focused on mobile phone repair and troubleshooting. 
-Your primary role is to help users diagnose, repair, and maintain smartphones, both hardware and software.
-
-Goals:
-- Provide step-by-step repair instructions for hardware issues (e.g., battery replacement, screen repair, charging port cleaning).
-- Offer software troubleshooting (e.g., app crashes, boot loops, system updates, malware removal).
-- Suggest preventive maintenance tips to extend device life.
-- Help users identify when a problem is DIY-fixable vs. when professional repair is recommended.
-
-Response Style:
-- Speak clearly and avoid unnecessary jargon unless it’s explained.
-- Structure answers in logical, easy-to-follow steps.
-- Offer safety warnings when a procedure involves risks (e.g., static electricity, delicate connectors, lithium battery hazards).
-- Be patient, encouraging, and detail-oriented—assume the user may not have much technical experience.
-- Provide alternatives when multiple solutions exist.
-
-Boundaries:
-- Do not provide unsafe instructions.
-- Do not encourage repairs that require specialized equipment unless explicitly clarified.
-- Always note if a repair may void warranty.`
+  content: `You are a specialized AI assistant focused on mobile phone repair and troubleshooting.
+- Provide step-by-step repair instructions (hardware + software).
+- Offer safety notes where relevant (battery, ESD, adhesives, fragile flex cables).
+- Keep language clear; avoid unexplained jargon.
+- Suggest escalation to a pro when a fix is risky or requires specialized tools.
+- Mention warranty implications when appropriate.`
 };
-const MODEL_OPTIONS = [
-  { id: "gpt-4o-mini", label: "GPT-4o mini" },
-  { id: "gpt-4o-mini-tts", label: "GPT-4o Voice" },
-] as const;
 
-const DEFAULT_MODEL = MODEL_OPTIONS[0].id as (typeof MODEL_OPTIONS)[number]["id"];
+// Hard-coded chat model (not exposed in UI). We always TTS the assistant’s reply.
+const CHAT_MODEL = "gpt-4o-mini" as const;
+// Hard-coded TTS voice + format (your /api/tts uses these).
+const TTS_VOICE = "alloy" as const;
+const TTS_FORMAT = "mp3" as const;
 
-/* ---------- Small, flowing rainbow glow behind assistant bubbles ---------- */
+/* ------------------------- tiny Siri-like wave ------------------------- */
+/** Lightweight canvas wave (no deps). Sits behind the composer & header */
+function SiriWave({
+  height = 48,
+  amplitude = 9,
+  speed = 0.015,
+  className,
+}: {
+  height?: number;
+  amplitude?: number;
+  speed?: number;
+  className?: string;
+}) {
+  const ref = React.useRef<HTMLCanvasElement | null>(null);
+  const raf = React.useRef<number>();
+  const t = React.useRef(0);
+
+  React.useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let mounted = true;
+    const resize = () => {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const w = canvas.clientWidth | 0;
+      const h = height;
+      canvas.width = Math.max(1, w * dpr);
+      canvas.height = Math.max(1, h * dpr);
+      (ctx as any).scale?.(dpr, dpr);
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    const draw = () => {
+      if (!mounted || !canvas) return;
+      const w = canvas.clientWidth | 0;
+      const h = height;
+      ctx.clearRect(0, 0, w, h);
+
+      // multi-lobe wave with Siri-ish palette
+      const bands = [
+        "rgba(255,242,0,0.85)",
+        "rgba(255,138,0,0.85)",
+        "rgba(255,0,122,0.85)",
+        "rgba(122,0,255,0.85)",
+        "rgba(0,72,255,0.85)",
+        "rgba(0,162,255,0.85)",
+        "rgba(0,255,162,0.85)",
+        "rgba(160,255,0,0.85)",
+      ];
+
+      let yMid = h / 2;
+      for (let i = 0; i < bands.length; i++) {
+        const phase = t.current + i * 0.7;
+        const amp = amplitude * (1 - i / bands.length) * 0.9;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x++) {
+          const y = yMid + Math.sin(x * 0.02 + phase) * amp;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = bands[i];
+        ctx.lineWidth = 1.8;
+        ctx.globalAlpha = 0.9;
+        ctx.stroke();
+      }
+
+      t.current += speed;
+      raf.current = requestAnimationFrame(draw);
+    };
+
+    raf.current = requestAnimationFrame(draw);
+    return () => {
+      mounted = false;
+      ro.disconnect();
+      if (raf.current) cancelAnimationFrame(raf.current);
+    };
+  }, [height, amplitude, speed]);
+
+  return (
+    <div className={className} style={{ pointerEvents: "none" }}>
+      <canvas ref={ref} style={{ width: "100%", height }} />
+    </div>
+  );
+}
+
+/* --------------------------- AI bubble with glow --------------------------- */
 function AIBubble({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative mr-auto max-w-[85%]">
-      {/* Glow backdrop clipped to the bubble */}
       <div className="absolute -inset-2 -z-10 overflow-hidden rounded-3xl">
         <SiriGlowInvert
           className="absolute inset-0"
@@ -67,8 +183,7 @@ function AIBubble({ children }: { children: React.ReactNode }) {
           ]}
           style={{ willChange: "transform", transform: "translateZ(0)" }}
         />
-        {/* gentle gloss for readability */}
-        <div className="absolute inset-0 bg-white/12 backdrop-blur-[1.5px] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px] mix-blend-overlay" />
       </div>
 
       <div className="rounded-2xl bg-black/55 text-white px-3 py-2 text-sm backdrop-blur">
@@ -78,6 +193,7 @@ function AIBubble({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ------------------------------- Launcher btn ------------------------------ */
 function LauncherButton({ onOpen }: { onOpen: () => void }) {
   return (
     <button
@@ -112,44 +228,25 @@ function LauncherButton({ onOpen }: { onOpen: () => void }) {
         ]}
       />
       <span className="absolute inset-[3px] rounded-full bg-neutral-950/95 border border-white/10" />
-      <Bot className="relative z-[1] h-7 w-7" />
+      {/* Minimal robo-dot center */}
+      <div className="relative z-[1] h-3 w-3 rounded-full bg-white/90" />
     </button>
   );
 }
 
+/* -------------------------------- Component -------------------------------- */
 export default function AssistantLauncher() {
-  // Declare hooks before any returns (avoid hook order errors)
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
-  const [model, setModel] = React.useState<string>(DEFAULT_MODEL);
+  // No model picker; we always use CHAT_MODEL + TTS on replies
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [messages, setMessages] = React.useState<Array<{ role: Role; content: string }>>([]);
 
-  const [modelMenuOpen, setModelMenuOpen] = React.useState(true);
-  const modelTouchedRef = React.useRef(false);
-
-  // Speak replies toggle (persisted)
-  const [speakReplies, setSpeakReplies] = React.useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("__speakReplies__") === "1";
-  });
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("__speakReplies__", speakReplies ? "1" : "0");
-    }
-  }, [speakReplies]);
-
-  // Optional mic (used if your "GPT-4o Voice" model is selected)
-  const [audioStream, setAudioStream] = React.useState<MediaStream | null>(null);
-  const mediaRef = React.useRef<MediaStream | null>(null);
-
   const chatAction = useAction(api.openai.chat);
-  const askAction = useAction(api.openai.ask);
   const moderateAction = useAction(api.openai.moderate);
 
-  // ensure single mount
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
     // @ts-ignore
@@ -163,31 +260,6 @@ export default function AssistantLauncher() {
     };
   }, []);
 
-  // auto-close model menu after a moment
-  React.useEffect(() => {
-    if (!open) return;
-    setModelMenuOpen(true);
-    modelTouchedRef.current = false;
-    const t = setTimeout(() => {
-      if (!modelTouchedRef.current) setModelMenuOpen(false);
-    }, 2500);
-    return () => clearTimeout(t);
-  }, [open]);
-
-  // mic controls (for visualizer / future VAD)
-  const startMic = React.useCallback(async () => {
-    if (mediaRef.current) return;
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRef.current = s;
-    setAudioStream(s);
-  }, []);
-  const stopMic = React.useCallback(() => {
-    mediaRef.current?.getTracks().forEach((t) => t.stop());
-    mediaRef.current = null;
-    setAudioStream(null);
-  }, []);
-  React.useEffect(() => () => stopMic(), [stopMic]);
-
   function getTextFromResponse(res: any): string {
     if (!res) return "";
     if (typeof res.content === "string") return res.content;
@@ -195,52 +267,33 @@ export default function AssistantLauncher() {
     return "";
   }
 
-  async function send(useAsk = false) {
+  async function send() {
     const text = input.trim();
     if (!text || busy) return;
+
     setBusy(true);
     try {
+      // moderation gate
       const mod = await moderateAction({ text });
       if (mod?.flagged) {
-        setMessages((m) => [...m, { role: "assistant", content: "Blocked by moderation." }]);
+        setMessages((m) => [...m, { role: "assistant", content: "Sorry, I can’t help with that." }]);
         return;
       }
 
-      // If speaking is on, we can map to a TTS-friendly model for /ask
-      const wantsTTS = speakReplies;
-      const chatModel = wantsTTS ? "gpt-4o-mini" : model;
+      const next = [...messages.length ? messages : [SYSTEM_PROMPT], { role: "user", content: text }];
+      setMessages(next);
 
-      let res: any = null;
+      const res = await chatAction({ model: CHAT_MODEL, messages: next as any });
+      const output = getTextFromResponse(res);
 
-      if (useAsk) {
-        res = await askAction({
-          prompt: text,
-          model: chatModel,
-          voice: wantsTTS ? "alloy" : undefined,
-          audioFormat: wantsTTS ? "mp3" : undefined,
-        });
-        const output = getTextFromResponse(res);
-        if (output) {
-          setMessages((m) => [
-            ...m,
-            { role: "user", content: text },
-            { role: "assistant", content: output },
-          ]);
-          if (wantsTTS) await speakWithOpenAI(output, "alloy", "mp3");
-        }
-      } else {
-        const next = [...messages, { role: "user", content: text }];
-        setMessages(next);
-        res = await chatAction({ model: chatModel, messages: next });
-        const output = getTextFromResponse(res);
-        if (output) {
-          setMessages((m) => [...m, { role: "assistant", content: output }]);
-          if (wantsTTS) await speakWithOpenAI(output, "alloy", "mp3");
-        }
+      if (output) {
+        setMessages((m) => [...m, { role: "assistant", content: output }]);
+        // Always TTS the reply (no mic ever, we only speak responses)
+        await speakWithOpenAI(output, { voice: TTS_VOICE, format: TTS_FORMAT });
       }
     } catch (err) {
       console.error("Assistant error:", err);
-      setMessages((m) => [...m, { role: "assistant", content: "Error talking to assistant." }]);
+      setMessages((m) => [...m, { role: "assistant", content: "Something went sideways. Try again." }]);
     } finally {
       setInput("");
       setBusy(false);
@@ -250,8 +303,6 @@ export default function AssistantLauncher() {
   if (!mounted) return null;
 
   const launcherButton = <LauncherButton onOpen={() => setOpen(true)} />;
-  const voiceMode = model === "gpt-4o-mini-tts";
-  const micActive = !!audioStream;
 
   return (
     <>
@@ -261,136 +312,105 @@ export default function AssistantLauncher() {
         <div className="fixed inset-0 z-[96] bg-black/40 backdrop-blur-sm">
           <div className="absolute bottom-0 right-0 m-4 w-[min(640px,calc(100vw-2rem))] rounded-2xl border bg-background shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b">
-              <div className="flex items-center gap-3">
-                <div className="relative h-6 w-6 overflow-hidden rounded-full">
-                  <SiriGlowInvert
-                    rotateSec={3.6}
-                    innerRotateSec={4.6}
-                    blurPx={10}
-                    insetPercent={-4}
-                    opacity={0.8}
-                    thicknessPx={8}
-                    inner
-                  />
-                  <span className="absolute inset-[2px] rounded-full border border-white/30 bg-black/50" />
-                </div>
-                <span className="font-medium">ETHUB Assistant</span>
+            <div className="relative">
+              <div className="absolute inset-x-3 top-0">
+                <SiriWave height={36} amplitude={8} speed={0.02} />
               </div>
-
-              <div className="flex items-center gap-2">
-                {/* speak replies toggle */}
-                <button
-                  type="button"
-                  onClick={() => setSpeakReplies((v) => !v)}
-                  aria-label={speakReplies ? "Disable speak replies" : "Enable speak replies"}
-                  title={speakReplies ? "Disable speak replies" : "Enable speak replies"}
-                  className={`relative h-9 w-9 grid place-items-center rounded-md border transition
-                    ${speakReplies ? "bg-indigo-600/90 text-white border-indigo-500"
-                                   : "bg-background hover:bg-accent"}`}
-                >
-                  <span className={`transition-transform duration-200 ${speakReplies ? "scale-110" : "scale-100"}`}>
-                    {/* simple speaker icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 5L6 9H3v6h3l5 4V5z"/>
-                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                    </svg>
-                  </span>
-                </button>
-
-                {/* optional mic control (only relevant if using the Voice model) */}
-                {voiceMode ? (
-                  micActive ? (
-                    <Button size="icon" variant="secondary" onClick={stopMic} title="Stop mic">
-                      <MicOff className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button size="icon" onClick={startMic} title="Start mic">
-                      <Mic className="h-4 w-4" />
-                    </Button>
-                  )
-                ) : (
-                  <Button size="icon" variant="outline" disabled title="Voice requires GPT-4o Voice">
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                )}
-
+              <div className="relative flex items-center justify-between p-3 pb-2 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-6 w-6 overflow-hidden rounded-full">
+                    <SiriGlowInvert
+                      rotateSec={3.6}
+                      innerRotateSec={4.6}
+                      blurPx={10}
+                      insetPercent={-4}
+                      opacity={0.8}
+                      thicknessPx={8}
+                      inner
+                    />
+                    <span className="absolute inset-[2px] rounded-full border border-white/30 bg-black/50" />
+                  </div>
+                  <span className="font-medium">ETHUB Assistant</span>
+                </div>
                 <Button size="icon" variant="ghost" onClick={() => setOpen(false)} title="Close">
                   <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            {/* Inline model menu (mobile) */}
-            {modelMenuOpen && (
-              <div className="flex flex-wrap gap-2 p-3 border-b bg-muted/40 sm:hidden">
-                {MODEL_OPTIONS.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      modelTouchedRef.current = true;
-                      setModel(m.id);
-                    }}
-                    className={`rounded-full px-3 py-1 text-sm border ${
-                      model === m.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent"
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Messages */}
             <div className="max-h-[40vh] overflow-auto p-3 space-y-3">
-              {messages.length === 0 && (
+              {messages.filter(m => m.role !== "system").length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Ask me anything. Toggle 🔊 to hear replies aloud.
+                  Ask me about phone repairs—screen, battery, water damage, boot loops, mystery gremlins…
+                  I’ll speak the answer back to you.
                 </p>
               )}
-              {messages.map((m, i) =>
-                m.role === "user" ? (
-                  <div
-                    key={i}
-                    className="rounded-lg px-3 py-2 text-sm bg-primary text-primary-foreground ml-auto max-w-[85%]"
-                  >
-                    {m.content}
-                  </div>
-                ) : (
-                  <AIBubble key={i}>{m.content}</AIBubble>
-                )
-              )}
+              {messages
+                .filter(m => m.role !== "system")
+                .map((m, i) =>
+                  m.role === "user" ? (
+                    <div
+                      key={i}
+                      className="rounded-lg px-3 py-2 text-sm bg-primary text-primary-foreground ml-auto max-w-[85%]"
+                    >
+                      {m.content}
+                    </div>
+                  ) : (
+                    <AIBubble key={i}>{m.content}</AIBubble>
+                  )
+                )}
             </div>
 
             {/* Composer */}
-            <form
-              className="flex items-center gap-2 p-3 border-t"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void send(false);
-              }}
-            >
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="flex-1 rounded-md border px-3 py-2 text-sm"
-                placeholder="Type your question…"
-              />
-              <Button type="submit" disabled={busy}>
-                {busy ? "…" : "Send"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => void send(true)}
+            <div className="relative border-t">
+              <div className="absolute inset-x-3 -top-[2px]">
+                <SiriWave height={34} amplitude={7} speed={0.021} />
+              </div>
+
+              <form
+                className="relative z-[1] flex items-center gap-2 p-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void send();
+                }}
               >
-                Ask (one-shot)
-              </Button>
-            </form>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="flex-1 rounded-md border px-3 py-2 text-sm bg-background"
+                  placeholder="Describe the issue…"
+                />
+
+                {/* Single animated icon button (no label) */}
+                <button
+                  type="submit"
+                  disabled={busy || !input.trim()}
+                  aria-label="Send"
+                  className={`relative h-10 w-10 grid place-items-center rounded-full transition
+                      ${busy ? "opacity-70" : "hover:scale-105 active:scale-95"}
+                    `}
+                >
+                  {/* Glow ring */}
+                  <span className="absolute inset-0 rounded-full overflow-hidden">
+                    <SiriGlowInvert
+                      rotateSec={2.8}
+                      innerRotateSec={3.6}
+                      blurPx={12}
+                      insetPercent={-8}
+                      opacity={0.9}
+                      thicknessPx={9}
+                      inner
+                    />
+                  </span>
+                  <span className="absolute inset-[2px] rounded-full bg-neutral-950/95 border border-white/10" />
+                  <Send
+                    className={`relative z-[1] h-5 w-5 text-white transition-transform
+                      ${busy ? "animate-pulse" : ""}`}
+                  />
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}

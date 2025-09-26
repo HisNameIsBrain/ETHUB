@@ -44,7 +44,7 @@ export default defineSchema({
     updatedAt: v.float64(),
     imageUrl: v.optional(v.string()),
     userId: v.optional(v.string()),
-role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
+    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     tokenIdentifier: v.optional(v.string()),
 })
     .index("by_email", ["email"])
@@ -59,8 +59,8 @@ role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     parentDocument: v.optional(v.id("documents")),
     isArchived: v.boolean(),
     isPublished: v.optional(v.boolean()),
-    createdAt: v.number(),                // make required for consistency
-    updatedAt: v.number(),
+    createdAt: v.optional(v.number()),                // make required for consistency
+    updatedAt: v.optional(v.number()),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
   })
