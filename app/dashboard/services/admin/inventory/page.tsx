@@ -1,4 +1,11 @@
 "use client";
+
+import React from "react";
+import { AgGridReact } from "ag-grid-react";
+import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
+ModuleRegistry.registerModules([AllCommunityModule]);
+import "@ag-grid-community/styles/ag-grid.css";
+import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import type { ColDef, GridReadyEvent, CellEditingStoppedEvent } from "ag-grid-community";
@@ -37,6 +44,38 @@ type Row = {
 export default function InventoryPage() {
   const rows = useQuery(api["services.inventory"].list) as Row[] | undefined;
   const update = useMutation(api["services.inventory"].update);
+const gridRef = React.useRef<AgGridReact<Row>>(null);
+
+  const [rowData, setRowData] = React.useState<Row[] | undefined>([]);
+  const [colDefs] = React.useState([
+    { field: "name" },
+    { field: "sku" },
+    { field: "price" },
+    { field: "stock" },
+  ]);
+
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-semibold mb-3">Services Inventory</h1>
+
+      <div className="ag-theme-quartz" style={{ height: "75vh", width: "100%" }}>
+        <AgGridReact<Row>
+          ref={gridRef}
+          rowData={rowData}
+          columnDefs={colDefs}
+          rowSelection="single"
+        />
+      </div>
+    </div>
+  );
+}
+
+type Row = {
+  name: string;
+  sku: string;
+  price: number;
+  stock: number;
+};
 
   const [rowData, setRowData] = useState<Row[]>([]);
   useEffect(() => { if (rows) setRowData(rows); }, [rows]);
