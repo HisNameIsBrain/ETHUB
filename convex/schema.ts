@@ -91,4 +91,51 @@ export default defineSchema({
     .index("by_isPublic", ["isPublic"])
     .index("by_createdAt", ["createdAt"])
     .searchIndex("search_all", { searchField: "search" }),
+
+/*---------------------- Client Portal  -----------------------------*/
+
+  customers: defineTable({
+    name: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_email", ["email"]).index("by_phone", ["phone"]),
+
+  jobs: defineTable({
+    customerId: v.id("customers"),
+    deviceModel: v.string(),
+    serial: v.optional(v.string()),
+    issue: v.string(),
+    status: v.string(), // received | diagnosis | awaiting_parts | repair | qa | ready | delivered | on_hold
+    eta: v.optional(v.number()),
+    orderNumber: v.string(), // human-facing locator
+    publicAccessToken: v.optional(v.string()),
+    publicAccessTokenExp: v.optional(v.number()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_orderNumber", ["orderNumber"]).index("by_customer", ["customerId"]),
+
+  jobEvents: defineTable({
+    jobId: v.id("jobs"),
+    type: v.string(), // received | diagnosis_done | parts_ordered | parts_arrived | repair_started | repair_done | qa_passed | ready | delivered | note
+    message: v.optional(v.string()),
+    mediaUrls: v.optional(v.array(v.string())),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  }).index("by_job", ["jobId"]).index("by_job_createdAt", ["jobId", "createdAt"]),
+
+  partsOrders: defineTable({
+    jobId: v.id("jobs"),
+    vendor: v.string(),
+    partNumber: v.string(),
+    qty: v.number(),
+    eta: v.optional(v.number()),
+    cost: v.optional(v.number()),
+    status: v.string(), // ordered | backordered | arrived | used | canceled
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_job", ["jobId"]).index("by_job_status", ["jobId", "status"]),
 });
+
+
