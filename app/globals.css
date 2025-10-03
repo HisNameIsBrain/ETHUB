@@ -2,112 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --- Siri-like animated border + glow --- */
-@keyframes ethub-hue-rotate {
-  to { filter: hue-rotate(360deg); }
-}
-@keyframes ethub-spin {
-  to { transform: rotate(360deg); }
-}
-
-.ethub-glow-border {
-  position: relative;
-  isolation: isolate;
-}
-.ethub-glow-border::before {
-  content: "";
-  position: absolute;
-  inset: -2px;             /* outer rim thickness */
-  border-radius: 1.25rem;
-  background:
-    conic-gradient(
-      from 0deg,
-      #fff200, #ff8a00, #ff007a, #7a00ff, #0048ff, #00a2ff, #00ffa2, #a0ff00, #fff200
-    );
-  filter: blur(10px);
-  opacity: .9;
-  animation: ethub-spin 12s linear infinite, ethub-hue-rotate 18s linear infinite;
-  z-index: -1;
-}
-
-/* message area wave canvas sits under content */
-.ethub-wave {
-  position: absolute;
-  inset: 0;
-  border-radius: 1rem;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* container that respects mobile keyboards */
-.ethub-sheet {
-  position: fixed;
-  inset: auto 0 0 0;
-  display: grid;
-  place-items: center;
-  padding: max(12px, env(safe-area-inset-bottom));
-  z-index: 96;
-}
-.ethub-panel {
-  width: min(720px, 94vw);
-  max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  border-radius: 1.25rem;
-  border: 1px solid hsl(var(--border, 0 0% 20%));
-  background: color-mix(in lab, rgb(8 8 10) 86%, transparent);
-  backdrop-filter: blur(8px);
-  overflow: clip;
-}
-
-/* rotating rainbow underline for the header */
-.ethub-rainbow-bar {
-  height: 4px;
-  background:
-    linear-gradient(90deg,
-      #fff200, #ff8a00, #ff007a, #7a00ff, #0048ff, #00a2ff, #00ffa2, #a0ff00, #fff200);
-  background-size: 200% 100%;
-  animation: ethub-bar-move 8s linear infinite;
-}
+/* ========================
+   Animation Keyframes
+   ======================== */
+@keyframes ethub-spin { to { transform: rotate(360deg); } }
+@keyframes ethub-hue-rotate { to { filter: hue-rotate(360deg); } }
 @keyframes ethub-bar-move { to { background-position: 200% 0; } }
-
-/* animated send button */
-.ethub-send {
-  border-radius: 9999px;
-  aspect-ratio: 1 / 1;
-  display: grid;
-  place-items: center;
-  transition: transform .15s ease, box-shadow .2s ease;
-  box-shadow: 0 6px 30px rgba(0,0,0,.4);
+@keyframes smokeIn {
+  0% { opacity: 0; filter: blur(12px); transform: scale(1.05); }
+  70% { opacity: .7; filter: blur(4px); transform: scale(1.02); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
 }
-.ethub-send:active { transform: translateY(1px) scale(.98); }
 
-@keyframes siri-spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
-@keyframes siri-spin-rev { from { transform: rotate(360deg) } to { transform: rotate(0deg) } }
-
-/* Respect reduced motion */
+/* Respect reduced motion everywhere */
 @media (prefers-reduced-motion: reduce) {
-  .animate-siriGlowInvert,
-  [style*="siri-spin"] {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
+  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-@keyframes siriGlow {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+/* ========================
+   Layout Root
+   ======================== */
+html, body, :root { height: 100%; }
 
-.animate-siriGlow {
-  animation: siriGlow 6s linear infinite;
-}
-
-html,
-body,
-:root {
-  height: 100%;
-}
+/* ========================
+   Theme Tokens
+   ======================== */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -171,82 +90,107 @@ body,
     --ring: 0 0% 83.1%;
   }
 }
-@keyframes smokeIn {
-  0% {
-    opacity: 0;
-    filter: blur(12px);
-    transform: scale(1.05);
-  }
-  70% {
-    opacity: 0.7;
-    filter: blur(4px);
-    transform: scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
-  }
+
+/* ========================
+   ETHUB Visual Treatments
+   ======================== */
+
+/* Siri-like animated border + glow wrapper */
+.ethub-glow-border {
+  position: relative;
+  isolation: isolate;       /* ensure glow sits behind contents */
 }
-.smoke-in {
-  animation: smokeIn 2.5s ease-out forwards;
+.ethub-glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -2px;              /* outer rim thickness */
+  border-radius: 1.25rem;
+  background: conic-gradient(
+    from 0deg,
+    #fff200, #ff8a00, #ff007a, #7a00ff, #0048ff, #00a2ff, #00ffa2, #a0ff00, #fff200
+  );
+  filter: blur(10px) saturate(115%);
+  opacity: .9;
+  animation: ethub-spin 12s linear infinite, ethub-hue-rotate 18s linear infinite;
+  z-index: -1;
 }
 
-@keyframes siriPulse {
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-}
-@keyframes ping {
-  75%,
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-}
-@keyframes siriGlow {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.animate-siriGlow {
-  animation: siriGlow 6s linear infinite;
-}
+/* Subtle animated halo backdrop for chat panels */
 .ethub-chat {
   position: relative;
   box-shadow:
-    0 0 5px rgba(0, 200, 255, 0.7),
-    0 0 10px rgba(255, 0, 200, 0.6),
-    0 0 15px rgba(0, 255, 180, 0.5);
+    0 0 5px rgba(0, 200, 255, .7),
+    0 0 10px rgba(255, 0, 200, .6),
+    0 0 15px rgba(0, 255, 180, .5);
 }
-
 .ethub-chat::before {
   content: "";
   position: absolute;
   inset: 0;
   background: conic-gradient(
     from 0deg,
-    rgba(0, 200, 255, 0.2),
-    rgba(255, 0, 200, 0.2),
-    rgba(0, 255, 180, 0.2),
-    rgba(0, 200, 255, 0.2)
+    rgba(0, 200, 255, .22),
+    rgba(255, 0, 200, .22),
+    rgba(0, 255, 180, .22),
+    rgba(0, 200, 255, .22)
   );
-  opacity: 0.22;
+  opacity: .22;
   z-index: 0;
-  animation: siriGlow 10s linear infinite;
+  animation: ethub-spin 10s linear infinite;
+}
+.ethub-chat > * { position: relative; z-index: 1; }
+
+/* Message area wave canvas holder (sits beneath content) */
+.ethub-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  overflow: hidden;
+  pointer-events: none;
 }
 
-.ethub-chat > * {
-  position: relative;
-  z-index: 1;
+/* Bottom sheet container (safe-area aware) */
+.ethub-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-bottom));
+  z-index: 96;
+}
+.ethub-panel {
+  width: min(720px, 94vw);
+  max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.25rem;
+  border: 1px solid hsl(var(--border, 0 0% 20%));
+  background: color-mix(in lab, rgb(8 8 10) 86%, transparent);
+  backdrop-filter: blur(8px);
+  overflow: clip;  /* clips inner glows cleanly */
 }
 
-@keyframes siriGlow {
-  to { transform: rotate(360deg); }
+/* Rotating rainbow underline (use as a divider) */
+.ethub-rainbow-bar {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #fff200, #ff8a00, #ff007a, #7a00ff, #0048ff, #00a2ff, #00ffa2, #a0ff00, #fff200
+  );
+  background-size: 200% 100%;
+  animation: ethub-bar-move 8s linear infinite;
 }
+
+/* Animated circular send button surface */
+.ethub-send {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  transition: transform .15s ease, box-shadow .2s ease;
+  box-shadow: 0 6px 30px rgba(0,0,0,.4);
+}
+.ethub-send:active { transform: translateY(1px) scale(.98); }
+
+/* Soft entrance */
+.smoke-in { animation: smokeIn 2.5s ease-out forwards; }
