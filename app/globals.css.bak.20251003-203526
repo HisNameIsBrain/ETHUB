@@ -194,7 +194,3 @@ html, body, :root { height: 100%; }
 
 /* Soft entrance */
 .smoke-in { animation: smokeIn 2.5s ease-out forwards; }
-
-/* mobile tabs drawer helper */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

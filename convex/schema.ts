@@ -46,7 +46,20 @@ export default defineSchema({
     userId: v.optional(v.string()),
     role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     tokenIdentifier: v.optional(v.string()),
-})
+    clerkId: v.string(),   // or auth provider subject
+  })
+   .index("by_clerkId", ["clerkId"]),
+
+  jobs: defineTable({
+    userId: v.id("users"),
+    deviceModel: v.string(),
+    issue: v.string(),
+    orderNumber: v.string(),
+    status: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_orderNumber", ["orderNumber"]),
     .index("by_email", ["email"])
     .index("by_username", ["username"])
     .index("by_createdAt", ["createdAt"]),
@@ -93,28 +106,6 @@ export default defineSchema({
     .searchIndex("search_all", { searchField: "search" }),
 
 /*---------------------- Client Portal  -----------------------------*/
-
-  customers: defineTable({
-    name: v.string(),
-    email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    createdAt: v.number(),
-  }).index("by_email", ["email"]).index("by_phone", ["phone"]),
-
-  jobs: defineTable({
-    customerId: v.id("customers"),
-    deviceModel: v.string(),
-    serial: v.optional(v.string()),
-    issue: v.string(),
-    status: v.string(), // received | diagnosis | awaiting_parts | repair | qa | ready | delivered | on_hold
-    eta: v.optional(v.number()),
-    orderNumber: v.string(), // human-facing locator
-    publicAccessToken: v.optional(v.string()),
-    publicAccessTokenExp: v.optional(v.number()),
-    createdBy: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_orderNumber", ["orderNumber"]).index("by_customer", ["customerId"]),
 
   jobEvents: defineTable({
     jobId: v.id("jobs"),

@@ -1,6 +1,28 @@
-// convex/users.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+
+export const getOrCreateCurrent = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const ident = await ctx.auth.getUserIdentity();
+    if (!ident) throw new Error("Not authenticated");
+    const clerkId = ident.subject; // or provider user id
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+      .unique();
+
+    if (existing) return existing._id;
+
+    return await ctx.db.insert("users", {
+      clerkId,
+      email: ident.email ?? "",
+      name: ident.name ?? "",
+    });
+  },
+});
+
 
 /** CREATE with unique email/username (if provided) */
 export const create = mutation({

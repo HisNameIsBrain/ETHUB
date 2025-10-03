@@ -1,28 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import TopSiriLoader from "@/components/top-siri-loader";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Menu, X, Sparkles, LayoutDashboard, FileText, Settings as Cog, User as UserIcon,
+  Menu, X, Home as HomeIcon, LayoutDashboard, FolderCog, ChevronDown,
+  FileText, PanelsTopLeft, Sparkles, Settings as Cog, User as UserIcon, Search
 } from "lucide-react";
 import * as React from "react";
 
 function NavItem({
-  href,
-  label,
-  Icon,
-  active,
-  onClick,
+  href, label, Icon, active, onClick
 }: {
-  href: string;
-  label: string;
+  href: string; label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  active: boolean;
-  onClick?: () => void;
+  active: boolean; onClick?: () => void;
 }) {
   return (
     <motion.div whileHover={{ y: -1, scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -45,15 +40,7 @@ function ProfileButtonLg() {
   return (
     <div className="relative h-12 w-12">
       <span className="absolute -inset-[12%] pointer-events-none">
-	<SiriGlowInvert
-	  rotateSec={3.6}
-	  innerRotateSec={4.6}
-	  blurPx={10}
-	  insetPercent={0}
-	  opacity={0.85}
-	  thicknessPx={9}
-	  inner
-/>
+        <SiriGlowInvert rotateSec={3.6} innerRotateSec={4.6} blurPx={10} insetPercent={0} opacity={0.85} thicknessPx={9} inner/>
       </span>
       <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
         <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />
@@ -64,77 +51,151 @@ function ProfileButtonLg() {
 
 export default function Navbar() {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [svcOpen, setSvcOpen] = React.useState(false);
+  const [svcOpenMobile, setSvcOpenMobile] = React.useState(false);
 
-  const nav = [
-    { href: "/dashboard/services", label: "Services", Icon: Sparkles },
-    { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-    { href: "/documents", label: "Documents", Icon: FileText },
-    { href: "/dashboard/settings", label: "Settings", Icon: Cog },
-  ];
+  const [query, setQuery] = React.useState("");
+  const [drawerQuery, setDrawerQuery] = React.useState("");
+
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
+  const submitSearch = (q: string) => {
+    const v = q.trim();
+    if (!v) return;
+    router.push(`/search?q=${encodeURIComponent(v)}`);
+  };
 
   return (
     <>
-      {/* radiant top glow */}
       <TopSiriLoader />
 
       <nav className="sticky top-0 z-[90] w-full border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-          {/* left: menu + brand */}
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Open menu"
-              onClick={() => setOpen(true)}
-              className="h-9 w-9 grid place-items-center rounded-lg border hover:bg-white/5 transition md:hidden"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
+        <div className="mx-auto max-w-7xl px-4 py-1">
+          {/* Row 1: brand / profile */}
+          <div className="flex h-14 items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                aria-label="Open menu"
+                onClick={() => {
+                  setOpen(true);
+                  setTimeout(() => {}, 220);
+                }}
+                className="h-9 w-9 grid place-items-center rounded-lg border hover:bg-white/5 transition md:hidden"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
 
-            <Link href="/" className="flex items-center gap-2" aria-label="Home">
-              <img src="/logo.svg" alt="ETHUB" className="hidden h-7 w-auto sm:block" />
-              <span className="sm:hidden text-base font-semibold">ETECHHUB</span>
-            </Link>
-          </div>
+              <Link href="/" className="flex items-center gap-2" aria-label="Home">
+                <motion.span
+                  className="hidden sm:inline-flex items-center gap-2"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.35 }}
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <img src="/logo.svg" alt="ETHUB" className="h-7 w-auto" />
+                </motion.span>
+                <span className="sm:hidden text-base font-semibold">ETECHHUB</span>
+              </Link>
+            </div>
 
-          {/* middle: desktop tabs */}
-          <div className="hidden md:flex items-center gap-1">
-            {nav.map(({ href, label, Icon }) => (
-              <NavItem
-                key={href}
-                href={href}
-                label={label}
-                Icon={Icon}
-                active={pathname === href || pathname.startsWith(href + "/")}
-              />
-            ))}
-          </div>
-
-          {/* right: profile (small) */}
-          <div className="hidden md:flex items-center">
-            <div className="relative h-10 w-10">
-              <span className="absolute -inset-[10%] pointer-events-none">
-                <SiriGlowInvert
-                  rotateSec={3.6}
-                  innerRotateSec={4.6}
-                  blurPx={10}
-                  insetPercent={-8}
-                  opacity={0.85}
-                  thicknessPx={9}
-                  inner
-                />
-              </span>
-              <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
-                <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />
+            <div className="hidden md:flex items-center">
+              <div className="relative h-10 w-10">
+                <span className="absolute -inset-[10%] pointer-events-none">
+                  <SiriGlowInvert rotateSec={3.6} innerRotateSec={4.6} blurPx={10} insetPercent={-8} opacity={0.85} thicknessPx={9} inner />
+                </span>
+                <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
+                  <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />
+                </div>
               </div>
             </div>
+
+            <div className="md:hidden w-9 h-9" />
           </div>
 
-          {/* right: mobile brand spacer */}
-          <div className="md:hidden w-9 h-9" />
+          {/* Row 2: compact search (muted so tabs stand out) */}
+          <div className="hidden md:block">
+            <form
+              onSubmit={(e) => { e.preventDefault(); submitSearch(query); }}
+              className="relative w-full sm:w-96"
+            >
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="h-8 pl-8 pr-3 w-full text-sm rounded-md border border-transparent bg-muted/60 focus:bg-muted/70 outline-none"
+              />
+            </form>
+          </div>
+
+          {/* Row 3: desktop tabs (visually dominant) */}
+          <div className="hidden md:flex items-center gap-1 mt-2">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
+              <NavItem href="/" label="Home" Icon={HomeIcon} active={isActive("/")} />
+            </motion.div>
+
+            <NavItem href="/dashboard" label="Dashboard" Icon={LayoutDashboard} active={isActive("/dashboard")} />
+
+            {/* Services dropdown under Dashboard */}
+            <div className="relative">
+              <button
+                onClick={() => setSvcOpen((v) => !v)}
+                className={[
+                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
+                  pathname.startsWith("/dashboard/services") ? "bg-primary text-primary-foreground border-transparent" : "hover:bg-white/5 border-transparent",
+                ].join(" ")}
+              >
+                <FolderCog className="h-4 w-4" />
+                Services
+                <ChevronDown className={`h-4 w-4 transition ${svcOpen ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {svcOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                    onMouseLeave={() => setSvcOpen(false)}
+                    className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
+                  >
+                    <Link
+                      href="/dashboard/services"
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                      onClick={() => setSvcOpen(false)}
+                    >
+                      <FolderCog className="h-4 w-4" /> All Services
+                    </Link>
+                    <Link
+                      href="/dashboard/services/new"
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                      onClick={() => setSvcOpen(false)}
+                    >
+                      <Sparkles className="h-4 w-4" /> New Service
+                    </Link>
+                    <Link
+                      href="/dashboard/services/categories"
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                      onClick={() => setSvcOpen(false)}
+                    >
+                      <PanelsTopLeft className="h-4 w-4" /> Categories
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <NavItem href="/documents" label="Documents" Icon={FileText} active={isActive("/documents")} />
+            <NavItem href="/portal" label="Portal" Icon={PanelsTopLeft} active={isActive("/portal")} />
+          </div>
         </div>
       </nav>
 
-      {/* mobile left drawer (overlays, 1/4 page) */}
+      {/* mobile drawer */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -142,16 +203,21 @@ export default function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setOpen(false)}
           >
             <motion.div
-              className="absolute left-0 top-0 h-full w-[25%] min-w-[260px] max-w-xs border-r bg-background shadow-xl"
+              className="absolute left-0 top-0 h-full w-[25%] min-w-[260px] max-w-xs border-r bg-background shadow-xl flex flex-col"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 280, damping: 30 }}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-3 border-b">
-                <span className="font-medium">Menu</span>
+                <span className="inline-flex items-center gap-2 font-medium">
+                  <Sparkles className="h-4 w-4" /> Menu
+                </span>
                 <button
                   aria-label="Close menu"
                   onClick={() => setOpen(false)}
@@ -161,13 +227,26 @@ export default function Navbar() {
                 </button>
               </div>
 
-              {/* Account section */}
-              <div className="p-3 border-b">
+              {/* Search inside drawer */}
+              <form
+                onSubmit={(e) => { e.preventDefault(); submitSearch(drawerQuery); setOpen(false); }}
+                className="p-3"
+              >
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60" />
+                  <input
+                    value={drawerQuery}
+                    onChange={(e) => setDrawerQuery(e.target.value)}
+                    placeholder="Search…"
+                    className="h-9 pl-8 pr-3 w-full text-sm rounded-md border border-transparent bg-muted/60 focus:bg-muted/70 outline-none"
+                  />
+                </div>
+              </form>
+
+              {/* Account */}
+              <div className="p-3 border-y">
                 <div className="flex items-center gap-3">
-                  <motion.div
-                    whileHover={{ rotate: 2, scale: 1.02 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                  >
+                  <motion.div whileHover={{ rotate: 2, scale: 1.02 }} transition={{ type: "spring", stiffness: 300, damping: 18 }}>
                     <ProfileButtonLg />
                   </motion.div>
                   <div className="flex flex-col">
@@ -180,25 +259,75 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* nav links */}
-              <div className="p-2 space-y-1">
-                {nav.map(({ href, label, Icon }) => {
-                  const active = pathname === href || pathname.startsWith(href + "/");
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setOpen(false)}
-                      className={[
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                        active ? "bg-primary text-primary-foreground" : "hover:bg-white/5",
-                      ].join(" ")}
+              {/* Links */}
+              <div className="p-2 space-y-1 overflow-y-auto">
+                <Link href="/" onClick={() => setOpen(false)}
+                  className={["flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/") ? "bg-primary text-primary-foreground" : "hover:bg-white/5"].join(" ")}>
+                  <HomeIcon className="h-4 w-4" /> Home
+                </Link>
+
+                <Link href="/dashboard" onClick={() => setOpen(false)}
+                  className={["flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/dashboard") ? "bg-primary text-primary-foreground" : "hover:bg-white/5"].join(" ")}>
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Link>
+
+                {/* Services nested */}
+                <button
+                  onClick={() => setSvcOpenMobile((v) => !v)}
+                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                >
+                  <span className="inline-flex items-center gap-3">
+                    <FolderCog className="h-4 w-4" /> Services
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition ${svcOpenMobile ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence initial={false}>
+                  {svcOpenMobile && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="ml-8 flex flex-col"
                     >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </Link>
-                  );
-                })}
+                      <Link href="/dashboard/services" onClick={() => setOpen(false)} className="px-3 py-2 text-sm rounded-md hover:bg-white/5">
+                        All Services
+                      </Link>
+                      <Link href="/dashboard/services/new" onClick={() => setOpen(false)} className="px-3 py-2 text-sm rounded-md hover:bg-white/5">
+                        New Service
+                      </Link>
+                      <Link href="/dashboard/services/categories" onClick={() => setOpen(false)} className="px-3 py-2 text-sm rounded-md hover:bg-white/5">
+                        Categories
+                      </Link>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <Link href="/documents" onClick={() => setOpen(false)}
+                  className={["flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/documents") ? "bg-primary text-primary-foreground" : "hover:bg-white/5"].join(" ")}>
+                  <FileText className="h-4 w-4" /> Documents
+                </Link>
+
+                <Link href="/portal" onClick={() => setOpen(false)}
+                  className={["flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/portal") ? "bg-primary text-primary-foreground" : "hover:bg-white/5"].join(" ")}>
+                  <PanelsTopLeft className="h-4 w-4" /> Portal
+                </Link>
+              </div>
+
+              {/* Settings pinned bottom */}
+              <div className="mt-auto p-2 border-t">
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setOpen(false)}
+                  className={["flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/dashboard/settings") ? "bg-primary text-primary-foreground" : "hover:bg-white/5"].join(" ")}
+                >
+                  <Cog className="h-4 w-4" /> Settings
+                </Link>
               </div>
             </motion.div>
           </motion.div>

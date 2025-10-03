@@ -267,4 +267,7 @@ function ServiceCard({ s }: { s: Service }) {
   );
 }
 
-
+/* Optional: add in globals.css to hide horizontal scrollbar on tabs
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+*/
