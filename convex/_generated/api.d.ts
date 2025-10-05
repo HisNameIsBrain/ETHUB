@@ -19,7 +19,6 @@ import type * as authz from "../authz.js";
 import type * as backfill_documents from "../backfill_documents.js";
 import type * as backfill_services from "../backfill_services.js";
 import type * as documents from "../documents.js";
-import type * as ensure_user from "../ensure_user.js";
 import type * as ensure_users from "../ensure_users.js";
 import type * as fineTune from "../fineTune.js";
 import type * as jobs from "../jobs.js";
@@ -53,7 +52,6 @@ declare const fullApi: ApiFromModules<{
   backfill_documents: typeof backfill_documents;
   backfill_services: typeof backfill_services;
   documents: typeof documents;
-  ensure_user: typeof ensure_user;
   ensure_users: typeof ensure_users;
   fineTune: typeof fineTune;
   jobs: typeof jobs;

@@ -36,39 +36,41 @@ export default defineSchema({
   }),
 
   /* ------------------------------- Users -------------------------------- */
+
   users: defineTable({
-    clerkId: v.optional(v.string()), // required Clerk ID link (auth subject)
+    clerkId: v.string(),
     email: v.optional(v.string()),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
     imageUrl: v.optional(v.string()),
-    userId: v.optional(v.string()), // external id if needed
-    role: v.optional(v.union(v.literal("admin"), v.literal("staff"), v.literal("user"))),
+    userId: v.optional(v.string()),
+    role: v.optional(
+      v.union(
+        v.literal("admin"),
+        v.literal("staff"),
+        v.literal("user")
+      )
+    ),
     tokenIdentifier: v.optional(v.string()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
   })
     .index("by_clerkId", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_username", ["username"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_username", ["username"]),
 
-  /* -------------------------------- Jobs --------------------------------- */
   jobs: defineTable({
     userId: v.id("users"),
     deviceModel: v.string(),
-    serial: v.optional(v.string()),
     issue: v.string(),
     orderNumber: v.string(),
     status: v.optional(v.string()),
-    publicAccessToken: v.optional(v.string()),
-    publicAccessTokenExp: v.optional(v.number()),
-    createdBy: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    createdAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_orderNumber", ["orderNumber"])
+    .index("by_orderNumber", ["orderNumber"]),
+    .index("by_email", ["email"])
+    .index("by_username", ["username"])
     .index("by_createdAt", ["createdAt"]),
 
   /* ----------------------------- Documents ------------------------------ */
@@ -79,7 +81,7 @@ export default defineSchema({
     parentDocument: v.optional(v.id("documents")),
     isArchived: v.boolean(),
     isPublished: v.optional(v.boolean()),
-    createdAt: v.optional(v.number()),
+    createdAt: v.optional(v.number()),                // make required for consistency
     updatedAt: v.optional(v.number()),
     coverImage: v.optional(v.string()),
     icon: v.optional(v.string()),
@@ -90,9 +92,9 @@ export default defineSchema({
 
   /* ------------------------------ Services ------------------------------ */
   services: defineTable({
-    slug: v.optional(v.string()),
+    slug: v.optional(v.string()),         // some code treats it optional on insert
     title: v.optional(v.string()),
-    description: v.optional(v.string()),
+    description: v.optional(v.string()),  // legacy alias for notes; safe to keep
     notes: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     category: v.optional(v.string()),
@@ -104,7 +106,7 @@ export default defineSchema({
     archived: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    search: v.optional(v.string()),
+    search: v.optional(v.string()),       // flattened text blob (for search index)
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["category"])
@@ -112,17 +114,16 @@ export default defineSchema({
     .index("by_createdAt", ["createdAt"])
     .searchIndex("search_all", { searchField: "search" }),
 
-  /*---------------------- Client Portal / Events -------------------------*/
+/*---------------------- Client Portal  -----------------------------*/
+
   jobEvents: defineTable({
     jobId: v.id("jobs"),
-    type: v.string(), // e.g. received | diagnosis_started | parts_ordered | repair_started | qa_started | ready | delivered | note
+    type: v.string(), // received | diagnosis_done | parts_ordered | parts_arrived | repair_started | repair_done | qa_passed | ready | delivered | note
     message: v.optional(v.string()),
     mediaUrls: v.optional(v.array(v.string())),
     createdBy: v.string(),
     createdAt: v.number(),
-  })
-    .index("by_job", ["jobId"])
-    .index("by_job_createdAt", ["jobId", "createdAt"]),
+  }).index("by_job", ["jobId"]).index("by_job_createdAt", ["jobId", "createdAt"]),
 
   partsOrders: defineTable({
     jobId: v.id("jobs"),
@@ -134,7 +135,7 @@ export default defineSchema({
     status: v.string(), // ordered | backordered | arrived | used | canceled
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_job", ["jobId"])
-    .index("by_job_status", ["jobId", "status"]),
+  }).index("by_job", ["jobId"]).index("by_job_status", ["jobId", "status"]),
 });
+
+

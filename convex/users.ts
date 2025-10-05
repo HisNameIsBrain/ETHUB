@@ -1,12 +1,29 @@
+// convex/users.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+/**
+ * Helper to normalize an email (lowercase + trim) or return empty string.
+ */
+function normEmail(e?: string | null) {
+  return (e ?? "").trim().toLowerCase() || "";
+}
+
+/**
+ * Helper to get clerkId from identity if present.
+ */
+async function getClerkIdFromCtx(ctx: any) {
+  const ident = await ctx.auth.getUserIdentity();
+  return ident?.subject ?? "";
+}
+
+/** Create or return the current user record for the signed-in identity */
 export const getOrCreateCurrent = mutation({
   args: {},
   handler: async (ctx) => {
     const ident = await ctx.auth.getUserIdentity();
     if (!ident) throw new Error("Not authenticated");
-    const clerkId = ident.subject; // or provider user id
+    const clerkId = ident.subject;
 
     const existing = await ctx.db
       .query("users")
@@ -15,14 +32,21 @@ export const getOrCreateCurrent = mutation({
 
     if (existing) return existing._id;
 
+    const now = Date.now();
     return await ctx.db.insert("users", {
       clerkId,
-      email: ident.email ?? "",
+      email: normEmail(ident.email),
       name: ident.name ?? "",
+      username: undefined,
+      createdAt: now,
+      updatedAt: now,
+      imageUrl: undefined,
+      userId: undefined,
+      role: undefined,
+      tokenIdentifier: undefined,
     });
   },
 });
-
 
 /** CREATE with unique email/username (if provided) */
 export const create = mutation({
@@ -32,28 +56,39 @@ export const create = mutation({
     username: v.optional(v.string()),
   },
   handler: async (ctx, { email, name, username }) => {
+    const e = normEmail(email);
+
     // Uniqueness checks
     const emailClash = await ctx.db
       .query("users")
-      .withIndex("by_email", (q: any) => q.eq("email", email))
+      .withIndex("by_email", (q: any) => q.eq("email", e))
       .first();
     if (emailClash) throw new Error("Email already exists");
 
     if (username) {
+      const u = username.trim();
       const usernameClash = await ctx.db
         .query("users")
-        .withIndex("by_username", (q: any) => q.eq("username", username))
+        .withIndex("by_username", (q: any) => q.eq("username", u))
         .first();
       if (usernameClash) throw new Error("Username already exists");
     }
 
     const now = Date.now();
+    // Try to reuse clerkId from auth if present, otherwise set empty string
+    const clerkId = await getClerkIdFromCtx(ctx);
+
     return await ctx.db.insert("users", {
-      email,
-      name,
-      username: username ?? undefined,
+      clerkId,
+      email: e || undefined,
+      name: name ?? undefined,
+      username: username?.trim() || undefined,
       createdAt: now,
       updatedAt: now,
+      imageUrl: undefined,
+      userId: undefined,
+      role: undefined,
+      tokenIdentifier: undefined,
     });
   },
 });
@@ -67,19 +102,20 @@ export const ensureUser = mutation({
   },
   handler: async (ctx, { email, name, username }) => {
     const identity = await ctx.auth.getUserIdentity();
-    const resolvedEmail = (email ?? identity?.email ?? "").trim();
+    const resolvedEmail = normEmail(email ?? identity?.email ?? "");
     if (!resolvedEmail) throw new Error("Email is required");
 
     const now = Date.now();
+
     const existing = await ctx.db
       .query("users")
       .withIndex("by_email", (q: any) => q.eq("email", resolvedEmail))
       .first();
 
-    const patch = {
+    const patch: any = {
       email: resolvedEmail,
       name: (name ?? identity?.name ?? "") || undefined,
-      username: username ?? undefined,
+      username: username?.trim() || undefined,
       updatedAt: now,
     };
 
@@ -87,7 +123,19 @@ export const ensureUser = mutation({
       await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
-    return await ctx.db.insert("users", { ...patch, createdAt: now });
+
+    // New insert: include clerkId when available (otherwise empty string)
+    const clerkId = identity?.subject ?? "";
+    return await ctx.db.insert("users", {
+      ...patch,
+      clerkId,
+      createdAt: now,
+      // ensure fields expected by schema are present (undefined allowed for optionals)
+      imageUrl: undefined,
+      userId: undefined,
+      role: undefined,
+      tokenIdentifier: undefined,
+    });
   },
 });
 
@@ -103,7 +151,7 @@ export const update = mutation({
     const patch: any = { updatedAt: Date.now() };
 
     if (email !== undefined) {
-      const trimmed = email.trim();
+      const trimmed = normEmail(email);
       if (!trimmed) throw new Error("Email cannot be empty");
       const clash = await ctx.db
         .query("users")
@@ -168,21 +216,20 @@ export const getByEmail = query({
   handler: async (ctx, { email }) =>
     ctx.db
       .query("users")
-      .withIndex("by_email", (q: any) => q.eq("email", email))
+      .withIndex("by_email", (q: any) => q.eq("email", normEmail(email)))
       .first(),
 });
 
-/** Current user (by identity email) */
+/** Current user (by identity subject -> clerkId) */
 export const me = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const email = identity?.email?.trim();
-    if (!email) return null;
+    const ident = await ctx.auth.getUserIdentity();
+    if (!ident) return null;
     return await ctx.db
       .query("users")
-      .withIndex("by_email", (q: any) => q.eq("email", email))
-      .first();
+      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", ident.subject))
+      .unique();
   },
 });
 
@@ -198,12 +245,18 @@ export const seedTestUser = mutation({
     if (exists) return exists._id;
 
     const now = Date.now();
+    // seed user without a clerkId (blank) so it meets required field in schema
     return await ctx.db.insert("users", {
+      clerkId: "",
       email,
       name: "Test User",
       username: "testuser",
       createdAt: now,
       updatedAt: now,
+      imageUrl: undefined,
+      userId: undefined,
+      role: undefined,
+      tokenIdentifier: undefined,
     });
   },
 });
