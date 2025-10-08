@@ -5,65 +5,123 @@ import ReactDOM from "react-dom";
 import { X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiriGlowInvert } from "@/components/siri-glow-invert";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { speakWithOpenAI } from "@/lib/tts";
 
-// fine-tune training examples client-side
-type Example = { prompt: string; completion: string };
-
-const trainingExamples: Example[] = [
-  {
-    prompt: "Hi, I'm John Doe. My phone is an iPhone 12 Pro Max...",
-    completion: "ID: IC-38\nService Status: Completed\nName: John Doe\n...",
-  },
-  // Add all other examples here as in your fine-tune code
-];
-
-export function downloadTrainingJSONL() {
-  const lines = trainingExamples.map((ex) =>
-    JSON.stringify({ prompt: ex.prompt + "\n\n###\n\n", completion: " " + ex.completion + "\n" })
-  );
-  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "training.jsonl";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  console.log("Training JSONL downloaded (browser download).");
-}
-
 type Role = "system" | "user" | "assistant";
+
+const SYSTEM_PROMPT = {
+  role: "system" as const,
+  content: `You are ETHUB's assistant. Extract: Device make, exact device model number, issue, and requested service. Output a compact intake block with fields: ID, Service Status, Name, Number, Description, Manufacturer, #Quote (TBA), # Deposit ($0.00), Service (tags), #Fulfillment, ∑ Trend, Due (TBA), ∑ Balance, Warranty, Diagnosis. When asked, suggest premium 120Hz OLED first and an economical aftermarket option second.`,
+};
+
 const CHAT_MODEL = "gpt-4o-mini" as const;
 const TTS_VOICE = "alloy" as const;
 const TTS_FORMAT = "mp3" as const;
 
-export default function AssistantLauncher() {
+export default function AssistantLauncher({ onAssistantMessage }: { onAssistantMessage?: (s: string) => void }) {
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [messages, setMessages] = React.useState<Array<{ role: Role; content: string }>>([]);
+  const createInvoice = useMutation("invoices.create"); // convex function
 
   const chatAction = useAction(api.openai.chat);
   const moderateAction = useAction(api.openai.moderate);
 
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
+    // @ts-ignore
     if (window[key]) return;
+    // @ts-ignore
     window[key] = true;
     setMounted(true);
-    return () => delete window[key];
+    return () => {
+      // @ts-ignore
+      delete window[key];
+    };
   }, []);
+
+  function getTextFromResponse(res: any): string {
+    if (!res) return "";
+    if (typeof res.content === "string") return res.content;
+    if (typeof res.text === "string") return res.text;
+    return "";
+  }
+
+  // parse assistant's structured intake block (key: value per line)
+  function parseBlock(block: string) {
+    const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const record: Record<string,string> = {};
+    for (const line of lines) {
+      const i = line.indexOf(":");
+      if (i === -1) continue;
+      record[line.slice(0,i).trim()] = line.slice(i+1).trim();
+    }
+    return record;
+  }
+
+  // fetch parts from your mobilesentrix API route
+  async function fetchPartsForDevice(query: string) {
+    try {
+      const res = await fetch(`/api/mobilesentrix/prices?query=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error("Failed to fetch parts");
+      return await res.json();
+    } catch (err) {
+      console.error("Parts fetch error", err);
+      return null;
+    }
+  }
+
+  // When assistant output is a valid intake block, we fetch parts and insert cards into chat
+  async function handleAssistantOutput(output: string) {
+    // inform parent
+    onAssistantMessage?.(output);
+
+    // try to parse for Device / Service
+    const rec = parseBlock(output);
+    const device = rec["Device"] || rec["Manufacturer"] ? `${rec["Manufacturer"] ?? ""} ${rec["Device"] ?? ""}`.trim() : rec["Description"] ?? "";
+    const serviceTag = rec["Service"] ?? rec["Description"] ?? "";
+
+    if (!device && !serviceTag) return;
+
+    const query = `${device} ${serviceTag}`.trim();
+    const parts = await fetchPartsForDevice(query);
+
+    if (!parts) return;
+
+    // inject assistant bubble with part recommendations
+    const recommended = parts.recommended ? {
+      ...parts.recommended,
+      info: `Recommended: premium — ${parts.recommended.title ?? ""}`,
+    } : null;
+    const alternative = parts.alternative ? {
+      ...parts.alternative,
+      info: `Alternative: economical — ${parts.alternative.title ?? ""}`,
+    } : null;
+
+    // Add a special assistant message with structured JSON so the chat UI can render cards
+    const cardMessage = JSON.stringify({ type: "parts_suggestion", recommended, alternative });
+    setMessages(m => [...m, { role: "assistant", content: cardMessage }]);
+  }
+
+  async function saveInvoiceToPortal(record: Record<string, any>) {
+    // record should include ticketId or will be generated by Convex
+    try {
+      await createInvoice({ ...record, status: "pending" });
+      return true;
+    } catch (err) {
+      console.error("Save invoice error", err);
+      return false;
+    }
+  }
 
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
     setBusy(true);
-
     try {
       const mod = await moderateAction({ text });
       if (mod?.flagged) {
@@ -71,18 +129,25 @@ export default function AssistantLauncher() {
         return;
       }
 
-      const next = [...messages, { role: "user", content: text }];
-      setMessages(next);
+      const nextMessages = [...(messages.length ? messages : [SYSTEM_PROMPT]), { role: "user", content: text }];
+      setMessages(nextMessages);
 
-      const res = await chatAction({ model: CHAT_MODEL, messages: next as any });
-      const output = typeof res?.content === "string" ? res.content : "";
+      const res = await chatAction({ model: CHAT_MODEL, messages: nextMessages as any });
+      const output = getTextFromResponse(res);
 
       if (output) {
         setMessages((m) => [...m, { role: "assistant", content: output }]);
-        await speakWithOpenAI(output, { voice: TTS_VOICE, format: TTS_FORMAT });
+        // notify parent
+        onAssistantMessage?.(output);
+
+        // try to TTS but don't block
+        speakWithOpenAI(output, { voice: TTS_VOICE, format: TTS_FORMAT }).catch(() => {});
+
+        // attempt to scan output for intake block and fetch parts
+        await handleAssistantOutput(output);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Assistant error:", err);
       setMessages((m) => [...m, { role: "assistant", content: "Something went sideways. Try again." }]);
     } finally {
       setInput("");
@@ -90,58 +155,155 @@ export default function AssistantLauncher() {
     }
   }
 
-  if (!mounted) return null;
+  // render function for special assistant messages (parts cards)
+  function renderMessage(m: { role: Role; content: string }, idx: number) {
+    if (m.role === "assistant") {
+      try {
+        const maybe = JSON.parse(m.content);
+        if (maybe?.type === "parts_suggestion") {
+          const rec = maybe.recommended;
+          const alt = maybe.alternative;
+          return (
+            <div key={idx} className="space-y-3">
+              <div className="rounded-lg bg-black/55 text-white p-3">
+                <div className="font-medium mb-2">Recommended part — Best quality (part + $100 labor)</div>
+                {rec ? (
+                  <div className="flex gap-4 items-center">
+                    <img src={rec.image ?? ""} alt={rec.title ?? "part"} className="h-28 object-contain" />
+                    <div>
+                      <div className="text-sm">{rec.title}</div>
+                      <div className="text-lg font-semibold">${(rec.total ?? 0).toFixed(2)}</div>
+                      <div className="text-xs">Part: ${(rec.partPrice ?? 0).toFixed(2)} + Labor: ${rec.labor}</div>
+                      <div className="mt-2 flex gap-2">
+                        <Button size="sm" onClick={async () => {
+                          // build invoice from last intake message if exists
+                          const intake = messages.slice().reverse().find(x => x.role === "assistant" && x.content.includes("ID:"));
+                          const record = intake ? parseBlock(intake.content) : {};
+                          // attach part
+                          const payload = {
+                            ticketId: record.ID ?? undefined,
+                            name: record.Name ?? null,
+                            phone: record.Number ?? null,
+                            manufacturer: record.Manufacturer ?? null,
+                            description: record.Description ?? null,
+                            quote: rec.total ?? null,
+                            deposit: record["# Deposit"] ?? "$0.00",
+                            service: record.Service ?? "Screen Replacement",
+                            due: record.Due ?? null,
+                            warrantyAcknowledged: !!record.Warranty,
+                            raw: record,
+                            part: { title: rec.title, image: rec.image, unitPrice: rec.partPrice, labor: rec.labor, total: rec.total }
+                          };
+                          const ok = await saveInvoiceToPortal(payload);
+                          if (ok) {
+                            setMessages(m => [...m, { role: "assistant", content: `Invoice created and marked *pending*. Ticket: ${payload.ticketId ?? "TBA"}` }]);
+                          } else {
+                            setMessages(m => [...m, { role: "assistant", content: `Failed to save invoice. Try again or contact staff.` }]);
+                          }
+                        }}>Approve & Save</Button>
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          setMessages(m => [...m, { role: "assistant", content: "Okay — no order placed. Would you like other options or a different service?" }]);
+                        }}>No thanks</Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : <div>No premium part found.</div>}
+              </div>
 
-  const launcherButton = (
-    <button
-      aria-label="Open Assistant"
-      onClick={() => setOpen(true)}
-      className="z-[95] fixed right-4 bottom-4 h-16 w-16 rounded-full relative overflow-hidden isolate grid place-items-center text-white shadow-lg"
-    >
-      <span className="absolute inset-0 rounded-full bg-neutral-950" />
-      <SiriGlowInvert rotateSec={3.2} innerRotateSec={4.4} blurPx={14} insetPercent={-6} opacity={0.85} thicknessPx={11} inner colors={["rgba(255,242,0,0.9)", "rgba(255,138,0,0.9)","rgba(255,0,122,0.9)","rgba(122,0,255,0.9)","rgba(0,72,255,0.9)","rgba(0,162,255,0.9)","rgba(0,255,162,0.9)","rgba(160,255,0,0.9)"]}/>
-      <span className="absolute inset-[3px] rounded-full bg-neutral-950/95 border border-white/10" />
-      <div className="relative z-[1] h-3 w-3 rounded-full bg-white/90" />
-    </button>
-  );
+              <div className="rounded-lg bg-white/90 p-3">
+                <div className="font-medium mb-2">Alternative — Economical</div>
+                {alt ? (
+                  <div className="flex gap-4 items-center">
+                    <img src={alt.image ?? ""} alt={alt.title ?? "part"} className="h-24 object-contain" />
+                    <div>
+                      <div className="text-sm">{alt.title}</div>
+                      <div className="text-lg font-semibold">${(alt.total ?? 0).toFixed(2)}</div>
+                      <div className="text-xs">Part: ${(alt.partPrice ?? 0).toFixed(2)} + Labor: ${alt.labor}</div>
+                      <div className="mt-2">
+                        <Button size="sm" variant="outline" onClick={async () => {
+                          // same save flow for alternative
+                          const intake = messages.slice().reverse().find(x => x.role === "assistant" && x.content.includes("ID:"));
+                          const record = intake ? parseBlock(intake.content) : {};
+                          const payload = {
+                            ticketId: record.ID ?? undefined,
+                            name: record.Name ?? null,
+                            phone: record.Number ?? null,
+                            manufacturer: record.Manufacturer ?? null,
+                            description: record.Description ?? null,
+                            quote: alt.total ?? null,
+                            deposit: record["# Deposit"] ?? "$0.00",
+                            service: record.Service ?? "Screen Replacement",
+                            due: record.Due ?? null,
+                            warrantyAcknowledged: !!record.Warranty,
+                            raw: record,
+                            part: { title: alt.title, image: alt.image, unitPrice: alt.partPrice, labor: alt.labor, total: alt.total }
+                          };
+                          const ok = await saveInvoiceToPortal(payload);
+                          if (ok) {
+                            setMessages(m => [...m, { role: "assistant", content: `Invoice created (economical) and marked pending. Ticket: ${payload.ticketId ?? "TBA"}` }]);
+                          } else {
+                            setMessages(m => [...m, { role: "assistant", content: `Failed to save invoice. Try again or contact staff.` }]);
+                          }
+                        }}>Approve Economical</Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : <div>No alternative found.</div>}
+              </div>
+            </div>
+          );
+        }
+      } catch (_) {
+        // not JSON special message — render plain text
+      }
+
+      // fallback: default assistant bubble
+      return (
+        <div key={idx} className="rounded-2xl bg-black/55 text-white px-3 py-2 max-w-[85%]">
+          {m.content}
+        </div>
+      );
+    }
+
+    // user bubble
+    return (
+      <div key={idx} className="rounded-lg px-3 py-2 text-sm ml-auto max-w-[85%] bg-blue-600 text-white shadow-sm">
+        {m.content}
+      </div>
+    );
+  }
+
+  if (!mounted) return null;
 
   return (
     <>
-      {ReactDOM.createPortal(launcherButton, document.body)}
+      {ReactDOM.createPortal(
+        <button aria-label="Open Assistant" onClick={() => setOpen(true)} className="fixed right-4 bottom-4 h-16 w-16 rounded-full z-50">
+          <SiriGlowInvert rotateSec={3.2} innerRotateSec={4.4} blurPx={14} insetPercent={-6} opacity={0.85} thicknessPx={11} inner />
+          <div className="relative z-10 h-3 w-3 rounded-full bg-white" />
+        </button>,
+        document.body
+      )}
+
       {open && (
         <div className="fixed inset-0 z-[96] bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)}>
           <div className="absolute bottom-0 right-0 m-4 w-[min(640px,calc(100vw-2rem))] rounded-2xl border bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md shadow-2xl overflow-hidden text-neutral-900 dark:text-neutral-100" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Header */}
             <div className="relative flex items-center justify-between p-3 border-b">
-              <span className="font-medium">ETHUB Assistant</span>
+              <div className="flex items-center gap-3">
+                <div className="font-medium">ETHUB Assistant</div>
+              </div>
               <Button size="icon" variant="ghost" onClick={() => setOpen(false)}><X className="h-5 w-5" /></Button>
             </div>
 
-            {/* Messages */}
             <div className="max-h-[40vh] overflow-auto p-3 space-y-3">
-              {messages.filter((m) => m.role !== "system").map((m, i) => (
-                <div key={i} className={`rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-blue-600 text-white" : "bg-black/55 text-white"}`}>
-                  {m.content}
-                </div>
-              ))}
+              {messages.length === 0 && <p className="text-sm text-muted-foreground">Describe your device issue — I’ll find parts, quote, and save the invoice when you approve.</p>}
+              {messages.map((m, i) => renderMessage(m, i))}
             </div>
 
-            {/* Composer */}
-            <form className="flex items-center gap-2 p-3 border-t" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="flex-1 rounded-md border px-3 py-2 text-sm bg-white/70 dark:bg-neutral-900/70 placeholder:text-neutral-500 text-neutral-900 dark:text-neutral-100"
-                placeholder="Describe the issue…"
-              />
-              <Button type="submit" disabled={busy || !input.trim()} size="sm">Send</Button>
+            <form className="p-3 border-t flex gap-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+              <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Describe the device, model, and issue (e.g. iPhone 15 Pro Max, cracked glass, touch unresponsive)" className="flex-1 rounded-md border px-3 py-2" />
+              <Button type="submit" disabled={busy || !input.trim()}>Send</Button>
             </form>
-
-            {/* Training export */}
-            <div className="p-3 border-t">
-              <Button onClick={downloadTrainingJSONL} size="sm" variant="outline">Export Training Data</Button>
-            </div>
           </div>
         </div>
       )}
