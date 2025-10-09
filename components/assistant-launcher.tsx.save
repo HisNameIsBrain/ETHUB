@@ -15,7 +15,7 @@ type Role = "system" | "user" | "assistant";
 const SYSTEM_PROMPT = {
   role: "system" as const,
   content:
-    "You are ETHUB Assistant, a friendly receptionist.Ssy hello to our frirnds here on the OC Bus that is heading down Chapman. Wish us well. Your main goal is to guide user step-by-step and log entries into a document where it will be displayed in portal page under invoices: ask for device name and exact model, issue, and requested service; confirm details before fetching parts & pricing; present premium first, then economical alternative. Persona: concise, clear, and supportive.",
+    "You are ETHUB Assistant, a friendly receptionist. Your main goal is to guide user step-by-step and log entries into a document where it will be displayed in portal page under invoices: ask for device name and exact model, issue, and requested service; confirm details before fetching parts & pricing; present premium first, then economical alternative. Persona: concise, clear, and supportive.",
 };
 
 const CHAT_MODEL = "gpt-4o-mini" as const;
@@ -154,9 +154,10 @@ export default function AssistantLauncher({
     // welcoming intro — TTS queued
     pushMessage({
       role: "assistant",
-      content: `✨ Hi ${intake.name ?? "there"} — I'm ETHUB's Assistant with star-energy! I'll guide you step-by-step.`,
+      content: `✨ Hi ${intake.name ?? "there"} — I'm ETHUB's Assistant! I can help with any issues your device might ne having
+ Reply "Yes"` to create your request`,
     });
-    pushMessage({ role: "assistant", content: "What is the device name **and exact model**? (e.g., iPhone 15 Pro Max Axxxx)" });
+    pushMessage({ role: "assistant", content: "What is the device name **and exact model**? (e.g., iPhone 16 Pro, Samsung Note 9)" });
     setIntakeState("askDeviceModel");
   }
 
@@ -176,14 +177,14 @@ export default function AssistantLauncher({
 
     switch (intakeState) {
       case "idle":
-        if (/^(start|yes|ready|hi|hello)/i.test(text)) startIntake();
+        if (/^(start|yes|ready|)/i.test(text)) startIntake();
         else pushMessage({ role: "assistant", content: "Say 'start' to begin the repair intake process." });
         break;
 
       case "askDeviceModel":
         setIntake((s: any) => ({ ...s, deviceAndModel: text }));
         setIntakeState("askIssue");
-        pushMessage({ role: "assistant", content: "Thanks. Now describe the issue and the service you'd like (screen, battery, data recovery...)." });
+        pushMessage({ role: "assistant", content: "Thanks. Now describe the issue about your device. (screen, battery, data recovery...)." });
         break;
 
       case "askIssue":
@@ -198,7 +199,7 @@ export default function AssistantLauncher({
         pushMessage({
           role: "assistant",
           content:
-            "Summary prepared. Reply 'yes' to fetch premium & economical parts and produce a quote, or 'edit' to change.",
+            "parts and produce a quote, or 'edit' to change.",
         });
         setIntakeState("confirm");
         break;

@@ -14,25 +14,9 @@ export default function PortalPageClient() {
   const { isLoaded, isSignedIn, user } = useUser();
   const [lastAssistantText, setLastAssistantText] = useState<string>("");
 
-  // wait for Clerk to load
-  if (!isLoaded) return <div>Loading…</div>;
-
-  // redirect to Clerk sign-in if not signed in
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      // push to Clerk sign-in page (default route)
-      router.push("/sign-in");
-    }
-  }, [isLoaded, isSignedIn, router]);
-
-  if (!isSignedIn) {
-    return <div>Please sign in to access the client portal.</div>;
-  }
-
-  // helpful display name/email from Clerk user object
   const displayId =
     (user?.primaryEmailAddress?.emailAddress as string | undefined) ||
-    (user?.emailAddresses && user.emailAddresses[0]) ||
+    (user?.emailAddresses && user.emailAddresses[0]?.emailAddress) ||
     user?.firstName ||
     user?.fullName ||
     "Signed-in user";
@@ -53,7 +37,6 @@ export default function PortalPageClient() {
         </div>
       </div>
 
-      {/* Repairs / Assistant / Part Recommendation */}
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex-1 min-w-0">
@@ -65,7 +48,7 @@ export default function PortalPageClient() {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-muted mb-2">Live Parts (based on last assistant result)</div>
-                <PartRecommendation query="" />
+                <PartRecommendation query={""} />
               </div>
 
               <div>
@@ -83,14 +66,12 @@ export default function PortalPageClient() {
             </div>
           </div>
 
-          {/* Right column: quick invoice / admin controls */}
           <div className="w-full md:w-96">
             <h3 className="text-lg font-medium mb-2">Invoices</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Invoices created by the assistant appear here with "pending" status until an admin places an order.
             </p>
 
-            {/* Placeholder for invoice list — replace with Convex query or server call */}
             <div className="space-y-3">
               <div className="p-3 border rounded">No pending invoices found (hook up Convex list query here).</div>
               <div className="p-3 border rounded">
@@ -105,7 +86,6 @@ export default function PortalPageClient() {
         </div>
       </Card>
 
-      {/* AssistantLauncher floating button - passes back last assistant message */}
       <AssistantLauncher onAssistantMessage={(m) => setLastAssistantText(m)} />
     </div>
   );

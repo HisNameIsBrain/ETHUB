@@ -9,7 +9,7 @@ interface SpeakOpts {
 }
 
 /**
- * Calls your /api/tts route to synthesize speech with OpenAI.
+ * Synthesizes speech using your /api/tts route.
  * - Default: plays audio and returns void
  * - With { returnAudioEl: true }: returns an <audio> element (useful for visualizers)
  */
@@ -24,7 +24,17 @@ export async function speakWithOpenAI(
     throw new Error("TTS failed: Missing `text`");
   }
 
-  async function tryOnce(): Promise<void | HTMLAudioElement> {
+  const playAudio = (blobUrl: string) => {
+    return new Promise<void | HTMLAudioElement>((resolve, reject) => {
+      const audio = new Audio(blobUrl);
+      audio.onended = () => resolve();
+      audio.onerror = (e) => reject(e);
+      audio.play().catch(() => resolve()); // ignore autoplay restrictions
+      if (opts.returnAudioEl) resolve(audio);
+    });
+  };
+
+  const fetchAndPlay = async (): Promise<void | HTMLAudioElement> => {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -41,24 +51,19 @@ export async function speakWithOpenAI(
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-
-    const audio = new Audio(url);
-    try {
-      await audio.play();
-    } catch {
-      // ignore autoplay restrictions
-    }
-
-    return opts.returnAudioEl ? audio : undefined;
-  }
+    const result = await playAudio(url);
+    URL.revokeObjectURL(url);
+    return result;
+  };
 
   try {
-    return await tryOnce();
+    return await fetchAndPlay();
   } catch (err: any) {
     const msg = String(err?.message ?? "");
     if (/terminated|timeout|429|502|503|504/i.test(msg)) {
+      // retry once after brief delay
       await new Promise((r) => setTimeout(r, 300));
-      return await tryOnce();
+      return await fetchAndPlay();
     }
     throw new Error(`TTS failed: ${msg}`);
   }

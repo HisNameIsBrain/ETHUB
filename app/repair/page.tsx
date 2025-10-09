@@ -1,42 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
-import AssistantLauncher from "@/components/AssistantLauncher";
+import AssistantLauncher from "@/components/assistant-launcher";
+import { useState } from "react";
+import AssistantInvoiceControls from "@/components/AssistantInvoiceControls";
 
 export default function RepairPage() {
-  const [lastAssistantText, setLastAssistantText] = useState<string>("");
+  const [assistantText, setAssistantText] = useState("");
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Client Portal</h1>
-      <p className="text-sm text-muted-foreground">
-        Track your repair status, invoices, and communications here.
-      </p>
+      <h1 className="text-2xl font-semibold">Repair Portal</h1>
 
       <Card className="p-4">
-        <h2 className="font-medium text-lg mb-2">Repairs</h2>
-        {lastAssistantText ? (
-          <pre className="mt-2 text-xs bg-gray-100 p-2 rounded">
-            {lastAssistantText}
-          </pre>
+        <h2 className="font-medium text-lg mb-2">Current Device Repair</h2>
+        {assistantText ? (
+          <pre className="mt-2 text-xs bg-gray-100 p-2 rounded">{assistantText}</pre>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Start a conversation with the assistant to generate repair info.
+          <p className="text-sm text-muted-foreground">
+            Enter device details in the assistant to generate repair info.
           </p>
         )}
       </Card>
 
       <Card className="p-4">
         <h2 className="font-medium text-lg mb-2">Invoices</h2>
-        <p className="text-sm text-muted-foreground">
-          View and download invoices for completed services.
-        </p>
+        <AssistantInvoiceControls lastAssistantText={assistantText} />
       </Card>
 
-      <AssistantLauncher
-        onAssistantMessage={(message: string) => setLastAssistantText(message)}
-      />
+      <AssistantLauncher onAssistantMessage={setAssistantText} />
     </div>
   );
 }

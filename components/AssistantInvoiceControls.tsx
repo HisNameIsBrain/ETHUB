@@ -1,33 +1,22 @@
 "use client";
-
 import React from "react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 type RecordMap = Record<string, string>;
 
-function formatInvoice(record: RecordMap) {
-  return [
-    `--- ETHUB Repair Intake / Invoice ---`,
-    `ID: ${record.ID ?? "IC-38"}`,
-    `Service Status: ${record["Service Status"] ?? "Received"}`,
-    `Name: ${record.Name ?? ""}`,
-    `Number: ${record.Number ?? ""}`,
-    `Description: ${record.Description ?? ""}`,
-    `Manufacturer: ${record.Manufacturer ?? ""}`,
-    `#Quote: ${record["#Quote"] ?? "TBA"}`,
-    `# Deposit: ${record["# Deposit"] ?? "TBA"}`,
-    `Service: ${record.Service ?? ""}`,
-    `#Fulfillment: ${record["#Fulfillment"] ?? "TBA"}`,
-    `∑ Trend: ${record["∑ Trend"] ?? ""}`,
-    `Due: ${record.Due ?? "TBA"}`,
-    `∑ Balance: ${record["∑ Balance"] ?? ""}`,
-    `Warranty: ${record.Warranty ?? "Customer to sign 30-day warranty & Liability Acknowledgement."}`,
-    `Diagnosis: ${record.Diagnosis ?? ""}`,
-    ``,
-    `Customer signature: ____________________________    Date: ___________`,
-    `Technician signature: __________________________ Date: ___________`,
-  ].join("\n");
+function parseAssistantBlock(block: string): RecordMap {
+  const lines = block.split(/\r?\n/).map(l => l.trim());
+  const record: Record<string, string> = {};
+  for (const line of lines) {
+    if (!line) continue;
+    const idx = line.indexOf(":");
+    if (idx === -1) continue;
+    record[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+  }
+  return record;
 }
 
 function downloadFile(filename: string, contents: string) {
@@ -42,95 +31,58 @@ function downloadFile(filename: string, contents: string) {
   URL.revokeObjectURL(url);
 }
 
-function parseAssistantBlock(block: string): RecordMap {
-  const lines = block.split(/\r?\n/).map((l) => l.trim());
-  const record: RecordMap = {};
-  for (const line of lines) {
-    if (!line) continue;
-    const idx = line.indexOf(":");
-    if (idx === -1) continue;
-    const key = line.slice(0, idx).trim();
-    const val = line.slice(idx + 1).trim();
-    if (key) record[key] = val;
-  }
-  return record;
-}
-
-function readQS() {
-  if (typeof window === "undefined") return { token: "", ticket: "" };
-  const qs = new URLSearchParams(window.location.search);
-  return { token: qs.get("token") ?? "", ticket: qs.get("ticket") ?? "" };
-}
-
-async function sendInvoiceToPortal(token: string, record: RecordMap) {
-  if (!token) throw new Error("Missing access token");
-  const payload = {
-    ticketId: record.ID ?? record["ID"] ?? null,
-    name: record.Name ?? null,
-    phone: record.Number ?? null,
-    manufacturer: record.Manufacturer ?? null,
-    description: record.Description ?? null,
-    quote: record["#Quote"] ?? null,
-    deposit: record["# Deposit"] ?? null,
-    service: record.Service ?? null,
-    due: record.Due ?? null,
-    warrantyAcknowledged: !!record.Warranty,
-    raw: record,
-  };
-
-  const res = await fetch("/api/portal/invoices", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Portal error: ${res.status} ${text}`);
-  }
-  return res.json();
-}
-
 export default function AssistantInvoiceControls({ lastAssistantText }: { lastAssistantText: string }) {
-  const [busy, setBusy] = React.useState(false);
-  const { token, ticket } = React.useMemo(() => readQS(), []);
+  const createInvoice = useMutation ? useMutation("invoices.create") : null;
   const parsed = React.useMemo(() => parseAssistantBlock(lastAssistantText || ""), [lastAssistantText]);
 
+  function formatInvoice(record: RecordMap) {
+    return [
+      `ID: ${record.ID ?? "IC-38"}`,
+      `Name: ${record.Name ?? ""}`,
+      `Number: ${record.Number ?? ""}`,
+      `Description: ${record.Description ?? ""}`,
+      `Manufacturer: ${record.Manufacturer ?? ""}`,
+      `#Quote: ${record["#Quote"] ?? "TBA"}`,
+    ].join("\n");
+  }
+
+  async function saveToPortal() {
+    const payload = {
+      ticketId: parsed.ID ?? undefined,
+      name: parsed.Name ?? null,
+      phone: parsed.Number ?? null,
+      manufacturer: parsed.Manufacturer ?? null,
+      description: parsed.Description ?? null,
+      quote: parsed["#Quote"] ?? null,
+      deposit: parsed["# Deposit"] ?? "$0.00",
+      service: parsed.Service ?? null,
+      due: parsed.Due ?? null,
+      warrantyAcknowledged: !!parsed.Warranty,
+      raw: parsed,
+    };
+    try {
+      if (createInvoice) {
+        await createInvoice(payload);
+        alert("Saved to portal (Convex).");
+      } else {
+        const res = await fetch("/api/portal/invoices", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Save failed");
+        alert("Saved to portal.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save invoice.");
+    }
+  }
+
   return (
-    <div className="flex gap-2 items-center">
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => {
-          const invoice = formatInvoice(parsed);
-          downloadFile(`ETHUB-invoice-${parsed.ID || ticket || "TBA"}.txt`, invoice);
-        }}
-      >
+    <div className="flex gap-2">
+      <Button variant="ghost" size="sm" onClick={() => downloadFile(`ETHUB-invoice-${parsed.ID ?? "TBA"}.txt`, formatInvoice(parsed))}>
         <Download className="mr-2 h-4 w-4" /> Export invoice
       </Button>
-
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={busy || !token}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await sendInvoiceToPortal(token, parsed);
-            alert("Invoice sent to portal successfully.");
-          } catch (err) {
-            console.error(err);
-            alert("Failed to send invoice to portal.");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        Send to Portal
-      </Button>
+      <Button variant="outline" size="sm" onClick={() => void saveToPortal()}>Save to Portal</Button>
     </div>
   );
 }
