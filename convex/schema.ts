@@ -2,6 +2,22 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  invoices: defineTable({
+    ticketId: v.string(),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    manufacturer: v.optional(v.string()),
+    description: v.optional(v.string()),
+    quote: v.number(),
+    deposit: v.optional(v.string()),
+    service: v.string(),
+    warrantyAcknowledged: v.boolean(),
+    status: v.string(),
+    raw: v.optional(v.any()),
+    createdAt: v.number(),
+  }),
+
   /* -------------------------- Voice telemetry -------------------------- */
   voiceSessions: defineTable({
     userId: v.string(),
