@@ -2,21 +2,51 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  invoices: defineTable({
-    ticketId: v.string(),
+invoices: defineTable({
+    ticketId: v.optional(v.string()),
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
     description: v.optional(v.string()),
-    quote: v.number(),
+    quote: v.optional(v.number()),
     deposit: v.optional(v.string()),
-    service: v.string(),
-    warrantyAcknowledged: v.boolean(),
-    status: v.string(),
-    raw: v.optional(v.any()),
+    service: v.optional(v.string()),
+    warrantyAcknowledged: v.optional(v.boolean()),
+    status: v.optional(v.string()),
     createdAt: v.number(),
+    raw: v.optional(v.any()),
   }),
+
+  partImages: defineTable({
+    query: v.string(),
+    title: v.string(),
+    link: v.string(),
+    mime: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    contextLink: v.optional(v.string()),
+    cachedAt: v.number(),
+  }),
+
+  parts: defineTable({
+    title: v.string(),
+    image: v.optional(v.string()),
+    partPrice: v.optional(v.number()),
+    labor: v.optional(v.number()),
+    total: v.optional(v.number()),
+    vendor: v.optional(v.string()),
+    query: v.optional(v.string()),
+  }),
+
+  images: defineTable({
+    query: v.string(),
+    link: v.string(),
+    title: v.optional(v.string()),
+    mime: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    contextLink: v.optional(v.string()),
+  }),
+
 
   /* -------------------------- Voice telemetry -------------------------- */
   voiceSessions: defineTable({

@@ -34,14 +34,15 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
 
   const [intakeState, setIntakeState] = React.useState<IntakeState>("idle");
   const [intake, setIntake] = React.useState<any>({});
+  // Wire Convex mutation to the invoices.createInvoice server mutation
+  const createInvoiceMutation = useMutation(api.invoices.createInvoice);
   const chatAction = useAction(api.openai.chat);
   const moderateAction = useAction(api.openai.moderate);
-  const createInvoiceMutation = useMutation ? useMutation("invoices.create") : null;
 
   const [ttsQueue, setTtsQueue] = React.useState<string[]>([]);
   const [ttsPlaying, setTtsPlaying] = React.useState(false);
 
-  // mount guard
+  // mount guard (prevent duplicate mounts in dev/hot reload)
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
     if ((window as any)[key]) return;
@@ -72,10 +73,14 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     if (!ttsPlaying && ttsQueue.length > 0 && !muted) {
       const next = ttsQueue[0];
       setTtsPlaying(true);
-      speakWithOpenAI(next, { voice: TTS_VOICE, format: TTS_FORMAT }).finally(() => {
-        setTtsQueue((q) => q.slice(1));
-        setTtsPlaying(false);
-      });
+      speakWithOpenAI(next, { voice: TTS_VOICE, format: TTS_FORMAT })
+        .catch(() => {
+          /* swallow TTS errors */
+        })
+        .finally(() => {
+          setTtsQueue((q) => q.slice(1));
+          setTtsPlaying(false);
+        });
     }
   }, [ttsQueue, ttsPlaying, muted]);
 
@@ -87,10 +92,10 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     setMessages((prev) => [...prev, m]);
     if (m.role === "assistant") enqueueTTS(m.content);
     if (m.role === "assistant" && onAssistantMessage) {
-      // pass plain assistant text to parent when a "final" intake is ready
-      try	{
+      // pass plain assistant text to parent when appropriate
+      try {
         const parsed = JSON.parse(m.content);
-        // do not send JSON special messages; parent expects text intake when appropriate
+        // if it's structured JSON (parts suggestions), don't forward as plain text
       } catch {
         onAssistantMessage?.(m.content);
       }
@@ -103,76 +108,60 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     setIntakeState("idle");
   }
 
-async function fetchPartsForQuery(q: string) {
-  if (!q || q.trim().length === 0) return null;
-
-  try {
-    // 1) Fetch prices from your server route (mobilesentrix)
-    const pricesRes = await fetch(`/api/mobilesentrix/prices?query=${encodeURIComponent(q)}`, { cache: "no-store" });
-    if (!pricesRes.ok) {
-      const txt = await pricesRes.text().catch(() => "");
-      console.error("mobilesentrix prices fetch failed", pricesRes.status, pricesRes.statusText, txt);
-      return null;
-    }
-    const pricesJson = await pricesRes.json();
-
-    // Expecting pricesJson to have recommended and alternative. If not, adapt as needed.
-    const recommended = pricesJson.recommended ?? null;
-    const alternative = pricesJson.alternative ?? null;
-
-    // 2) Fetch images from our server proxy that calls Google CSE
-    //    We request up to 6 images to increase chance of matching
-    const imagesRes = await fetch(`/api/image-search?query=${encodeURIComponent(q)}&num=6`, { cache: "no-store" });
-    let imagesJson = null;
-    if (imagesRes.ok) imagesJson = await imagesRes.json();
-    else {
-      console.warn("image search failed", imagesRes.status, await imagesRes.text().catch(() => ""));
-    }
-    const images: Array<any> = imagesJson?.images ?? [];
-
-    // 3) Simple matching: prefer image whose title or context includes model or keywords
-    const allParts = [];
-    if (recommended) allParts.push({ tier: "recommended", part: recommended });
-    if (alternative) allParts.push({ tier: "alternative", part: alternative });
-
-    // Helper: choose best image for a given part title
-    function pickImageForPart(partTitle: string) {
-      if (!partTitle) return null;
-      const titleLower = partTitle.toLowerCase();
-      // First try exact substring match in image.title or contextLink
-      for (const img of images) {
-        if ((img.title ?? "").toLowerCase().includes(titleLower)) return img.link;
-        if ((img.contextLink ?? "").toLowerCase().includes(titleLower)) return img.link;
+  async function fetchPartsForQuery(q: string) {
+    if (!q || q.trim().length === 0) return null;
+    try {
+      const pricesRes = await fetch(`/api/mobilesentrix/prices?query=${encodeURIComponent(q)}`, { cache: "no-store" });
+      if (!pricesRes.ok) {
+        console.error("mobilesentrix prices fetch failed", pricesRes.status, pricesRes.statusText);
+        return null;
       }
-      // Next, pick first thumbnail if any
-      if (images.length > 0) return images[0].thumbnail ?? images[0].link;
+      const pricesJson = await pricesRes.json();
+
+      const recommended = pricesJson.recommended ?? null;
+      const alternative = pricesJson.alternative ?? null;
+
+      const imagesRes = await fetch(`/api/image-search?query=${encodeURIComponent(q)}&num=6`, { cache: "no-store" });
+      let imagesJson = null;
+      if (imagesRes.ok) imagesJson = await imagesRes.json();
+      const images: Array<any> = imagesJson?.images ?? [];
+
+      function pickImageForPart(partTitle: string) {
+        if (!partTitle) return null;
+        const titleLower = partTitle.toLowerCase();
+        for (const img of images) {
+          if ((img.title ?? "").toLowerCase().includes(titleLower)) return img.link;
+          if ((img.contextLink ?? "").toLowerCase().includes(titleLower)) return img.link;
+        }
+        if (images.length > 0) return images[0].thumbnail ?? images[0].link;
+        return null;
+      }
+
+      const enriched = {
+        recommended: null,
+        alternative: null,
+      };
+
+      if (recommended) {
+        enriched.recommended = {
+          ...recommended,
+          image: recommended.image ?? pickImageForPart(recommended.title ?? q),
+        };
+      }
+      if (alternative) {
+        enriched.alternative = {
+          ...alternative,
+          image: alternative.image ?? pickImageForPart(alternative.title ?? q + " part"),
+        };
+      }
+
+      return enriched;
+    } catch (err) {
+      console.error("fetchPartsForQuery combined error", err);
       return null;
     }
-
-    const enriched = {
-      recommended: null,
-      alternative: null,
-    };
-
-    if (recommended) {
-      enriched.recommended = {
-        ...recommended,
-        image: recommended.image ?? pickImageForPart(recommended.title ?? q),
-      };
-    }
-    if (alternative) {
-      enriched.alternative = {
-        ...alternative,
-        image: alternative.image ?? pickImageForPart(alternative.title ?? q + " part"),
-      };
-    }
-
-    return enriched;
-  } catch (err) {
-    console.error("fetchPartsForQuery combined error", err);
-    return null;
   }
-}
+
   async function saveInvoiceToPortal(payload: any) {
     try {
       if (createInvoiceMutation) {
@@ -193,7 +182,6 @@ async function fetchPartsForQuery(q: string) {
     }
   }
 
-  // Helpful hints for users who don't know where to find info
   function hintForField(field: "device" | "issue") {
     switch (field) {
       case "device":
@@ -203,7 +191,6 @@ async function fetchPartsForQuery(q: string) {
     }
   }
 
-  // start intake
   function startIntake() {
     if (!user) {
       pushMessage({ role: "assistant", content: "Please sign in to start a repair request." });
@@ -220,21 +207,15 @@ async function fetchPartsForQuery(q: string) {
     setIntakeState("askDeviceModel");
   }
 
-  // attempt to detect whether a model string is sufficiently precise
-function looksLikeFullModel(text: string) {
-  // Normalize input
-  text = text.trim();
-
-  // Return false for empty or non-alphanumeric strings
-  if (!text || !/[a-z0-9]/i.test(text)) return false;
-
-  // Check for known brand names or recognizable model codes
-  return (
-    /\b(iphone|ipad|macbook|mac|galaxy|pixel|surface|oneplus|xiaomi|nokia|sony|lg|htc|motorola)\b/i.test(text) ||
-    /\b[A-Z]{1,3}\d{2,4}\b/.test(text) ||
-    /\bSM-?\d{3,5}\b/i.test(text)
-  );
-}
+  function looksLikeFullModel(text: string) {
+    text = text.trim();
+    if (!text || !/[a-z0-9]/i.test(text)) return false;
+    return (
+      /\b(iphone|ipad|macbook|mac|galaxy|pixel|surface|oneplus|xiaomi|nokia|sony|lg|htc|motorola)\b/i.test(text) ||
+      /\b[A-Z]{1,3}\d{2,4}\b/.test(text) ||
+      /\bSM-?\d{3,5}\b/i.test(text)
+    );
+  }
 
   async function handleUserInput(raw: string) {
     const text = raw.trim();
@@ -259,27 +240,22 @@ function looksLikeFullModel(text: string) {
       case "askDeviceModel":
         if (/^(i dont know|I don't know|not sure|unsure|help|idk|ok)$/i.test(text)) {
           pushMessage({ role: "assistant", content: `No problem — ${hintForField("device")}` });
-          // remain in askDeviceModel
           return;
         }
 
-        // if text looks like a short brand or vague, ask to confirm
         if (!looksLikeFullModel(text)) {
           pushMessage({
             role: "assistant",
             content: `That looks a bit short or like a brand-only entry. ${hintForField("device")} Reply with the full model (or say 'help' to have me walk you through).`,
           });
-          // keep in askDeviceModel to allow correction
           setIntake((s: any) => ({ ...s, deviceAndModel: text }));
           return;
         }
 
-        // looks acceptable; set but confirm with the user
         setIntake((s: any) => ({ ...s, deviceAndModel: text }));
         pushMessage({ role: "assistant", content: `Thanks — I recorded: "${text}". Does that match what's written on your device or in settings? Reply 'yes' to continue or 'no' to correct.` });
-        // move to a mini-confirm step by storing a temporary state in intake
         setIntake((s: any) => ({ ...s, deviceConfirmed: false }));
-        setIntakeState("askIssue"); // still move user flow; we'll check confirmation logically before final summary
+        setIntakeState("askIssue");
         break;
 
       case "askIssue":
@@ -293,7 +269,6 @@ function looksLikeFullModel(text: string) {
           return;
         }
 
-        // Save issue, but require explicit confirmation before proceeding to parts lookup
         setIntake((s: any) => ({ ...s, issue: text, service: text }));
         const summary = {
           ID: `IC-${Date.now().toString().slice(-6)}`,
@@ -314,7 +289,6 @@ function looksLikeFullModel(text: string) {
 
       case "confirm":
         if (/^y(es)?$/i.test(text)) {
-          // Ensure device is acceptable before lookup
           if (!intake.deviceAndModel || intake.deviceAndModel.length < 3) {
             pushMessage({ role: "assistant", content: `I need the device model to fetch parts. ${hintForField("device")}` });
             setIntakeState("askDeviceModel");
@@ -365,9 +339,10 @@ function looksLikeFullModel(text: string) {
       ticketId: summary.ID ?? `IC-${Date.now().toString().slice(-6)}`,
       name: intake.name ?? null,
       phone: intake.phone ?? null,
+      email: intake.email ?? null,
       manufacturer: summary.Manufacturer ?? null,
       description: summary.Description ?? null,
-      quote: part.total ?? null,
+      quote: typeof part.total === "number" ? part.total : Number(part.total ?? 0),
       deposit: "$0.00",
       service: summary.Service ?? intake.service ?? "Repair",
       warrantyAcknowledged: true,
@@ -432,7 +407,7 @@ function looksLikeFullModel(text: string) {
           );
         }
       } catch (_) {
-        // not JSON
+        // not JSON — fallthrough to plain message render
       }
     }
 
@@ -456,6 +431,7 @@ function looksLikeFullModel(text: string) {
     background: "conic-gradient(from 0deg, #ff2d55, #ff9500, #ffcc00, #30d158, #5ac8fa, #5856d6, #ff2d55)",
     filter: "blur(10px)",
     mixBlendMode: "screen",
+    pointerEvents: "none",
   };
 
   return (
@@ -463,7 +439,7 @@ function looksLikeFullModel(text: string) {
       {/* Floating Assistant Button with Siri-like rainbow ring and animated bubbles */}
       {ReactDOM.createPortal(
         <div className="fixed right-6 bottom-6 z-50">
-          <div className="relative h-24 w-24">
+          <div className="relative h-24 w-24 flex items-center justify-center">
             {/* animated rainbow ring (rotates slowly) */}
             <motion.div
               className="absolute inset-0 rounded-full pointer-events-none"
@@ -474,19 +450,6 @@ function looksLikeFullModel(text: string) {
 
             {/* multiple soft colored bubble accents */}
             <div className="absolute inset-0 pointer-events-none">
-              {/* bubble elements positioned around button */}
-              <motion.span
-                className="absolute rounded-full opacity-70"
-                style={{ width: 12, height: 12, top: 6, left: 14, background: "#ff2d55" }}
-                animate={{ y: [0, -6, 0], opacity: [0.7, 0.4, 0.7] }}
-                transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut", delay: 0.1 }}
-              />
-              <motion.span
-                className="absolute rounded-full opacity-70"
-                style={{ width: 10, height: 10, bottom: 10, right: 20, background: "#30d158" }}
-                animate={{ y: [0, -8, 0], opacity: [0.8, 0.3, 0.8] }}
-                transition={{ repeat: Infinity, duration: 3.4, ease: "easeInOut", delay: 0.4 }}
-              />
               <motion.span
                 className="absolute rounded-full opacity-70"
                 style={{ width: 14, height: 14, top: 18, right: 6, background: "#5ac8fa" }}
@@ -501,7 +464,7 @@ function looksLikeFullModel(text: string) {
               />
             </div>
 
-            {/* main button sits above the ring */}
+            {/* main button sits above the ring and is perfectly centered via flex (prevents shift on interaction) */}
             <motion.button
               aria-label="Open Assistant"
               onClick={() => {
@@ -513,9 +476,10 @@ function looksLikeFullModel(text: string) {
                   });
                 }
               }}
-              className="relative h-16 w-16 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center ring-0 focus:outline-none"
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.98 }}
+              className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center ring-0 focus:outline-none relative"
+              whileHover={{ scale: 1.06, boxShadow: "0 8px 30px rgba(59,130,246,0.18)" }}
+              // IMPORTANT: avoid a scale less than 1 on tap to prevent downward drift. Use slight scale-up instead.
+              whileTap={{ scale: 1.03 }}
             >
               <span className="absolute -inset-0.5 rounded-full opacity-30 blur-xl" />
               <motion.div className="absolute inset-0 pointer-events-none" {...orbit}>
@@ -604,4 +568,3 @@ function looksLikeFullModel(text: string) {
     </>
   );
 }
-

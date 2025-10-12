@@ -1,3 +1,4 @@
+// convex/invoices.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -18,7 +19,7 @@ export const createInvoice = mutation({
     raw: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const createdAt = Date.now();
+    const createdAt = Date.now(); // now matches schema (number)
     const invoiceId = await ctx.db.insert("invoices", { ...args, createdAt });
     return invoiceId;
   },
@@ -71,14 +72,12 @@ export const deleteInvoice = mutation({
   },
 });
 
-// HELPER — get invoices by status (e.g., “pending”, “paid”, “completed”)
-export const getInvoicesByStatus = query({
-  args: { status: v.string() },
+// HELPER — get invoices by multiple statuses
+export const getInvoicesByStatuses = query({
+  args: { statuses: v.array(v.string()) },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("invoices")
-      .filter((q) => q.eq(q.field("status"), args.status))
-      .order("desc")
-      .collect();
+    const all = await ctx.db.query("invoices").order("desc").collect();
+    return all.filter((i) => args.statuses.includes(i.status ?? ""));
   },
 });
+
