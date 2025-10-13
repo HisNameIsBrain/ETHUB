@@ -1,4 +1,3 @@
-// convex/invoices.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -15,7 +14,7 @@ export const createInvoice = mutation({
     deposit: v.optional(v.string()),
     service: v.string(),
     warrantyAcknowledged: v.boolean(),
-    status: v.string(),
+    status: v.optional(v.string()),
     raw: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
@@ -77,7 +76,7 @@ export const getInvoicesByStatuses = query({
   args: { statuses: v.array(v.string()) },
   handler: async (ctx, args) => {
     const all = await ctx.db.query("invoices").order("desc").collect();
+    // Filter invoices whose status is in the selected statuses
     return all.filter((i) => args.statuses.includes(i.status ?? ""));
   },
 });
-

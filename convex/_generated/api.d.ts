@@ -32,6 +32,7 @@ import type * as openai from "../openai.js";
 import type * as openaiModels from "../openaiModels.js";
 import type * as partImages from "../partImages.js";
 import type * as parts from "../parts.js";
+import type * as partsPrice from "../partsPrice.js";
 import type * as qs from "../qs.js";
 import type * as scrape_files from "../scrape_files.js";
 import type * as scrape_iosfiles from "../scrape_iosfiles.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   openaiModels: typeof openaiModels;
   partImages: typeof partImages;
   parts: typeof parts;
+  partsPrice: typeof partsPrice;
   qs: typeof qs;
   scrape_files: typeof scrape_files;
   scrape_iosfiles: typeof scrape_iosfiles;

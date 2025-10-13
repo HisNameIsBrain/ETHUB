@@ -111,7 +111,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
   async function fetchPartsForQuery(q: string) {
     if (!q || q.trim().length === 0) return null;
     try {
-      const pricesRes = await fetch(`/api/mobilesentrix/prices?query=${encodeURIComponent(q)}`, { cache: "no-store" });
+    const pricesRes = await fetch(`/api/portal/prices?query=${encodeURIComponent(q)}`, { cache: "no-store" });
       if (!pricesRes.ok) {
         console.error("mobilesentrix prices fetch failed", pricesRes.status, pricesRes.statusText);
         return null;
@@ -445,7 +445,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
               className="absolute inset-0 rounded-full pointer-events-none"
               style={{ ...rainbowStyle }}
               animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+              transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
             />
 
             {/* multiple soft colored bubble accents */}
@@ -477,7 +477,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
                 }
               }}
               className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center ring-0 focus:outline-none relative"
-              whileHover={{ scale: 1.06, boxShadow: "0 8px 30px rgba(59,130,246,0.18)" }}
+              whileHover={{ scale: 2.06, boxShadow: "0 8px 30px rgba(59,130,246,0.18)" }}
               // IMPORTANT: avoid a scale less than 1 on tap to prevent downward drift. Use slight scale-up instead.
               whileTap={{ scale: 1.03 }}
             >

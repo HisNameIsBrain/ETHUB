@@ -49,6 +49,7 @@
     "nextjs": "^0.0.3",
     "nprogress": "^0.2.0",
     "openai": "^4.104.0",
+    "pnpm": "^10.18.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-dropzone": "^14.2.3",

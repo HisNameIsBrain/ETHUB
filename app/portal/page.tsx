@@ -16,6 +16,7 @@ export default function PortalPageClient() {
   const { isLoaded, isSignedIn, user } = useUser();
   const [lastAssistantText, setLastAssistantText] = useState<string>("");
 
+  // ✅ Display info for signed-in user
   const displayId =
     (user?.primaryEmailAddress?.emailAddress as string | undefined) ||
     (user?.emailAddresses && user.emailAddresses[0]?.emailAddress) ||
@@ -23,8 +24,23 @@ export default function PortalPageClient() {
     user?.fullName ||
     "Signed-in user";
 
-  // Live Convex query: fetch "pending" invoices
-  const invoices = useQuery(api.invoices.getInvoicesByStatus, { status: "pending" });
+  // ✅ Available statuses (customize as needed)
+  const allStatuses = ["pending", "processing", "completed", "canceled"];
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["pending"]);
+
+  // ✅ Toggle status selection
+  const toggleStatus = (status: string) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  // ✅ Live Convex query: fetch invoices by multiple statuses
+  const invoices = useQuery(api.invoices.getInvoicesByStatuses, {
+    statuses: selectedStatuses,
+  });
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -44,6 +60,7 @@ export default function PortalPageClient() {
 
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-6">
+          {/* ----------- Left Side (Assistant + Parts) ----------- */}
           <div className="flex-1 min-w-0">
             <h2 className="font-medium text-lg mb-2">Repairs</h2>
             <p className="text-sm text-muted-foreground">
@@ -51,17 +68,23 @@ export default function PortalPageClient() {
             </p>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Part Recommendations */}
               <div>
                 <div className="text-sm text-muted mb-2">Live Parts (based on last assistant result)</div>
                 <PartRecommendation query={""} />
               </div>
 
+              {/* Assistant Intake */}
               <div>
                 <div className="text-sm text-muted mb-2">Latest Assistant Intake</div>
                 {lastAssistantText ? (
-                  <pre className="mt-2 text-xs bg-gray-50 dark:bg-neutral-900 p-3 rounded">{lastAssistantText}</pre>
+                  <pre className="mt-2 text-xs bg-gray-50 dark:bg-neutral-900 p-3 rounded">
+                    {lastAssistantText}
+                  </pre>
                 ) : (
-                  <p className="text-sm text-muted-foreground mt-2">Start a conversation with the assistant (bottom-right).</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Start a conversation with the assistant (bottom-right).
+                  </p>
                 )}
 
                 <div className="mt-4">
@@ -71,29 +94,79 @@ export default function PortalPageClient() {
             </div>
           </div>
 
+          {/* ----------- Right Side (Invoices) ----------- */}
           <div className="w-full md:w-96">
             <h3 className="text-lg font-medium mb-2">Invoices</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Invoices created by the assistant appear here with "pending" status until an admin places an order.
+              Invoices created by the assistant appear here until processed.
             </p>
 
+            {/* ✅ Status Filter Controls */}
+            <div className="mb-3 flex flex-wrap gap-2">
+              {allStatuses.map((status) => (
+                <label
+                  key={status}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition ${
+                    selectedStatuses.includes(status)
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedStatuses.includes(status)}
+                    onChange={() => toggleStatus(status)}
+                    className="hidden"
+                  />
+                  {status}
+                </label>
+              ))}
+            </div>
+
+            {/* ✅ Invoice List */}
             <div className="space-y-3">
               <div className="p-3 border rounded">
                 {invoices === undefined ? (
                   <div className="text-sm text-muted-foreground">Loading invoices...</div>
                 ) : invoices.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No pending invoices found.</div>
+                  <div className="text-sm text-muted-foreground">
+                    No invoices found for selected statuses.
+                  </div>
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {invoices.map((inv: any) => (
-                      <li key={inv._id} className="p-2 border rounded flex justify-between items-center">
+                      <li
+                        key={inv._id}
+                        className="p-2 border rounded flex justify-between items-center hover:bg-gray-50 dark:hover:bg-neutral-900 transition"
+                      >
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{inv.description || "(no description)"}</div>
-                          <div className="text-xs text-muted-foreground">{inv.name || inv.email || "No customer info"}</div>
+                          <div className="text-sm font-medium truncate">
+                            {inv.description || "(no description)"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {inv.name || inv.email || "No customer info"}
+                          </div>
                         </div>
                         <div className="ml-3 text-right">
-                          <div className="font-semibold">${typeof inv.quote === "number" ? inv.quote.toFixed(2) : inv.quote ?? "N/A"}</div>
-                          <div className="text-xs text-muted-foreground">{inv.status}</div>
+                          <div className="font-semibold">
+                            $
+                            {typeof inv.quote === "number"
+                              ? inv.quote.toFixed(2)
+                              : inv.quote ?? "N/A"}
+                          </div>
+                          <div
+                            className={`text-xs capitalize ${
+                              inv.status === "pending"
+                                ? "text-yellow-600"
+                                : inv.status === "completed"
+                                ? "text-green-600"
+                                : inv.status === "processing"
+                                ? "text-blue-600"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {inv.status}
+                          </div>
                         </div>
                       </li>
                     ))}
@@ -101,11 +174,16 @@ export default function PortalPageClient() {
                 )}
               </div>
 
+              {/* ✅ Admin Actions */}
               <div className="p-3 border rounded">
-                <div className="text-sm">Admin Actions</div>
+                <div className="text-sm font-medium">Admin Actions</div>
                 <div className="mt-2 flex gap-2">
-                  <Button onClick={() => window.open("/app/portal/orders", "_self")}>Place Orders</Button>
-                  <Button variant="outline" onClick={() => alert("Exporting...")}>Export CSV</Button>
+                  <Button onClick={() => window.open("/app/portal/orders", "_self")}>
+                    Place Orders
+                  </Button>
+                  <Button variant="outline" onClick={() => alert("Exporting...")}>
+                    Export CSV
+                  </Button>
                 </div>
               </div>
             </div>
@@ -113,6 +191,7 @@ export default function PortalPageClient() {
         </div>
       </Card>
 
+      {/* ✅ Assistant launcher */}
       <AssistantLauncher onAssistantMessage={(m) => setLastAssistantText(m)} />
     </div>
   );
