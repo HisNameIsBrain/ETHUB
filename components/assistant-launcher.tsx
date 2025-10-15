@@ -24,17 +24,24 @@ const TTS_FORMAT = "mp3" as const;
 
 type IntakeState = "idle" | "askDeviceModel" | "askIssue" | "confirm" | "done";
 
-export default function AssistantLauncher({ onAssistantMessage }: { onAssistantMessage?: (s: string) => void }) {
+export default function AssistantLauncher({
+  onAssistantMessage,
+}: {
+  onAssistantMessage?: (s: string) => void;
+}) {
   const { user, isLoaded } = useUser();
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-  const [messages, setMessages] = React.useState<Array<{ role: Role; content: string; thinking?: boolean }>>([]);
+  const [messages, setMessages] = React.useState<
+    Array<{ role: Role; content: string; thinking?: boolean }>
+  >([]);
   const [busy, setBusy] = React.useState(false);
   const [muted, setMuted] = React.useState(false);
 
-  const [intakeState, setIntakeState] = React.useState<IntakeState>("idle");
+  const [intakeState, setIntakeState] =
+    React.useState<IntakeState>("idle");
   const [intake, setIntake] = React.useState<any>({});
-  // Wire Convex mutation to the invoices.createInvoice server mutation
+  // Convex bindings
   const createInvoiceMutation = useMutation(api.invoices.createInvoice);
   const chatAction = useAction(api.openai.chat);
   const moderateAction = useAction(api.openai.moderate);
@@ -61,9 +68,15 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
         ...s,
         name:
           s.name ??
-          (user.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : user.fullName ?? undefined),
-        email: s.email ?? (user.primaryEmailAddress?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress),
-        phone: s.phone ?? user.phoneNumbers?.[0]?.phoneNumber ?? undefined,
+          (user.firstName
+            ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
+            : user.fullName ?? undefined),
+        email:
+          s.email ??
+          (user.primaryEmailAddress?.emailAddress ??
+            user.emailAddresses?.[0]?.emailAddress),
+        phone:
+          s.phone ?? user.phoneNumbers?.[0]?.phoneNumber ?? undefined,
       }));
     }
   }, [user, isLoaded]);
@@ -75,7 +88,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
       setTtsPlaying(true);
       speakWithOpenAI(next, { voice: TTS_VOICE, format: TTS_FORMAT })
         .catch(() => {
-          /* swallow TTS errors */
+          /* swallow */
         })
         .finally(() => {
           setTtsQueue((q) => q.slice(1));
@@ -92,10 +105,8 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     setMessages((prev) => [...prev, m]);
     if (m.role === "assistant") enqueueTTS(m.content);
     if (m.role === "assistant" && onAssistantMessage) {
-      // pass plain assistant text to parent when appropriate
       try {
-        const parsed = JSON.parse(m.content);
-        // if it's structured JSON (parts suggestions), don't forward as plain text
+        JSON.parse(m.content);
       } catch {
         onAssistantMessage?.(m.content);
       }
@@ -104,63 +115,38 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
 
   function clearConversation(keepPrefill = true) {
     setMessages([]);
-    setIntake(keepPrefill ? { name: intake.name, email: intake.email, phone: intake.phone } : {});
+    setIntake(
+      keepPrefill
+        ? { name: intake.name, email: intake.email, phone: intake.phone }
+        : {}
+    );
     setIntakeState("idle");
   }
 
-  async function fetchPartsForQuery(q: string) {
-    if (!q || q.trim().length === 0) return null;
-    try {
-    const pricesRes = await fetch(`/api/portal/prices?query=${encodeURIComponent(q)}`, { cache: "no-store" });
-      if (!pricesRes.ok) {
-        console.error("mobilesentrix prices fetch failed", pricesRes.status, pricesRes.statusText);
-        return null;
-      }
-      const pricesJson = await pricesRes.json();
+  // -------- PARTS FETCH & INVOICE SAVE --------
 
-      const recommended = pricesJson.recommended ?? null;
-      const alternative = pricesJson.alternative ?? null;
+const parts = useQuery(api.fetchPartsForQuery, {
+  brand,
+  model,
+  repairType,
+});
 
-      const imagesRes = await fetch(`/api/image-search?query=${encodeURIComponent(q)}&num=6`, { cache: "no-store" });
-      let imagesJson = null;
-      if (imagesRes.ok) imagesJson = await imagesRes.json();
-      const images: Array<any> = imagesJson?.images ?? [];
-
-      function pickImageForPart(partTitle: string) {
-        if (!partTitle) return null;
-        const titleLower = partTitle.toLowerCase();
-        for (const img of images) {
-          if ((img.title ?? "").toLowerCase().includes(titleLower)) return img.link;
-          if ((img.contextLink ?? "").toLowerCase().includes(titleLower)) return img.link;
-        }
-        if (images.length > 0) return images[0].thumbnail ?? images[0].link;
-        return null;
-      }
-
-      const enriched = {
-        recommended: null,
-        alternative: null,
-      };
-
-      if (recommended) {
-        enriched.recommended = {
-          ...recommended,
-          image: recommended.image ?? pickImageForPart(recommended.title ?? q),
-        };
-      }
-      if (alternative) {
-        enriched.alternative = {
-          ...alternative,
-          image: alternative.image ?? pickImageForPart(alternative.title ?? q + " part"),
-        };
-      }
-
-      return enriched;
-    } catch (err) {
-      console.error("fetchPartsForQuery combined error", err);
-      return null;
-    }
+async function cachePartInConvex(part: any) {
+  try {
+    await useAction(api.parts.savePart)({
+      title: part.title,
+      image: part.image,
+      partPrice: part.partPrice ?? 0,
+      labor: part.labor ?? 100,
+      total: (part.partPrice ?? 0) + (part.labor ?? 100),
+      vendor: part.vendor ?? "ETHUB",
+      query: part.query ?? "",
+    });
+  } catch (err) {
+    console.error("Failed to cache part in Convex:", err);
   }
+}
+
 
   async function saveInvoiceToPortal(payload: any) {
     try {
@@ -182,12 +168,19 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     }
   }
 
+  // -------- Hints & Intake helpers --------
   function hintForField(field: "device" | "issue") {
     switch (field) {
       case "device":
-        return "Exact model is often on the back of the device or in Settings → About. For iPhone: Settings → General → About → Model Name. For Android: Settings → About phone → Model. If you can't find it, tell me the brand and any letters/numbers on the back and I’ll help pinpoint the model.";
+        return `Exact model is often on the back of the device or in Settings → About.
+For iPhone: Settings → General → About → Model Name.
+For Android: Settings → About phone → Model.
+If you can't find it, tell me the brand and any letters/numbers on the back and I’ll help pinpoint the model.`;
       case "issue":
-        return "Please describe the issue with your device. Explain in detail.: e.g., 'Screen cracked — touch works', 'Battery dies within 2 hours', 'Phone won't boot (stuck on logo)'.";
+        return `Please describe the issue with your device, e.g.:
+• "Screen cracked — touch works"
+• "Battery dies within 2 hours"
+• "Phone won't boot (stuck on logo)"`;
     }
   }
 
@@ -198,11 +191,12 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     }
     pushMessage({
       role: "assistant",
-      content: `Hi ${intake.name ?? "there"}! I'm here to guide you through a quick repair intake— we'll get this sorted together.`,
+      content: `Hi ${intake.name ?? "there"}! I'm here to guide you through a quick repair intake — we'll get this sorted together.`,
     });
     pushMessage({
       role: "assistant",
-      content: `First: what's the device name and exact model? (e.g., iPhone 15 Pro Max A2849 or Samsung A13 SM-A136U). If you're unsure, reply 'I don't know' and I'll help you locate it.`,
+      content: `First: what's the device name and exact model? (e.g., iPhone 15 Pro Max A2849 or Samsung A13 SM-A136U).
+If you're unsure, reply "I don't know" and I'll help you locate it.`,
     });
     setIntakeState("askDeviceModel");
   }
@@ -211,30 +205,72 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     text = text.trim();
     if (!text || !/[a-z0-9]/i.test(text)) return false;
     return (
-      /\b(iphone|ipad|macbook|mac|galaxy|pixel|surface|oneplus|xiaomi|nokia|sony|lg|htc|motorola)\b/i.test(text) ||
+      /\b(iphone|ipad|macbook|mac|galaxy|pixel|surface|oneplus|xiaomi|nokia|sony|lg|htc|motorola)\b/i.test(
+        text
+      ) ||
       /\b[A-Z]{1,3}\d{2,4}\b/.test(text) ||
       /\bSM-?\d{3,5}\b/i.test(text)
     );
   }
 
+  // -------- OpenAI chat helper (calls your Convex server action) --------
+  async function callOpenAIAndPush() {
+    // Build a messages payload for the server-side chatAction
+    const payloadMessages = [
+      SYSTEM_PROMPT,
+      ...messages
+        .filter((m) => !!m.content)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ];
+    try {
+      setBusy(true);
+      const res = await chatAction({
+        model: CHAT_MODEL,
+        messages: payloadMessages,
+      });
+      // Expect server returns { content: string } or raw string
+      let assistantText = "";
+      if (!res) assistantText = "Sorry — I'm having trouble reaching the AI right now.";
+      else if (typeof res === "string") assistantText = res;
+      else if (res?.content) assistantText = res.content;
+      else assistantText = String(res);
+
+      pushMessage({ role: "assistant", content: assistantText });
+    } catch (err) {
+      console.error("chatAction error", err);
+      pushMessage({ role: "assistant", content: "AI unavailable — please try again later." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // -------- User input handling (intake + fallback to AI) --------
   async function handleUserInput(raw: string) {
     const text = raw.trim();
     if (!text) return;
 
+    // moderate first
     try {
       const mod = await moderateAction({ text });
       if (mod?.flagged) {
         pushMessage({ role: "assistant", content: "Sorry, I can’t assist with that content." });
         return;
       }
-    } catch {}
+    } catch (e) {
+      // continue even if moderation fails
+      console.warn("moderation error", e);
+    }
 
     pushMessage({ role: "user", content: text });
 
+    // Intake state machine
     switch (intakeState) {
       case "idle":
         if (/^(start|yes|ready|hi|hello)/i.test(text)) startIntake();
-        else pushMessage({ role: "assistant", content: "Say 'start' to begin your repair intake." });
+        else {
+          // Let the AI handle casual conversation / fallback
+          await callOpenAIAndPush();
+        }
         break;
 
       case "askDeviceModel":
@@ -246,14 +282,18 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
         if (!looksLikeFullModel(text)) {
           pushMessage({
             role: "assistant",
-            content: `That looks a bit short or like a brand-only entry. ${hintForField("device")} Reply with the full model (or say 'help' to have me walk you through).`,
+            content: `That looks a bit short or like a brand-only entry. ${hintForField("device")}
+Reply with the full model (or say "help" to have me walk you through).`,
           });
           setIntake((s: any) => ({ ...s, deviceAndModel: text }));
           return;
         }
 
         setIntake((s: any) => ({ ...s, deviceAndModel: text }));
-        pushMessage({ role: "assistant", content: `Thanks — I recorded: "${text}". Does that match what's written on your device or in settings? Reply 'yes' to continue or 'no' to correct.` });
+        pushMessage({
+          role: "assistant",
+          content: `Thanks — I recorded: "${text}". Does that match what's written on your device or in settings? Reply "yes" to continue or "no" to correct.`,
+        });
         setIntake((s: any) => ({ ...s, deviceConfirmed: false }));
         setIntakeState("askIssue");
         break;
@@ -279,10 +319,12 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
         setIntake((s: any) => ({ ...s, summary }));
         pushMessage({
           role: "assistant",
-          content:
-            "Summary prepared. Please confirm the details so I can fetch parts & pricing:\n\n" +
-            `• Device: ${summary.Description.split(" — ")[0] || "(not set)"}\n` +
-            `• Issue: ${text}\n\nReply 'yes' to continue, 'edit' to change any detail, or 'device' to update the device model.`,
+          content: `Summary prepared. Please confirm the details so I can fetch parts & pricing:
+
+• Device: ${summary.Description.split(" — ")[0] || "(not set)"}
+• Issue: ${text}
+
+Reply "yes" to continue, "edit" to change any detail, or "device" to update the device model.`,
         });
         setIntakeState("confirm");
         break;
@@ -304,9 +346,14 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
             setIntakeState("idle");
             return;
           }
+          // send structured parts suggestion (rendered as cards)
           pushMessage({
             role: "assistant",
-            content: JSON.stringify({ type: "parts_suggestion", recommended: parts.recommended ?? null, alternative: parts.alternative ?? null }),
+            content: JSON.stringify({
+              type: "parts_suggestion",
+              recommended: parts.recommended ?? null,
+              alternative: parts.alternative ?? null,
+            }),
           });
           setIntakeState("done");
         } else if (/^edit$/i.test(text)) {
@@ -333,6 +380,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     }
   }
 
+  // -------- Approve part -> save invoice --------
   async function onApprovePart(part: any) {
     const summary = intake.summary ?? {};
     const payload = {
@@ -361,7 +409,9 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
     }
   }
 
+  // -------- Message renderer (handles parts cards) --------
   function renderMessage(m: { role: Role; content: string; thinking?: boolean }, idx: number) {
+    // parts suggestion (structured)
     if (m.role === "assistant") {
       try {
         const parsed = JSON.parse(m.content);
@@ -374,11 +424,19 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
                 <div>
                   <div className="font-semibold">Recommended — Premium (we recommend this)</div>
                   <div className="flex items-center gap-3 mt-2">
-                    {rec.image ? <img src={rec.image} alt={rec.title} className="h-20 object-contain" /> : <div className="h-20 w-20 bg-gray-100 rounded" />}
+                    {rec.image ? (
+                      <img src={rec.image} alt={rec.title} className="h-20 object-contain rounded" />
+                    ) : (
+                      <div className="h-20 w-20 bg-gray-100 rounded" />
+                    )}
                     <div>
-                      <div className="text-sm">{rec.title}</div>
-                      <div className="text-lg font-semibold">${(rec.total ?? 0).toFixed(2)}</div>
-                      <div className="text-xs">Part: ${(rec.partPrice ?? 0).toFixed(2)} + Labor: ${rec.labor ?? 100}</div>
+                      <div className="text-sm">{rec.title ?? "Part"}</div>
+                      <div className="text-lg font-semibold">
+                        ${((rec.minPrice ?? rec.partPrice ?? 0) + (rec.labor ?? 100)).toFixed(2)}
+                      </div>
+                      <div className="text-xs">
+                        Part: ${((rec.partPrice ?? rec.minPrice ?? 0)).toFixed(2)} + Labor: ${rec.labor ?? 100}
+                      </div>
                       <div className="mt-2 flex gap-2">
                         <Button size="sm" onClick={() => void onApprovePart(rec)}>Approve & Save</Button>
                         <Button size="sm" variant="ghost" onClick={() => pushMessage({ role: "assistant", content: "Okay — not ordering premium. Choose alternative or edit intake." })}>No thanks</Button>
@@ -391,11 +449,19 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
                 <div className="mt-3">
                   <div className="font-semibold">Alternative — Economical</div>
                   <div className="flex items-center gap-3 mt-2">
-                    {alt.image ? <img src={alt.image} alt={alt.title} className="h-16 object-contain" /> : <div className="h-16 w-16 bg-gray-50 rounded" />}
+                    {alt.image ? (
+                      <img src={alt.image} alt={alt.title} className="h-16 object-contain rounded" />
+                    ) : (
+                      <div className="h-16 w-16 bg-gray-50 rounded" />
+                    )}
                     <div>
-                      <div className="text-sm">{alt.title}</div>
-                      <div className="text-lg font-semibold">${(alt.total ?? 0).toFixed(2)}</div>
-                      <div className="text-xs">Part: ${(alt.partPrice ?? 0).toFixed(2)} + Labor: ${alt.labor ?? 100}</div>
+                      <div className="text-sm">{alt.title ?? "Part"}</div>
+                      <div className="text-lg font-semibold">
+                        ${((alt.maxPrice ?? alt.partPrice ?? 0) + (alt.labor ?? 100)).toFixed(2)}
+                      </div>
+                      <div className="text-xs">
+                        Part: ${((alt.partPrice ?? alt.maxPrice ?? 0)).toFixed(2)} + Labor: ${alt.labor ?? 100}
+                      </div>
                       <div className="mt-2">
                         <Button size="sm" variant="outline" onClick={() => void onApprovePart(alt)}>Approve Economical</Button>
                       </div>
@@ -407,14 +473,16 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
           );
         }
       } catch (_) {
-        // not JSON — fallthrough to plain message render
+        // not JSON — fall through to plain message display
       }
     }
 
+    // regular message bubble
     return (
       <div
         key={idx}
-        className={`${m.role === "assistant" ? "bg-blue-50 text-gray-900 self-start" : "bg-gray-200 text-gray-800 self-end"} rounded-xl px-3 py-2 shadow-sm max-w-[80%]`}
+        className={`${m.role === "assistant" ? "bg-blue-50 text-gray-900 self-start" : "bg-gray-200 text-gray-800 self-end"
+          } rounded-xl px-3 py-2 shadow-sm max-w-[80%]`}
       >
         {m.content}
       </div>
@@ -448,7 +516,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
               transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
             />
 
-            {/* multiple soft colored bubble accents */}
+            {/* soft colored bubbles */}
             <div className="absolute inset-0 pointer-events-none">
               <motion.span
                 className="absolute rounded-full opacity-70"
@@ -464,11 +532,11 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
               />
             </div>
 
-            {/* main button sits above the ring and is perfectly centered via flex (prevents shift on interaction) */}
             <motion.button
               aria-label="Open Assistant"
               onClick={() => {
                 setOpen(true);
+                // seed the assistant intro if empty
                 if (messages.length === 0) {
                   pushMessage({
                     role: "assistant",
@@ -477,8 +545,7 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
                 }
               }}
               className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center ring-0 focus:outline-none relative"
-              whileHover={{ scale: 2.06, boxShadow: "0 8px 30px rgba(59,130,246,0.18)" }}
-              // IMPORTANT: avoid a scale less than 1 on tap to prevent downward drift. Use slight scale-up instead.
+              whileHover={{ scale: 1.06, boxShadow: "0 8px 30px rgba(59,130,246,0.18)" }}
               whileTap={{ scale: 1.03 }}
             >
               <span className="absolute -inset-0.5 rounded-full opacity-30 blur-xl" />
@@ -515,23 +582,29 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
               exit={{ y: 40, opacity: 0.8 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
+              {/* header with title + controls */}
               <div className="flex items-center justify-between p-3 border-b">
                 <div className="flex items-center gap-2 font-medium">
-                  ETHUB Assistant
+                  <div className="text-sm font-semibold">ETHUB Assistant</div>
+                  <div className="text-xs text-muted-foreground">Repair intake</div>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <Button size="icon" variant="ghost" onClick={() => setMuted(!muted)}>
                     {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      setOpen(false);
+                      clearConversation();
+                    }}
+                    aria-label="Close assistant"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => {
-                    setOpen(false);
-                    clearConversation();
-                  }}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
               </div>
 
               <div className="max-h-[70vh] overflow-auto p-4 space-y-3">
@@ -540,8 +613,13 @@ export default function AssistantLauncher({ onAssistantMessage }: { onAssistantM
                     Welcome — click "Start" or say 'start' to begin your repair intake. I'll prefill details when signed in.
                   </div>
                 )}
+
                 <div className="flex flex-col gap-3">
-                  {messages.map(renderMessage)}
+                  {messages.map((m, i) => (
+                    <div key={i} className="flex">
+                      {renderMessage(m, i)}
+                    </div>
+                  ))}
                 </div>
               </div>
 

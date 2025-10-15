@@ -1,7 +1,27 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getPartPrices = query({
+export const getParts = query({
+  args: {
+    brand: v.string(),
+    model: v.string(),
+    repairType: v.string(),
+  },
+  handler: async ({ db }, { brand, model, repairType }) => {
+    return await db
+      .query("partsPrice")
+      .filter(q =>
+        q.and(
+          q.eq(q.field("brand"), brand),
+          q.eq(q.field("model"), model),
+          q.eq(q.field("repairType"), repairType)
+        )
+      )
+      .collect();
+  },
+});
+
+export const getPartsPrice = query({
   args: { query: v.string() },
   handler: async (ctx, { query }) => {
     const q = query.toLowerCase().trim();

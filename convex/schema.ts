@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  devicePrices: defineTable({
+  partsPrice: defineTable({
     city: v.string(),
     brand: v.string(),
     model: v.string(),
@@ -10,6 +10,7 @@ export default defineSchema({
     minPriceUSD: v.number(),
     maxPriceUSD: v.number(),
     createdAt: v.number(),
+    cachedAt: v.number(),
   }),
 
 invoices: defineTable({
@@ -28,7 +29,7 @@ invoices: defineTable({
     raw: v.optional(v.any()),
   }),
 
-  partImages: defineTable({
+  partsImages: defineTable({
     query: v.string(),
     title: v.string(),
     link: v.string(),
@@ -41,7 +42,7 @@ invoices: defineTable({
   parts: defineTable({
     title: v.string(),
     image: v.optional(v.string()),
-    partPrice: v.optional(v.number()),
+    partsPrice: v.optional(v.number()),
     labor: v.optional(v.number()),
     total: v.optional(v.number()),
     vendor: v.optional(v.string()),
@@ -56,7 +57,6 @@ invoices: defineTable({
     thumbnail: v.optional(v.string()),
     contextLink: v.optional(v.string()),
   }),
-
 
   /* -------------------------- Voice telemetry -------------------------- */
   voiceSessions: defineTable({
