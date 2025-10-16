@@ -41,15 +41,17 @@ export default function AssistantLauncher({
   const [intakeState, setIntakeState] =
     React.useState<IntakeState>("idle");
   const [intake, setIntake] = React.useState<any>({});
+
   // Convex bindings
   const createInvoiceMutation = useMutation(api.invoices.createInvoice);
   const chatAction = useAction(api.openai.chat);
   const moderateAction = useAction(api.openai.moderate);
+  const fetchPartsForQuery = useAction(api.parts.fetchPartsForQuery); // ✅ fixed
 
+  // --- TTS state ---
   const [ttsQueue, setTtsQueue] = React.useState<string[]>([]);
   const [ttsPlaying, setTtsPlaying] = React.useState(false);
 
-  // mount guard (prevent duplicate mounts in dev/hot reload)
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
     if ((window as any)[key]) return;
@@ -60,7 +62,7 @@ export default function AssistantLauncher({
     };
   }, []);
 
-  // prefill Clerk user info
+  // Prefill user info
   React.useEffect(() => {
     if (!isLoaded) return;
     if (user) {
@@ -81,15 +83,13 @@ export default function AssistantLauncher({
     }
   }, [user, isLoaded]);
 
-  // TTS queue runner
+  // --- TTS runner ---
   React.useEffect(() => {
     if (!ttsPlaying && ttsQueue.length > 0 && !muted) {
       const next = ttsQueue[0];
       setTtsPlaying(true);
       speakWithOpenAI(next, { voice: TTS_VOICE, format: TTS_FORMAT })
-        .catch(() => {
-          /* swallow */
-        })
+        .catch(() => {})
         .finally(() => {
           setTtsQueue((q) => q.slice(1));
           setTtsPlaying(false);
@@ -123,31 +123,6 @@ export default function AssistantLauncher({
     setIntakeState("idle");
   }
 
-  // -------- PARTS FETCH & INVOICE SAVE --------
-
-const parts = useQuery(api.fetchPartsForQuery, {
-  brand,
-  model,
-  repairType,
-});
-
-async function cachePartInConvex(part: any) {
-  try {
-    await useAction(api.parts.savePart)({
-      title: part.title,
-      image: part.image,
-      partPrice: part.partPrice ?? 0,
-      labor: part.labor ?? 100,
-      total: (part.partPrice ?? 0) + (part.labor ?? 100),
-      vendor: part.vendor ?? "ETHUB",
-      query: part.query ?? "",
-    });
-  } catch (err) {
-    console.error("Failed to cache part in Convex:", err);
-  }
-}
-
-
   async function saveInvoiceToPortal(payload: any) {
     try {
       if (createInvoiceMutation) {
@@ -168,19 +143,13 @@ async function cachePartInConvex(part: any) {
     }
   }
 
-  // -------- Hints & Intake helpers --------
+  // --- Intake helper text ---
   function hintForField(field: "device" | "issue") {
     switch (field) {
       case "device":
-        return `Exact model is often on the back of the device or in Settings → About.
-For iPhone: Settings → General → About → Model Name.
-For Android: Settings → About phone → Model.
-If you can't find it, tell me the brand and any letters/numbers on the back and I’ll help pinpoint the model.`;
+        return `Exact model is often on the back of the device or in Settings → About. For iPhone: Settings → General → About → Model Name.`;
       case "issue":
-        return `Please describe the issue with your device, e.g.:
-• "Screen cracked — touch works"
-• "Battery dies within 2 hours"
-• "Phone won't boot (stuck on logo)"`;
+        return `Describe the issue clearly, e.g. "Screen cracked — touch works" or "Battery dies within 2 hours".`;
     }
   }
 
@@ -191,207 +160,126 @@ If you can't find it, tell me the brand and any letters/numbers on the back and 
     }
     pushMessage({
       role: "assistant",
-      content: `Hi ${intake.name ?? "there"}! I'm here to guide you through a quick repair intake — we'll get this sorted together.`,
+      content: `Hi ${intake.name ?? "there"}! Let's start your repair intake — I'll ask a few quick questions.`,
     });
     pushMessage({
       role: "assistant",
-      content: `First: what's the device name and exact model? (e.g., iPhone 15 Pro Max A2849 or Samsung A13 SM-A136U).
-If you're unsure, reply "I don't know" and I'll help you locate it.`,
+      content: `First: what's the device name and exact model? (e.g. iPhone 15 Pro Max A2849 or Samsung A13 SM-A136U)`,
     });
     setIntakeState("askDeviceModel");
   }
 
   function looksLikeFullModel(text: string) {
-    text = text.trim();
-    if (!text || !/[a-z0-9]/i.test(text)) return false;
-    return (
-      /\b(iphone|ipad|macbook|mac|galaxy|pixel|surface|oneplus|xiaomi|nokia|sony|lg|htc|motorola)\b/i.test(
-        text
-      ) ||
+    return /\b(iphone|galaxy|pixel|ipad|macbook|oneplus|motorola|xiaomi|nokia)\b/i.test(text) ||
       /\b[A-Z]{1,3}\d{2,4}\b/.test(text) ||
-      /\bSM-?\d{3,5}\b/i.test(text)
-    );
+      /\bSM-?\d{3,5}\b/i.test(text);
   }
 
-  // -------- OpenAI chat helper (calls your Convex server action) --------
+  // --- OpenAI chat wrapper ---
   async function callOpenAIAndPush() {
-    // Build a messages payload for the server-side chatAction
     const payloadMessages = [
       SYSTEM_PROMPT,
-      ...messages
-        .filter((m) => !!m.content)
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     ];
     try {
       setBusy(true);
-      const res = await chatAction({
-        model: CHAT_MODEL,
-        messages: payloadMessages,
-      });
-      // Expect server returns { content: string } or raw string
-      let assistantText = "";
-      if (!res) assistantText = "Sorry — I'm having trouble reaching the AI right now.";
-      else if (typeof res === "string") assistantText = res;
-      else if (res?.content) assistantText = res.content;
-      else assistantText = String(res);
-
-      pushMessage({ role: "assistant", content: assistantText });
+      const res = await chatAction({ model: CHAT_MODEL, messages: payloadMessages });
+      const text = typeof res === "string" ? res : res?.content ?? "AI unavailable.";
+      pushMessage({ role: "assistant", content: text });
     } catch (err) {
-      console.error("chatAction error", err);
+      console.error(err);
       pushMessage({ role: "assistant", content: "AI unavailable — please try again later." });
     } finally {
       setBusy(false);
     }
   }
 
-  // -------- User input handling (intake + fallback to AI) --------
+  // --- User input ---
   async function handleUserInput(raw: string) {
     const text = raw.trim();
     if (!text) return;
 
-    // moderate first
+    // moderation
     try {
       const mod = await moderateAction({ text });
       if (mod?.flagged) {
         pushMessage({ role: "assistant", content: "Sorry, I can’t assist with that content." });
         return;
       }
-    } catch (e) {
-      // continue even if moderation fails
-      console.warn("moderation error", e);
-    }
+    } catch {}
 
     pushMessage({ role: "user", content: text });
 
-    // Intake state machine
     switch (intakeState) {
       case "idle":
-        if (/^(start|yes|ready|hi|hello)/i.test(text)) startIntake();
-        else {
-          // Let the AI handle casual conversation / fallback
-          await callOpenAIAndPush();
-        }
+        if (/^(start|hi|hello|yes|ready)/i.test(text)) startIntake();
+        else await callOpenAIAndPush();
         break;
 
       case "askDeviceModel":
-        if (/^(i dont know|I don't know|not sure|unsure|help|idk|ok)$/i.test(text)) {
-          pushMessage({ role: "assistant", content: `No problem — ${hintForField("device")}` });
-          return;
-        }
-
         if (!looksLikeFullModel(text)) {
-          pushMessage({
-            role: "assistant",
-            content: `That looks a bit short or like a brand-only entry. ${hintForField("device")}
-Reply with the full model (or say "help" to have me walk you through).`,
-          });
-          setIntake((s: any) => ({ ...s, deviceAndModel: text }));
+          pushMessage({ role: "assistant", content: `That looks incomplete. ${hintForField("device")}` });
           return;
         }
-
         setIntake((s: any) => ({ ...s, deviceAndModel: text }));
-        pushMessage({
-          role: "assistant",
-          content: `Thanks — I recorded: "${text}". Does that match what's written on your device or in settings? Reply "yes" to continue or "no" to correct.`,
-        });
-        setIntake((s: any) => ({ ...s, deviceConfirmed: false }));
+        pushMessage({ role: "assistant", content: `Got it — "${text}". Now what issue are you facing?` });
         setIntakeState("askIssue");
         break;
 
       case "askIssue":
-        if (/^(i don't know|dont know|not sure|unsure|help|\?)$/i.test(text)) {
-          pushMessage({ role: "assistant", content: `Okay — ${hintForField("issue")}` });
-          return;
-        }
-
-        if (text.length < 5) {
-          pushMessage({ role: "assistant", content: `Could you give a bit more detail? ${hintForField("issue")}` });
-          return;
-        }
-
         setIntake((s: any) => ({ ...s, issue: text, service: text }));
         const summary = {
           ID: `IC-${Date.now().toString().slice(-6)}`,
-          Name: intake.name ?? "",
           Description: `${intake.deviceAndModel ?? ""} — ${text}`,
           Service: text,
         };
         setIntake((s: any) => ({ ...s, summary }));
         pushMessage({
           role: "assistant",
-          content: `Summary prepared. Please confirm the details so I can fetch parts & pricing:
-
-• Device: ${summary.Description.split(" — ")[0] || "(not set)"}
-• Issue: ${text}
-
-Reply "yes" to continue, "edit" to change any detail, or "device" to update the device model.`,
+          content: `Please confirm: \n• Device: ${intake.deviceAndModel}\n• Issue: ${text}\nReply "yes" to fetch parts.`,
         });
         setIntakeState("confirm");
         break;
 
       case "confirm":
         if (/^y(es)?$/i.test(text)) {
-          if (!intake.deviceAndModel || intake.deviceAndModel.length < 3) {
-            pushMessage({ role: "assistant", content: `I need the device model to fetch parts. ${hintForField("device")}` });
-            setIntakeState("askDeviceModel");
-            return;
-          }
-
           pushMessage({ role: "assistant", content: "Looking up parts and live pricing...", thinking: true });
-          const q = `${intake.deviceAndModel ?? ""} ${intake.service ?? ""}`.trim();
-          const parts = await fetchPartsForQuery(q);
+          const q = `${intake.deviceAndModel ?? ""} ${intake.service ?? ""}`;
+          const parts = await fetchPartsForQuery({ query: q }); // ✅ correct usage
           setMessages((prev) => prev.map((m) => (m.thinking ? { ...m, thinking: false } : m)));
           if (!parts) {
-            pushMessage({ role: "assistant", content: "Parts lookup failed. Please try again later." });
+            pushMessage({ role: "assistant", content: "Parts lookup failed. Try again later." });
             setIntakeState("idle");
             return;
           }
-          // send structured parts suggestion (rendered as cards)
           pushMessage({
             role: "assistant",
             content: JSON.stringify({
               type: "parts_suggestion",
-              recommended: parts.recommended ?? null,
-              alternative: parts.alternative ?? null,
+              recommended: parts.recommended,
+              alternative: parts.alternative,
             }),
           });
           setIntakeState("done");
-        } else if (/^edit$/i.test(text)) {
-          pushMessage({ role: "assistant", content: "Okay — say the updated device + model or the corrected issue." });
-          setIntakeState("askDeviceModel");
-        } else if (/^device$/i.test(text)) {
-          pushMessage({ role: "assistant", content: "Sure — what's the correct device model? (If you need help finding it, say 'help')" });
-          setIntakeState("askDeviceModel");
-        } else {
-          pushMessage({ role: "assistant", content: "Intake paused. Say 'start' to begin again or 'edit' to change details." });
-          setIntakeState("idle");
         }
         break;
 
       case "done":
         if (/^(start|new)/i.test(text)) clearConversation();
-        else pushMessage({ role: "assistant", content: "Approve a part to save invoice, or say 'start' to create a new intake." });
-        break;
-
-      default:
-        pushMessage({ role: "assistant", content: "Hmm — not sure where we are. Say 'start' to begin a new intake." });
-        setIntakeState("idle");
+        else pushMessage({ role: "assistant", content: "Approve a part to save invoice or say 'start' for new intake." });
         break;
     }
   }
 
-  // -------- Approve part -> save invoice --------
   async function onApprovePart(part: any) {
     const summary = intake.summary ?? {};
     const payload = {
       ticketId: summary.ID ?? `IC-${Date.now().toString().slice(-6)}`,
-      name: intake.name ?? null,
-      phone: intake.phone ?? null,
-      email: intake.email ?? null,
-      manufacturer: summary.Manufacturer ?? null,
-      description: summary.Description ?? null,
-      quote: typeof part.total === "number" ? part.total : Number(part.total ?? 0),
-      deposit: "$0.00",
+      name: intake.name,
+      phone: intake.phone,
+      email: intake.email,
+      description: summary.Description,
+      quote: (part.partPrice ?? 0) + (part.labor ?? 100),
       service: summary.Service ?? intake.service ?? "Repair",
       warrantyAcknowledged: true,
       raw: { intake, part },
@@ -399,19 +287,11 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
     };
     pushMessage({ role: "assistant", content: "Saving invoice..." });
     const r = await saveInvoiceToPortal(payload);
-    if (r.ok) {
-      pushMessage({ role: "assistant", content: `✅ Invoice saved. Ticket: ${payload.ticketId}` });
-      if (onAssistantMessage) {
-        onAssistantMessage(Object.entries(summary).map(([k, v]) => `${k}: ${v}`).join("\n"));
-      }
-    } else {
-      pushMessage({ role: "assistant", content: "❌ Failed to save invoice. Contact support." });
-    }
+    if (r.ok) pushMessage({ role: "assistant", content: `✅ Invoice saved. Ticket: ${payload.ticketId}` });
+    else pushMessage({ role: "assistant", content: "❌ Failed to save invoice." });
   }
 
-  // -------- Message renderer (handles parts cards) --------
   function renderMessage(m: { role: Role; content: string; thinking?: boolean }, idx: number) {
-    // parts suggestion (structured)
     if (m.role === "assistant") {
       try {
         const parsed = JSON.parse(m.content);
@@ -419,28 +299,18 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
           const rec = parsed.recommended;
           const alt = parsed.alternative;
           return (
-            <div key={idx} className="bg-gray-50 p-3 rounded-xl shadow-sm border text-sm space-y-3">
+            <div key={idx} className="bg-gray-50 p-3 rounded-xl border shadow-sm space-y-3">
               {rec && (
                 <div>
-                  <div className="font-semibold">Recommended — Premium (we recommend this)</div>
+                  <div className="font-semibold">Recommended — Premium</div>
                   <div className="flex items-center gap-3 mt-2">
-                    {rec.image ? (
-                      <img src={rec.image} alt={rec.title} className="h-20 object-contain rounded" />
-                    ) : (
-                      <div className="h-20 w-20 bg-gray-100 rounded" />
-                    )}
+                    {rec.image && <img src={rec.image} alt={rec.title} className="h-20 object-contain rounded" />}
                     <div>
-                      <div className="text-sm">{rec.title ?? "Part"}</div>
-                      <div className="text-lg font-semibold">
-                        ${((rec.minPrice ?? rec.partPrice ?? 0) + (rec.labor ?? 100)).toFixed(2)}
+                      <div className="text-sm">{rec.title}</div>
+                      <div className="font-semibold">
+                        ${(rec.partPrice ?? rec.minPrice ?? 0) + (rec.labor ?? 100)}
                       </div>
-                      <div className="text-xs">
-                        Part: ${((rec.partPrice ?? rec.minPrice ?? 0)).toFixed(2)} + Labor: ${rec.labor ?? 100}
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        <Button size="sm" onClick={() => void onApprovePart(rec)}>Approve & Save</Button>
-                        <Button size="sm" variant="ghost" onClick={() => pushMessage({ role: "assistant", content: "Okay — not ordering premium. Choose alternative or edit intake." })}>No thanks</Button>
-                      </div>
+                      <Button size="sm" onClick={() => void onApprovePart(rec)}>Approve & Save</Button>
                     </div>
                   </div>
                 </div>
@@ -449,22 +319,13 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
                 <div className="mt-3">
                   <div className="font-semibold">Alternative — Economical</div>
                   <div className="flex items-center gap-3 mt-2">
-                    {alt.image ? (
-                      <img src={alt.image} alt={alt.title} className="h-16 object-contain rounded" />
-                    ) : (
-                      <div className="h-16 w-16 bg-gray-50 rounded" />
-                    )}
+                    {alt.image && <img src={alt.image} alt={alt.title} className="h-16 object-contain rounded" />}
                     <div>
-                      <div className="text-sm">{alt.title ?? "Part"}</div>
-                      <div className="text-lg font-semibold">
-                        ${((alt.maxPrice ?? alt.partPrice ?? 0) + (alt.labor ?? 100)).toFixed(2)}
+                      <div className="text-sm">{alt.title}</div>
+                      <div className="font-semibold">
+                        ${(alt.partPrice ?? alt.maxPrice ?? 0) + (alt.labor ?? 100)}
                       </div>
-                      <div className="text-xs">
-                        Part: ${((alt.partPrice ?? alt.maxPrice ?? 0)).toFixed(2)} + Labor: ${alt.labor ?? 100}
-                      </div>
-                      <div className="mt-2">
-                        <Button size="sm" variant="outline" onClick={() => void onApprovePart(alt)}>Approve Economical</Button>
-                      </div>
+                      <Button size="sm" variant="outline" onClick={() => void onApprovePart(alt)}>Approve Economical</Button>
                     </div>
                   </div>
                 </div>
@@ -472,17 +333,17 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
             </div>
           );
         }
-      } catch (_) {
-        // not JSON — fall through to plain message display
-      }
+      } catch {}
     }
 
-    // regular message bubble
     return (
       <div
         key={idx}
-        className={`${m.role === "assistant" ? "bg-blue-50 text-gray-900 self-start" : "bg-gray-200 text-gray-800 self-end"
-          } rounded-xl px-3 py-2 shadow-sm max-w-[80%]`}
+        className={`${
+          m.role === "assistant"
+            ? "bg-blue-50 text-gray-900 self-start"
+            : "bg-gray-200 text-gray-800 self-end"
+        } rounded-xl px-3 py-2 shadow-sm max-w-[80%]`}
       >
         {m.content}
       </div>
@@ -491,10 +352,7 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
 
   if (!mounted) return null;
 
-  // orbit animation settings for the small star
   const orbit = { animate: { rotate: 360 }, transition: { repeat: Infinity, duration: 6, ease: "linear" } };
-
-  // rainbow gradient style for outer ring (Siri-like)
   const rainbowStyle: React.CSSProperties = {
     background: "conic-gradient(from 0deg, #ff2d55, #ff9500, #ffcc00, #30d158, #5ac8fa, #5856d6, #ff2d55)",
     filter: "blur(10px)",
@@ -504,59 +362,30 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
 
   return (
     <>
-      {/* Floating Assistant Button with Siri-like rainbow ring and animated bubbles */}
+      {/* Floating launcher */}
       {ReactDOM.createPortal(
         <div className="fixed right-6 bottom-6 z-50">
           <div className="relative h-24 w-24 flex items-center justify-center">
-            {/* animated rainbow ring (rotates slowly) */}
             <motion.div
               className="absolute inset-0 rounded-full pointer-events-none"
-              style={{ ...rainbowStyle }}
+              style={rainbowStyle}
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
             />
-
-            {/* soft colored bubbles */}
-            <div className="absolute inset-0 pointer-events-none">
-              <motion.span
-                className="absolute rounded-full opacity-70"
-                style={{ width: 14, height: 14, top: 18, right: 6, background: "#5ac8fa" }}
-                animate={{ y: [0, -5, 0], opacity: [0.6, 0.3, 0.6] }}
-                transition={{ repeat: Infinity, duration: 3.1, ease: "easeInOut", delay: 0.25 }}
-              />
-              <motion.span
-                className="absolute rounded-full opacity-70"
-                style={{ width: 8, height: 8, left: 6, bottom: 18, background: "#ffcc00" }}
-                animate={{ y: [0, -7, 0], opacity: [0.75, 0.35, 0.75] }}
-                transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut", delay: 0.6 }}
-              />
-            </div>
-
             <motion.button
               aria-label="Open Assistant"
               onClick={() => {
                 setOpen(true);
-                // seed the assistant intro if empty
-                if (messages.length === 0) {
+                if (messages.length === 0)
                   pushMessage({
                     role: "assistant",
-                    content: "Hi there! I’m ETHUB’s Assistant — ready to guide you through a repair intake. Say 'start' to begin!",
+                    content: "Hi there! I’m ETHUB’s Assistant — say 'start' to begin your repair intake.",
                   });
-                }
               }}
-              className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center ring-0 focus:outline-none relative"
-              whileHover={{ scale: 1.06, boxShadow: "0 8px 30px rgba(59,130,246,0.18)" }}
+              className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center"
+              whileHover={{ scale: 1.06 }}
               whileTap={{ scale: 1.03 }}
             >
-              <span className="absolute -inset-0.5 rounded-full opacity-30 blur-xl" />
-              <motion.div className="absolute inset-0 pointer-events-none" {...orbit}>
-                <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <motion.div style={{ translateX: 36 }} animate={{ translateX: [36, 36, 36] }} transition={{ duration: 0 }}>
-                    <div className="absolute h-2 w-2 rounded-full bg-white/80 shadow-lg" />
-                  </motion.div>
-                </div>
-              </motion.div>
-
               <Sparkles className="h-7 w-7 animate-pulse" />
             </motion.button>
           </div>
@@ -564,7 +393,7 @@ Reply "yes" to continue, "edit" to change any detail, or "device" to update the 
         document.body
       )}
 
-      {/* Chat window modal */}
+      {/* Chat modal */}
       <AnimatePresence>
         {open && (
           <motion.div

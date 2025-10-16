@@ -23,7 +23,7 @@ export const saveImages = mutation({
     const now = Date.now();
 
     for (const img of args.images) {
-      await ctx.db.insert("partImages", {
+      await ctx.db.insert("partsImages", { // Changed from "partImages" to "partsImages"
         query: args.query,
         cachedAt: now,
         title: img.title ?? "",
@@ -44,7 +44,7 @@ export const getCachedImages = query({
   args: { query: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("partImages")
+      .query("partsImages") // Changed from "partImages" to "partsImages"
       .filter((q) => q.eq(q.field("query"), args.query))
       .order("desc")
       .collect();

@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // ======================== Parts & Pricing ========================
   partsPrice: defineTable({
     city: v.string(),
     brand: v.string(),
@@ -11,9 +12,48 @@ export default defineSchema({
     maxPriceUSD: v.number(),
     createdAt: v.number(),
     cachedAt: v.number(),
-  }),
+  })
+    .index("by_device", ["brand", "model", "repairType"])
+    .index("by_city", ["city"])
+    .index("by_cachedAt", ["cachedAt"]),
 
-invoices: defineTable({
+  partsImages: defineTable({
+    query: v.string(),
+    title: v.string(),
+    link: v.string(),
+    mime: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    contextLink: v.optional(v.string()),
+    cachedAt: v.number(),
+  })
+    .index("by_query", ["query"])
+    .index("by_cachedAt", ["cachedAt"]),
+
+  parts: defineTable({
+    partId: v.optional(v.string()),
+    title: v.string(),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    partsPrice: v.optional(v.number()),
+    labor: v.optional(v.number()),
+    total: v.optional(v.number()),
+    vendor: v.optional(v.string()),
+    query: v.optional(v.string()),
+  }),
+    .index("by_name", ["name"])
+    .index("by_id", ["id"]),
+
+  images: defineTable({
+    query: v.string(),
+    link: v.string(),
+    title: v.optional(v.string()),
+    mime: v.optional(v.string()),
+    thumbnail: v.optional(v.string()),
+    contextLink: v.optional(v.string()),
+  }).index("by_query", ["query"]),
+
+  // =========================== Invoices ============================
+  invoices: defineTable({
     ticketId: v.optional(v.string()),
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
@@ -27,79 +67,22 @@ invoices: defineTable({
     status: v.optional(v.string()),
     createdAt: v.number(),
     raw: v.optional(v.any()),
-  }),
-
-  partsImages: defineTable({
-    query: v.string(),
-    title: v.string(),
-    link: v.string(),
-    mime: v.optional(v.string()),
-    thumbnail: v.optional(v.string()),
-    contextLink: v.optional(v.string()),
-    cachedAt: v.number(),
-  }),
-
-  parts: defineTable({
-    title: v.string(),
-    image: v.optional(v.string()),
-    partsPrice: v.optional(v.number()),
-    labor: v.optional(v.number()),
-    total: v.optional(v.number()),
-    vendor: v.optional(v.string()),
-    query: v.optional(v.string()),
-  }),
-
-  images: defineTable({
-    query: v.string(),
-    link: v.string(),
-    title: v.optional(v.string()),
-    mime: v.optional(v.string()),
-    thumbnail: v.optional(v.string()),
-    contextLink: v.optional(v.string()),
-  }),
-
-  /* -------------------------- Voice telemetry -------------------------- */
-  voiceSessions: defineTable({
-    userId: v.string(),
-    status: v.union(v.literal("active"), v.literal("ended")),
-    model: v.optional(v.string()),
-    device: v.optional(v.string()),
-    startedAt: v.number(),
-    endedAt: v.optional(v.number()),
   })
-    .index("by_userId", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_ticketId", ["ticketId"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 
-  voiceLogs: defineTable({
-    sessionId: v.id("voiceSessions"),
-    kind: v.union(v.literal("input"), v.literal("output"), v.literal("event")),
-    payloadJson: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_sessionId", ["sessionId"])
-    .index("by_sessionId_createdAt", ["sessionId", "createdAt"]),
-
-  assistantLogs: defineTable({
-    userId: v.optional(v.string()),
-    modelUsed: v.optional(v.string()),
-    prompt: v.string(),
-    answer: v.optional(v.string()),
-    ok: v.boolean(),
-    status: v.optional(v.number()),
-    code: v.optional(v.string()),
-    latencyMs: v.optional(v.number()),
-    createdAt: v.number(),
-  }),
-
-  /* ------------------------------- Users -------------------------------- */
+  // ============================ Users ==============================
   users: defineTable({
-    clerkId: v.optional(v.string()), // required Clerk ID link (auth subject)
+    clerkId: v.optional(v.string()),
     email: v.optional(v.string()),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
-    userId: v.optional(v.string()), // external id if needed
-    role: v.optional(v.union(v.literal("admin"), v.literal("staff"), v.literal("user"))),
+    userId: v.optional(v.string()),
+    role: v.optional(
+      v.union(v.literal("admin"), v.literal("staff"), v.literal("user"))
+    ),
     tokenIdentifier: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
@@ -109,7 +92,7 @@ invoices: defineTable({
     .index("by_username", ["username"])
     .index("by_createdAt", ["createdAt"]),
 
-  /* -------------------------------- Jobs --------------------------------- */
+  // ============================= Jobs ==============================
   jobs: defineTable({
     userId: v.id("users"),
     deviceModel: v.string(),
@@ -125,9 +108,36 @@ invoices: defineTable({
   })
     .index("by_user", ["userId"])
     .index("by_orderNumber", ["orderNumber"])
+    .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"]),
 
-  /* ----------------------------- Documents ------------------------------ */
+  jobEvents: defineTable({
+    jobId: v.id("jobs"),
+    type: v.string(),
+    message: v.optional(v.string()),
+    mediaUrls: v.optional(v.array(v.string())),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_createdAt", ["jobId", "createdAt"]),
+
+  partsOrders: defineTable({
+    jobId: v.id("jobs"),
+    vendor: v.string(),
+    partNumber: v.string(),
+    qty: v.number(),
+    eta: v.optional(v.number()),
+    cost: v.optional(v.number()),
+    status: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_status", ["jobId", "status"])
+    .index("by_status", ["status"]),
+
+  // ========================== Documents ============================
   documents: defineTable({
     userId: v.string(),
     title: v.string(),
@@ -144,7 +154,7 @@ invoices: defineTable({
     .index("by_parent", ["parentDocument"])
     .index("by_isArchived", ["isArchived"]),
 
-  /* ------------------------------ Services ------------------------------ */
+  // =========================== Services ============================
   services: defineTable({
     slug: v.optional(v.string()),
     title: v.optional(v.string()),
@@ -168,29 +178,40 @@ invoices: defineTable({
     .index("by_createdAt", ["createdAt"])
     .searchIndex("search_all", { searchField: "search" }),
 
-  /*---------------------- Client Portal / Events -------------------------*/
-  jobEvents: defineTable({
-    jobId: v.id("jobs"),
-    type: v.string(), // e.g. received | diagnosis_started | parts_ordered | repair_started | qa_started | ready | delivered | note
-    message: v.optional(v.string()),
-    mediaUrls: v.optional(v.array(v.string())),
-    createdBy: v.string(),
-    createdAt: v.number(),
+  // ===================== Voice & AI Telemetry ======================
+  voiceSessions: defineTable({
+    userId: v.string(),
+    status: v.union(v.literal("active"), v.literal("ended")),
+    model: v.optional(v.string()),
+    device: v.optional(v.string()),
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
   })
-    .index("by_job", ["jobId"])
-    .index("by_job_createdAt", ["jobId", "createdAt"]),
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_userId_status", ["userId", "status"]),
 
-  partsOrders: defineTable({
-    jobId: v.id("jobs"),
-    vendor: v.string(),
-    partNumber: v.string(),
-    qty: v.number(),
-    eta: v.optional(v.number()),
-    cost: v.optional(v.number()),
-    status: v.string(), // ordered | backordered | arrived | used | canceled
+  voiceLogs: defineTable({
+    sessionId: v.id("voiceSessions"),
+    kind: v.union(v.literal("input"), v.literal("output"), v.literal("event")),
+    payloadJson: v.string(),
     createdAt: v.number(),
-    updatedAt: v.number(),
   })
-    .index("by_job", ["jobId"])
-    .index("by_job_status", ["jobId", "status"]),
+    .index("by_sessionId", ["sessionId"])
+    .index("by_sessionId_createdAt", ["sessionId", "createdAt"]),
+
+  assistantLogs: defineTable({
+    userId: v.optional(v.string()),
+    modelUsed: v.optional(v.string()),
+    prompt: v.string(),
+    answer: v.optional(v.string()),
+    ok: v.boolean(),
+    status: v.optional(v.number()),
+    code: v.optional(v.string()),
+    latencyMs: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_ok", ["ok"])
+    .index("by_createdAt", ["createdAt"]),
 });

@@ -1,40 +1,69 @@
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
 import { v } from "convex/values";
-
-export const getCachedParts = query(async ({ db }, { brand, model, repairType }) => {
-  const results = await db
-    .query("partsPrice")
-    .filter(q =>
-      q.eq(q.field("brand"), brand)
-      && q.eq(q.field("model"), model)
-      && q.eq(q.field("repairType"), repairType)
-    )
-    .collect();
-
-  return results;
-});
-
-export const savePart = mutation({
-  args: {
-    title: v.string(),
-    image: v.optional(v.string()),
-    partsPrice: v.optional(v.number()),
-    labor: v.optional(v.number()),
-    total: v.optional(v.number()),
-    vendor: v.optional(v.string()),
-    query: v.optional(v.string()), // optional: what user searched for
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.insert("parts", { ...args });
-  },
-});
 
 export const getPartsByQuery = query({
   args: { query: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
+  handler: async ({ db }, { query }) => {
+    return await db
       .query("parts")
-      .filter((q) => q.eq(q.field("query"), args.query))
+      .withIndex("by_name", q => q.eq("name", query))
       .collect();
+  },
+});
+
+export const getParts = query({
+  args: {
+    brand: v.string(),
+    model: v.string(),
+    repairType: v.string(),
+  },
+  handler: async ({ db }, { brand, model, repairType }) => {
+    return await db
+      .query("partsPrice")
+      .filter(q =>
+        q.and(
+          q.eq(q.field("brand"), brand),
+          q.eq(q.field("model"), model),
+          q.eq(q.field("repairType"), repairType)
+        )
+      )
+      .collect();
+  },
+});
+
+export const getPartsPrice = query({
+  args: { query: v.string() },
+  handler: async (ctx, { query }) => {
+    const q = query.toLowerCase().trim();
+    if (!q) return { recommended: null, alternative: null };
+
+    // Fetch all parts - FIXED: Changed from "devicePrices" to "partsPrice"
+    const all = await ctx.db.query("partsPrice").collect();
+
+    // Match by brand, model, or repairType
+    const matches = all.filter((p) =>
+      `${p.brand} ${p.model} ${p.repairType}`.toLowerCase().includes(q)
+    );
+
+    if (matches.length === 0)
+      return { recommended: null, alternative: null, matches: [] };
+
+    // Build price suggestion object
+    const recommended = {
+      title: `${matches[0].brand} ${matches[0].model} ${matches[0].repairType}`,
+      aftermarketPrice: matches[0].minPriceUSD,
+      premiumPrice: matches[0].maxPriceUSD,
+    };
+
+    // If there's another match, suggest as alternative
+    const alternative = matches[1]
+      ? {
+          title: `${matches[1].brand} ${matches[1].model} ${matches[1].repairType}`,
+          aftermarketPrice: matches[1].minPriceUSD,
+          premiumPrice: matches[1].maxPriceUSD,
+        }
+      : null;
+
+    return { recommended, alternative, matches };
   },
 });

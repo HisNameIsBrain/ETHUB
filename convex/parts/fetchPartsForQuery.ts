@@ -1,5 +1,4 @@
-// convex/fetchPartsForQuery.ts
-import { query } from "./_generated/server";
+import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 
 // Optional: move this to a shared utils folder if you reuse it
@@ -14,7 +13,7 @@ async function fetchFromMobileSentrix({ brand, model, repairType }: {
   return await res.json();
 }
 
-export const fetchPartsForQuery = query({
+export const fetchPartsForQuery = mutation({ // Changed from query to mutation
   args: {
     brand: v.string(),
     model: v.string(),
@@ -44,10 +43,13 @@ export const fetchPartsForQuery = query({
     // Save to Convex for caching
     for (const part of freshParts) {
       await db.insert("partsPrice", {
-        ...part,
+        city: part.city || "Unknown",
         brand,
         model,
         repairType,
+        minPriceUSD: part.minPriceUSD,
+        maxPriceUSD: part.maxPriceUSD,
+        createdAt: Date.now(),
         cachedAt: Date.now(),
       });
     }

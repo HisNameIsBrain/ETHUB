@@ -1,34 +1,14 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getParts = query({
-  args: {
-    brand: v.string(),
-    model: v.string(),
-    repairType: v.string(),
-  },
-  handler: async ({ db }, { brand, model, repairType }) => {
-    return await db
-      .query("partsPrice")
-      .filter(q =>
-        q.and(
-          q.eq(q.field("brand"), brand),
-          q.eq(q.field("model"), model),
-          q.eq(q.field("repairType"), repairType)
-        )
-      )
-      .collect();
-  },
-});
-
 export const getPartsPrice = query({
   args: { query: v.string() },
   handler: async (ctx, { query }) => {
     const q = query.toLowerCase().trim();
     if (!q) return { recommended: null, alternative: null };
 
-    // Fetch all parts
-    const all = await ctx.db.query("devicePrices").collect();
+    // Fetch all parts - FIXED: Changed from "devicePrices" to "partsPrice"
+    const all = await ctx.db.query("partsPrice").collect();
 
     // Match by brand, model, or repairType
     const matches = all.filter((p) =>
@@ -45,7 +25,7 @@ export const getPartsPrice = query({
       premiumPrice: matches[0].maxPriceUSD,
     };
 
-    // If there’s another match, suggest as alternative
+    // If there's another match, suggest as alternative
     const alternative = matches[1]
       ? {
           title: `${matches[1].brand} ${matches[1].model} ${matches[1].repairType}`,
