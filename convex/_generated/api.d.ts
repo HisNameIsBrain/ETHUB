@@ -32,7 +32,6 @@ import type * as openai from "../openai.js";
 import type * as openaiModels from "../openaiModels.js";
 import type * as partImages from "../partImages.js";
 import type * as parts_fetchPartsForQuery from "../parts/fetchPartsForQuery.js";
-import type * as parts_getPartsByQuery from "../parts/getPartsByQuery.js";
 import type * as parts from "../parts.js";
 import type * as partsPrice from "../partsPrice.js";
 import type * as qs from "../qs.js";
@@ -74,7 +73,6 @@ declare const fullApi: ApiFromModules<{
   openaiModels: typeof openaiModels;
   partImages: typeof partImages;
   "parts/fetchPartsForQuery": typeof parts_fetchPartsForQuery;
-  "parts/getPartsByQuery": typeof parts_getPartsByQuery;
   parts: typeof parts;
   partsPrice: typeof partsPrice;
   qs: typeof qs;

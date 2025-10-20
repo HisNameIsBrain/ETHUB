@@ -39,9 +39,9 @@ export default defineSchema({
     total: v.optional(v.number()),
     vendor: v.optional(v.string()),
     query: v.optional(v.string()),
-  }),
+  })
     .index("by_name", ["name"])
-    .index("by_id", ["id"]),
+    .index("by_partId", ["partId"]),
 
   images: defineTable({
     query: v.string(),

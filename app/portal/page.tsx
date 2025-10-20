@@ -3,20 +3,15 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import AssistantLauncher from "@/components/assistant-launcher";
-import AssistantInvoiceControls from "@/components/AssistantInvoiceControls";
-import PartRecommendation from "@/components/PartRecommendation";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import AssistantPartsGrid from "@/components/AssistantPartsGrid";
 
 export default function PortalPageClient() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, user } = useUser();
-  const [lastAssistantText, setLastAssistantText] = useState<string>("");
-
-  // ✅ Display info for signed-in user
+  const { user } = useUser();
   const displayId =
     (user?.primaryEmailAddress?.emailAddress as string | undefined) ||
     (user?.emailAddresses && user.emailAddresses[0]?.emailAddress) ||
@@ -24,20 +19,13 @@ export default function PortalPageClient() {
     user?.fullName ||
     "Signed-in user";
 
-  // ✅ Available statuses (customize as needed)
   const allStatuses = ["pending", "processing", "completed", "canceled"];
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["pending"]);
-
-  // ✅ Toggle status selection
-  const toggleStatus = (status: string) => {
+  const toggleStatus = (status: string) =>
     setSelectedStatuses((prev) =>
-      prev.includes(status)
-        ? prev.filter((s) => s !== status)
-        : [...prev, status]
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
     );
-  };
 
-  // ✅ Live Convex query: fetch invoices by multiple statuses
   const invoices = useQuery(api.invoices.getInvoicesByStatuses, {
     statuses: selectedStatuses,
   });
@@ -48,10 +36,9 @@ export default function PortalPageClient() {
         <div>
           <h1 className="text-2xl font-semibold">Client Portal</h1>
           <p className="text-sm text-muted-foreground">
-            Track repairs, parts quotes, and invoices. Use the assistant (bottom-right) to intake customers.
+            Track repairs, parts, and invoices. Click a part to edit schema and price.
           </p>
         </div>
-
         <div className="flex gap-2 items-center">
           <span className="text-xs text-muted">Signed in as {displayId}</span>
           <Button onClick={() => router.push("/account")}>Account</Button>
@@ -60,48 +47,17 @@ export default function PortalPageClient() {
 
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* ----------- Left Side (Assistant + Parts) ----------- */}
           <div className="flex-1 min-w-0">
-            <h2 className="font-medium text-lg mb-2">Repairs</h2>
-            <p className="text-sm text-muted-foreground">
-              Start a chat with the assistant to collect device information, fetch live part pricing, and create invoices.
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Part Recommendations */}
-              <div>
-                <div className="text-sm text-muted mb-2">Live Parts (based on last assistant result)</div>
-                <PartRecommendation query={""} />
-              </div>
-
-              {/* Assistant Intake */}
-              <div>
-                <div className="text-sm text-muted mb-2">Latest Assistant Intake</div>
-                {lastAssistantText ? (
-                  <pre className="mt-2 text-xs bg-gray-50 dark:bg-neutral-900 p-3 rounded">
-                    {lastAssistantText}
-                  </pre>
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Start a conversation with the assistant (bottom-right).
-                  </p>
-                )}
-
-                <div className="mt-4">
-                  <AssistantInvoiceControls lastAssistantText={lastAssistantText} />
-                </div>
-              </div>
-            </div>
+            <h2 className="font-medium text-lg mb-2">Parts</h2>
+            <AssistantPartsGrid />
           </div>
 
-          {/* ----------- Right Side (Invoices) ----------- */}
           <div className="w-full md:w-96">
             <h3 className="text-lg font-medium mb-2">Invoices</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Invoices created by the assistant appear here until processed.
+              Invoices appear here based on selected statuses.
             </p>
 
-            {/* ✅ Status Filter Controls */}
             <div className="mb-3 flex flex-wrap gap-2">
               {allStatuses.map((status) => (
                 <label
@@ -123,7 +79,6 @@ export default function PortalPageClient() {
               ))}
             </div>
 
-            {/* ✅ Invoice List */}
             <div className="space-y-3">
               <div className="p-3 border rounded">
                 {invoices === undefined ? (
@@ -174,7 +129,6 @@ export default function PortalPageClient() {
                 )}
               </div>
 
-              {/* ✅ Admin Actions */}
               <div className="p-3 border rounded">
                 <div className="text-sm font-medium">Admin Actions</div>
                 <div className="mt-2 flex gap-2">
@@ -190,9 +144,6 @@ export default function PortalPageClient() {
           </div>
         </div>
       </Card>
-
-      {/* ✅ Assistant launcher */}
-      <AssistantLauncher onAssistantMessage={(m) => setLastAssistantText(m)} />
     </div>
   );
 }

@@ -1,69 +1,126 @@
-import { query } from "./_generated/server";
+// convex/parts.ts
 import { v } from "convex/values";
+import { action } from "./_generated/server";
 
-export const getPartsByQuery = query({
-  args: { query: v.string() },
-  handler: async ({ db }, { query }) => {
-    return await db
-      .query("parts")
-      .withIndex("by_name", q => q.eq("name", query))
-      .collect();
-  },
-});
-
-export const getParts = query({
+/**
+ * Fetches parts and pricing for a given search query
+ * Returns recommended (premium) and alternative (economical) options
+ */
+export const fetchPartsForQuery = action({
   args: {
-    brand: v.string(),
-    model: v.string(),
-    repairType: v.string(),
+    // Validate that query is a required string
+    query: v.string(),
   },
-  handler: async ({ db }, { brand, model, repairType }) => {
-    return await db
-      .query("partsPrice")
-      .filter(q =>
-        q.and(
-          q.eq(q.field("brand"), brand),
-          q.eq(q.field("model"), model),
-          q.eq(q.field("repairType"), repairType)
-        )
-      )
-      .collect();
-  },
-});
+  handler: async (ctx, args) => {
+    const { query } = args;
 
-export const getPartsPrice = query({
-  args: { query: v.string() },
-  handler: async (ctx, { query }) => {
-    const q = query.toLowerCase().trim();
-    if (!q) return { recommended: null, alternative: null };
+    // Return null if query is empty or too short
+    if (!query || query.trim().length === 0) {
+      return null;
+    }
 
-    // Fetch all parts - FIXED: Changed from "devicePrices" to "partsPrice"
-    const all = await ctx.db.query("partsPrice").collect();
-
-    // Match by brand, model, or repairType
-    const matches = all.filter((p) =>
-      `${p.brand} ${p.model} ${p.repairType}`.toLowerCase().includes(q)
-    );
-
-    if (matches.length === 0)
-      return { recommended: null, alternative: null, matches: [] };
-
-    // Build price suggestion object
-    const recommended = {
-      title: `${matches[0].brand} ${matches[0].model} ${matches[0].repairType}`,
-      aftermarketPrice: matches[0].minPriceUSD,
-      premiumPrice: matches[0].maxPriceUSD,
-    };
-
-    // If there's another match, suggest as alternative
-    const alternative = matches[1]
-      ? {
-          title: `${matches[1].brand} ${matches[1].model} ${matches[1].repairType}`,
-          aftermarketPrice: matches[1].minPriceUSD,
-          premiumPrice: matches[1].maxPriceUSD,
+    try {
+      // Fetch pricing data from MobileSentrix API
+      const pricesRes = await fetch(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/portal/prices?query=${encodeURIComponent(query)}`,
+        { 
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
-      : null;
+      );
 
-    return { recommended, alternative, matches };
+      if (!pricesRes.ok) {
+        console.error("Prices fetch failed:", pricesRes.status, pricesRes.statusText);
+        return null;
+      }
+
+      const pricesJson = await pricesRes.json();
+      const recommended = pricesJson.recommended ?? null;
+      const alternative = pricesJson.alternative ?? null;
+
+      // Fetch product images from Google Custom Search
+      const imagesRes = await fetch(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/image-search?query=${encodeURIComponent(query)}&num=6`,
+        { 
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      let images: Array<any> = [];
+      if (imagesRes.ok) {
+        const imagesJson = await imagesRes.json();
+        images = imagesJson?.images ?? [];
+      }
+
+      /**
+       * Pick the most relevant image for a part based on title matching
+       * Falls back to first available image if no match found
+       */
+      function pickImageForPart(partTitle: string): string | null {
+        if (!partTitle) return null;
+
+        const titleLower = partTitle.toLowerCase();
+
+        // Try to find exact title match in image metadata
+        for (const img of images) {
+          if ((img.title ?? "").toLowerCase().includes(titleLower)) {
+            return img.link;
+          }
+          if ((img.contextLink ?? "").toLowerCase().includes(titleLower)) {
+            return img.link;
+          }
+        }
+
+        // Fallback to first image thumbnail or link
+        if (images.length > 0) {
+          return images[0].thumbnail ?? images[0].link;
+        }
+
+        return null;
+      }
+
+      // Enrich parts with matched images
+      const enriched: {
+        recommended: any | null;
+        alternative: any | null;
+      } = {
+        recommended: null,
+        alternative: null,
+      };
+
+      // Add image to recommended part
+      if (recommended) {
+        enriched.recommended = {
+          ...recommended,
+          image: recommended.image ?? pickImageForPart(recommended.title ?? query),
+          // Add labor cost (default $100)
+          labor: recommended.labor ?? 100,
+          // Calculate total price
+          total: (recommended.partPrice ?? recommended.minPrice ?? 0) + (recommended.labor ?? 100),
+        };
+      }
+
+      // Add image to alternative part
+      if (alternative) {
+        enriched.alternative = {
+          ...alternative,
+          image: alternative.image ?? pickImageForPart(alternative.title ?? query + " part"),
+          // Add labor cost (default $100)
+          labor: alternative.labor ?? 100,
+          // Calculate total price
+          total: (alternative.partPrice ?? alternative.maxPrice ?? 0) + (alternative.labor ?? 100),
+        };
+      }
+
+      return enriched;
+    } catch (err) {
+      console.error("fetchPartsForQuery error:", err);
+      return null;
+    }
   },
 });
