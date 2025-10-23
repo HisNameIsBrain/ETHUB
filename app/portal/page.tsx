@@ -8,7 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import AssistantPartsGrid from "@/components/AssistantPartsGrid";
-
+import AssistantLauncher from "@/components/assistant-launcher";
 export default function PortalPageClient() {
   const router = useRouter();
   const { user } = useUser();
@@ -49,6 +49,7 @@ export default function PortalPageClient() {
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex-1 min-w-0">
             <h2 className="font-medium text-lg mb-2">Parts</h2>
+<AssistantLauncher />
             <AssistantPartsGrid />
           </div>
 

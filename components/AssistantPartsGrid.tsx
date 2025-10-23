@@ -1,41 +1,75 @@
-// components/AssistantPartsGrid.tsx
 "use client";
+import React from "react";
+import { Button } from "@/components/ui/button";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+type Part = {
+  _id?: string;
+  title: string;
+  device: string;
+  category: string;
+  partPrice: number;
+  labor: number;
+  total: number;
+  image?: string;
+  source?: string;
+};
 
-export default function AssistantPartsGrid() {
-  const router = useRouter();
-  const [parts, setParts] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function AssistantPartsGrid({
+  query,
+  onApprove,
+}: {
+  query: string;
+  onApprove: (p: Part) => void;
+}) {
+  const [loading, setLoading] = React.useState(false);
+  const [parts, setParts] = React.useState<Part[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchParts() {
+  React.useEffect(() => {
+    let mounted = true;
+    async function run() {
+      if (!query) { setParts([]); return; }
+      setLoading(true); setError(null);
       try {
-        const res = await fetch("/api/portal/prices");
-        if (res.ok) {
-          const data = await res.json();
-          setParts(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch parts:", error);
+        const res = await fetch(`/api/parts?query=${encodeURIComponent(query)}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        if (!mounted) return;
+        setParts(data.results ?? []);
+      } catch (e: any) {
+        if (!mounted) return;
+        setError(e?.message ?? "Failed to fetch parts");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
-    
-    fetchParts();
-  }, []);
+    run();
+    return () => { mounted = false; };
+  }, [query]);
 
-  if (loading) return <div className="text-sm text-muted-foreground">Loading parts…</div>;
-  if (!parts || parts.length === 0) return <div className="text-sm text-muted-foreground">No parts found.</div>;
+  if (!query) return <div className="text-sm text-muted-foreground">Provide a device & service above to fetch parts.</div>;
+  if (loading) return <div className="text-sm">Fetching parts & live pricing…</div>;
+  if (error) return <div className="text-sm text-red-600">Error: {error}</div>;
+  if (parts.length === 0) return <div className="text-sm text-muted-foreground">No parts found for “{query}”.</div>;
 
   return (
-    <div className="grid gap-4">
-      {parts.map((part, idx) => (
-        <div key={idx} className="p-4 border rounded-lg">
-          <h3 className="font-semibold">{part.title}</h3>
-          <p className="text-sm text-muted-foreground">${part.price}</p>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {parts.map((p, i) => (
+        <div key={(p as any)._id ?? `${p.title}-${i}`} className="border rounded-lg p-3">
+          {p.image ? (
+            <img src={p.image} alt={p.title} className="h-24 w-full object-cover rounded" />
+          ) : (
+            <div className="h-24 w-full bg-gray-100 rounded" />
+          )}
+          <div className="mt-2 text-sm font-medium">{p.title}</div>
+          <div className="text-xs text-muted-foreground">{p.device} • {p.category}</div>
+          <div className="mt-2 text-sm">
+            Part: ${p.partPrice.toFixed(2)} • Labor: ${p.labor.toFixed(2)}
+          </div>
+          <div className="font-semibold">${p.total.toFixed(2)}</div>
+          <div className="mt-2">
+            <Button size="sm" onClick={() => onApprove(p)}>Approve</Button>
+          </div>
         </div>
       ))}
     </div>

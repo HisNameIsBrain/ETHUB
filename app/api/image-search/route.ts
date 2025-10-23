@@ -1,27 +1,16 @@
 import { NextResponse } from "next/server";
 
+// export const runtime = "nodejs";
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const query = searchParams.get("query");
+  const q = searchParams.get("query") ?? searchParams.get("q") ?? "device";
+  const num = Math.max(1, Math.min(24, Number(searchParams.get("num") ?? 6)));
 
-  if (!query) {
-    return NextResponse.json({ error: "Missing query" }, { status: 400 });
-  }
+  const images = Array.from({ length: num }).map((_, i) => ({
+    url: `https://picsum.photos/seed/${encodeURIComponent(q)}-${i}/400/240`,
+    alt: `${q} ${i + 1}`,
+  }));
 
-  try {
-    // Use DuckDuckGo's public image search
-    const res = await fetch(
-      `https://duckduckgo.com/i.js?q=${encodeURIComponent(query)}&iax=images&ia=images`,
-      { headers: { "User-Agent": "Mozilla/5.0" } }
-    );
-    if (!res.ok) throw new Error("Image search failed");
-
-    const data = await res.json();
-    const image = data.results?.[0]?.image ?? null;
-
-    return NextResponse.json({ image });
-  } catch (err) {
-    console.error("image search error", err);
-    return NextResponse.json({ image: null });
-  }
+  return NextResponse.json({ images });
 }

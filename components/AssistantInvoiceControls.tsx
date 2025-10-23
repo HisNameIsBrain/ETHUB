@@ -1,6 +1,10 @@
+// app/portal/page.client.tsx (or wherever your PortalPageClient is)
+"use client";
+
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import AssistantLauncher from "@/components/assistant-launcher";
 import AssistantInvoiceControls from "@/components/AssistantInvoiceControls";
 import PartRecommendation from "@/components/PartRecommendation";
 import { Button } from "@/components/ui/button";
@@ -10,9 +14,10 @@ import { api } from "@/convex/_generated/api";
 
 export default function PortalPageClient() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, user } = useUser();
+  const [lastAssistantText, setLastAssistantText] = useState<string>("");
 
-  // Display identifier for the signed-in user
+  // Signed-in display id
   const displayId =
     (user?.primaryEmailAddress?.emailAddress as string | undefined) ||
     (user?.emailAddresses && user.emailAddresses[0]?.emailAddress) ||
@@ -20,7 +25,7 @@ export default function PortalPageClient() {
     user?.fullName ||
     "Signed-in user";
 
-  // Status filtering
+  // Status filter UI
   const allStatuses = ["pending", "processing", "completed", "canceled"];
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["pending"]);
   const toggleStatus = (status: string) => {
@@ -29,45 +34,74 @@ export default function PortalPageClient() {
     );
   };
 
-  // Live Convex query: fetch invoices by multiple statuses
+  // Live invoices by statuses
   const invoices = useQuery(api.invoices.getInvoicesByStatuses, {
     statuses: selectedStatuses,
   });
 
-  // --- Derive "previous request" (latest invoice) ---
-  // Convex docs typically include _creationTime. We sort descending and pick first.
-  const latestInvoice = useMemo(() => {
-    if (!invoices || invoices.length === 0) return null;
-    return [...invoices].sort(
-      (a: any, b: any) => (b._creationTime ?? 0) - (a._creationTime ?? 0)
-    )[0];
-  }, [invoices]);
+  // Derive a parts query from the last Assistant summary text (best-effort).
+  // We try to find lines like "Device: ..." and "Issue: ...".
+  const { partsQuery, parsedSummary } = useMemo(() => {
+    const text = lastAssistantText || "";
+    // Try JSON first
+    try {
+      const data = JSON.parse(text);
+      // If your assistant sends structured summary later, support it here:
+      const device = data?.device || data?.Device || "";
+      const issue = data?.issue || data?.Issue || data?.Service || "";
+      const pq = [device, issue].filter(Boolean).join(" ");
+      return { partsQuery: pq, parsedSummary: { device, issue } };
+    } catch {
+      // Fallback: parse lines from plain text
+      // Accept formats:
+      // • Device: iPhone 13 Pro Max
+      // • Issue: screen cracked
+      const devMatch =
+        text.match(/(?:Device|Model)\s*:\s*(.+)/i) ||
+        text.match(/^(?:Device|Model)\s*-\s*(.+)$/im);
+      const issueMatch =
+        text.match(/(?:Issue|Service)\s*:\s*(.+)/i) ||
+        text.match(/^(?:Issue|Service)\s*-\s*(.+)$/im);
 
-  // Build a readable “last assistant intake” text from latest invoice fields.
-  const lastAssistantText = useMemo(() => {
-    if (!latestInvoice) return "";
-    const lines: string[] = [];
-    if (latestInvoice.ticketId) lines.push(`ID: ${latestInvoice.ticketId}`);
-    if (latestInvoice.name) lines.push(`Name: ${latestInvoice.name}`);
-    if (latestInvoice.email) lines.push(`Email: ${latestInvoice.email}`);
-    if (latestInvoice.phone) lines.push(`Phone: ${latestInvoice.phone}`);
-    if (latestInvoice.description) lines.push(`Description: ${latestInvoice.description}`);
-    if (latestInvoice.service) lines.push(`Service: ${latestInvoice.service}`);
-    if (latestInvoice.quote != null)
-      lines.push(
-        `Quote: ${
-          typeof latestInvoice.quote === "number"
-            ? `$${latestInvoice.quote.toFixed(2)}`
-            : latestInvoice.quote
-        }`
-      );
-    if (latestInvoice.status) lines.push(`Status: ${latestInvoice.status}`);
-    return lines.join("\n");
-  }, [latestInvoice]);
+      // Or try: "<device> — <issue>"
+      const dashPair = !devMatch && !issueMatch ? text.match(/^(.+?)\s+—\s+(.+)$/im) : null;
 
-  // Use latest invoice description (or empty) to feed PartRecommendation
-  const latestQueryForParts =
-    (latestInvoice?.description as string | undefined)?.trim() ?? "";
+      const device =
+        (devMatch && (devMatch[1] || "").trim()) ||
+        (dashPair && (dashPair[1] || "").trim()) ||
+        "";
+      const issue =
+        (issueMatch && (issueMatch[1] || "").trim()) ||
+        (dashPair && (dashPair[2] || "").trim()) ||
+        "";
+
+      const pq = [device, issue].filter(Boolean).join(" ").trim();
+      return { partsQuery: pq, parsedSummary: { device, issue } };
+    }
+  }, [lastAssistantText]);
+
+  // Sort invoices: FIFO for "pending", LIFO for others.
+  const sortedInvoices = useMemo(() => {
+    if (!invoices) return undefined;
+    const list = [...invoices];
+
+    // If only "pending" is selected, show FIFO (oldest first).
+    const onlyPending =
+      selectedStatuses.length === 1 && selectedStatuses[0] === "pending";
+
+    list.sort((a: any, b: any) => {
+      const ca = a?.createdAt ?? 0;
+      const cb = b?.createdAt ?? 0;
+      if (onlyPending) {
+        // FIFO for pending
+        return ca - cb;
+      }
+      // newest first otherwise
+      return cb - ca;
+    });
+
+    return list;
+  }, [invoices, selectedStatuses]);
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -75,7 +109,7 @@ export default function PortalPageClient() {
         <div>
           <h1 className="text-2xl font-semibold">Client Portal</h1>
           <p className="text-sm text-muted-foreground">
-            Track repairs, parts quotes, and invoices. The latest request is shown below.
+            Track repairs, parts quotes, and invoices. Use the assistant to start or resume an intake.
           </p>
         </div>
 
@@ -87,52 +121,73 @@ export default function PortalPageClient() {
 
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* ----------- Left Side (Previous Request + Parts) ----------- */}
+          {/* -------- Left: Assistant outputs + Parts -------- */}
           <div className="flex-1 min-w-0">
-            <h2 className="font-medium text-lg mb-2">Previous Request</h2>
+            <h2 className="font-medium text-lg mb-2">Repairs</h2>
             <p className="text-sm text-muted-foreground">
-              This is the most recent intake saved as an invoice.
+              Start a chat with the assistant to collect device information, fetch live part pricing, and create invoices.
             </p>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Part Recommendations */}
+              {/* Parts driven by last assistant intake */}
               <div>
-                <div className="text-sm text-muted mb-2">
-                  Live Parts (based on latest invoice description)
-                </div>
-                <PartRecommendation query={latestQueryForParts} />
+                <div className="text-sm text-muted mb-2">Live Parts (from last intake)</div>
+                {/* Pass best-effort query — falls back to empty string */}
+                <PartRecommendation query={partsQuery || ""} />
               </div>
 
-              {/* Latest Intake Summary (no live chat) */}
+              {/* Latest Assistant Intake (text only) */}
               <div>
-                <div className="text-sm text-muted mb-2">Latest Intake Summary</div>
+                <div className="text-sm text-muted mb-2">Previous Intake (from Assistant)</div>
+
                 {lastAssistantText ? (
-                  <pre className="mt-2 text-xs bg-gray-50 dark:bg-neutral-900 p-3 rounded whitespace-pre-wrap">
-                    {lastAssistantText}
-                  </pre>
+                  <div className="space-y-2">
+                    <pre className="mt-2 text-xs bg-gray-50 dark:bg-neutral-900 p-3 rounded whitespace-pre-wrap">
+{lastAssistantText}
+                    </pre>
+
+                    {/* Quick summary chips if we parsed anything */}
+                    {(parsedSummary.device || parsedSummary.issue) && (
+                      <div className="flex flex-wrap gap-2">
+                        {parsedSummary.device && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                            Device: {parsedSummary.device}
+                          </span>
+                        )}
+                        {parsedSummary.issue && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            Issue: {parsedSummary.issue}
+                          </span>
+                        )}
+                        {partsQuery && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Parts query ready
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-4">
+                      <AssistantInvoiceControls lastAssistantText={lastAssistantText} />
+                    </div>
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground mt-2">
-                    No recent intake found. Create an invoice from the dashboard or via your
-                    assistant workflow.
+                    Start a conversation with the assistant (bottom-right). Your last intake will appear here.
                   </p>
                 )}
-
-                <div className="mt-4">
-                  {/* Reuse your existing controls by feeding them the synthesized summary text */}
-                  <AssistantInvoiceControls lastAssistantText={lastAssistantText} />
-                </div>
               </div>
             </div>
           </div>
 
-          {/* ----------- Right Side (Invoices) ----------- */}
+          {/* -------- Right: Invoices -------- */}
           <div className="w-full md:w-96">
             <h3 className="text-lg font-medium mb-2">Invoices</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Invoices created by the assistant or dashboard appear here.
+              Invoices created by the assistant appear here. Pending items are shown first-in, first-out.
             </p>
 
-            {/* Status Filter Controls */}
+            {/* Status Filter */}
             <div className="mb-3 flex flex-wrap gap-2">
               {allStatuses.map((status) => (
                 <label
@@ -157,15 +212,15 @@ export default function PortalPageClient() {
             {/* Invoice List */}
             <div className="space-y-3">
               <div className="p-3 border rounded">
-                {invoices === undefined ? (
+                {sortedInvoices === undefined ? (
                   <div className="text-sm text-muted-foreground">Loading invoices...</div>
-                ) : invoices.length === 0 ? (
+                ) : sortedInvoices.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No invoices found for selected statuses.
                   </div>
                 ) : (
                   <ul className="space-y-2 text-sm">
-                    {invoices.map((inv: any) => (
+                    {sortedInvoices.map((inv: any) => (
                       <li
                         key={inv._id}
                         className="p-2 border rounded flex justify-between items-center hover:bg-gray-50 dark:hover:bg-neutral-900 transition"
@@ -205,7 +260,7 @@ export default function PortalPageClient() {
                 )}
               </div>
 
-              {/* Admin Actions */}
+              {/* Admin CTA */}
               <div className="p-3 border rounded">
                 <div className="text-sm font-medium">Admin Actions</div>
                 <div className="mt-2 flex gap-2">
@@ -219,11 +274,12 @@ export default function PortalPageClient() {
               </div>
             </div>
           </div>
-          {/* End Right */}
+          {/* /Right */}
         </div>
       </Card>
 
-      {/* No live assistant chat included on this page */}
+      {/* Floating assistant — still external to this page */}
+      <AssistantLauncher onAssistantMessage={(m) => setLastAssistantText(m)} />
     </div>
   );
 }

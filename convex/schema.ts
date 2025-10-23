@@ -2,75 +2,61 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // ======================== Parts & Pricing ========================
-  partsPrice: defineTable({
-    city: v.string(),
-    brand: v.string(),
-    model: v.string(),
-    repairType: v.string(),
-    minPriceUSD: v.number(),
-    maxPriceUSD: v.number(),
-    createdAt: v.number(),
-    cachedAt: v.number(),
-  })
-    .index("by_device", ["brand", "model", "repairType"])
-    .index("by_city", ["city"])
-    .index("by_cachedAt", ["cachedAt"]),
-
-  partsImages: defineTable({
-    query: v.string(),
-    title: v.string(),
-    link: v.string(),
-    mime: v.optional(v.string()),
-    thumbnail: v.optional(v.string()),
-    contextLink: v.optional(v.string()),
-    cachedAt: v.number(),
-  })
-    .index("by_query", ["query"])
-    .index("by_cachedAt", ["cachedAt"]),
-
   parts: defineTable({
-    partId: v.optional(v.string()),
-    title: v.string(),
-    name: v.optional(v.string()),
-    image: v.optional(v.string()),
-    partsPrice: v.optional(v.number()),
-    labor: v.optional(v.number()),
-    total: v.optional(v.number()),
-    vendor: v.optional(v.string()),
-    query: v.optional(v.string()),
-  })
-    .index("by_name", ["name"])
-    .index("by_partId", ["partId"]),
+    parts: v.optional(
+      v.array(
+        v.object({
+          query: v.optional(v.string()),
+          title: v.string(),
+          device: v.optional(v.string()),
+          partPrice: v.optional(v.number()),
+          labor: v.optional(v.number()),
+          total: v.optional(v.number()),
+          type: v.optional(v.string()),
+          eta: v.optional(v.string()),
+          image: v.optional(v.string()),
+          source: v.optional(v.string()),
+          createdAt: v.optional(v.number()),
+          updatedAt: v.number(),
+        })
+      )
+    ),
 
-  images: defineTable({
-    query: v.string(),
-    link: v.string(),
-    title: v.optional(v.string()),
-    mime: v.optional(v.string()),
-    thumbnail: v.optional(v.string()),
-    contextLink: v.optional(v.string()),
-  }).index("by_query", ["query"]),
+    // Images matched to the query/parts (typed for safety)
+    images: v.optional(
+      v.array(
+        v.object({
+          url: v.optional(v.string()),
+          title: v.optional(v.string()),
+          link: v.optional(v.string()),
+          mime: v.optional(v.string()),
+          thumbnail: v.optional(v.string()),
+          contextLink: v.optional(v.string()),
+        })
+      )
+    ),
+
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
 
   // =========================== Invoices ============================
-  invoices: defineTable({
-    ticketId: v.optional(v.string()),
-    name: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    email: v.optional(v.string()),
-    manufacturer: v.optional(v.string()),
-    description: v.optional(v.string()),
-    quote: v.optional(v.number()),
-    deposit: v.optional(v.string()),
-    service: v.optional(v.string()),
-    warrantyAcknowledged: v.optional(v.boolean()),
-    status: v.optional(v.string()),
-    createdAt: v.number(),
-    raw: v.optional(v.any()),
-  })
-    .index("by_ticketId", ["ticketId"])
-    .index("by_status", ["status"])
-    .index("by_createdAt", ["createdAt"]),
+invoices: defineTable({
+  ticketId: v.string(),
+  name: v.union(v.string(), v.null()),
+  email: v.union(v.string(), v.null()),
+  phone: v.union(v.string(), v.null()),
+  manufacturer: v.union(v.string(), v.null()),
+  description: v.string(),
+  quote: v.union(v.number(), v.null()),
+  deposit: v.string(),
+  service: v.string(),
+  warrantyAcknowledged: v.boolean(),
+  raw: v.any(),
+  status: v.string(),
+  createdAt: v.number(),
+}),
+  .index("by_status", ["status"])
+  .index("by_created", ["createdAt"]),
 
   // ============================ Users ==============================
   users: defineTable({
@@ -80,9 +66,11 @@ export default defineSchema({
     username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     userId: v.optional(v.string()),
-    role: v.optional(
-      v.union(v.literal("admin"), v.literal("staff"), v.literal("user"))
-    ),
+    role: v.optional(v.union(
+      v.literal("admin"),
+      v.literal("staff"),
+      v.literal("user")
+    )),
     tokenIdentifier: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
@@ -121,21 +109,6 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_createdAt", ["jobId", "createdAt"]),
-
-  partsOrders: defineTable({
-    jobId: v.id("jobs"),
-    vendor: v.string(),
-    partNumber: v.string(),
-    qty: v.number(),
-    eta: v.optional(v.number()),
-    cost: v.optional(v.number()),
-    status: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_job", ["jobId"])
-    .index("by_job_status", ["jobId", "status"])
-    .index("by_status", ["status"]),
 
   // ========================== Documents ============================
   documents: defineTable({

@@ -1,4 +1,3 @@
-// components/assistant-launcher.tsx
 "use client";
 
 import React from "react";
@@ -6,11 +5,10 @@ import ReactDOM from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mic, MicOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { speakWithOpenAI } from "@/lib/tts";
-import { authedFetch } from "@/utils/authedFetch"; // <- token-safe fetch helper (no getToken import here)
-import { useMutation, useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { makeAuthedFetch } from "@/utils/authedFetch";
+import { useAuth } from "@clerk/nextjs";
 
 type Role = "system" | "user" | "assistant";
 type IntakeState = "idle" | "askDeviceModel" | "askIssue" | "confirm" | "done";
@@ -29,22 +27,32 @@ type Part = {
   createdAt?: number;
 };
 
-const SYSTEM_PROMPT = {
-  role: "system" as const,
-  content:
-    "You are ETHUB Assistant, a friendly, patient receptionist. Guide users step-by-step: ask for device + exact model, issue, and desired service; confirm all details; fetch parts & pricing; present premium first, then economical. Keep language clear, kind, and professional with a touch of sparkle.",
-};
-
 export default function AssistantLauncher({
   onAssistantMessage,
 }: {
   onAssistantMessage?: (s: string) => void;
 }) {
-  const { user, isLoaded } = useUser();
+  // Clerk
+const { isSignedIn, getToken } = useAuth();
+if (!isSignedIn) {
+  throw new Error("Please sign in first.");
+}
 
-  // Convex helpers (optional actions/mutations)
-  const cacheBundle = useMutation(api.parts.cacheBundle); // safe if you created it; otherwise remove
-  const moderateAction = useAction ? useAction(api.openai.moderate) : undefined;
+const token = await getToken({ /* template: "convex", */ skipCache: true });
+// If you configured a JWT Template for Convex, pass template: "convex"
+
+const res = await fetch("/api/portal/invoices", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  },
+  body: JSON.stringify(payload),
+});
+if (!res.ok) {
+  const t = await res.text().catch(() => "");
+  throw new Error(t || `Save failed (HTTP ${res.status})`);
+}
 
   // UI state
   const [mounted, setMounted] = React.useState(false);
@@ -55,17 +63,19 @@ export default function AssistantLauncher({
   const [busy, setBusy] = React.useState(false);
   const [muted, setMuted] = React.useState(false);
 
-  // intake state
+  // Intake state
   const [intakeState, setIntakeState] = React.useState<IntakeState>("idle");
   const [intake, setIntake] = React.useState<any>({});
   const [lastParts, setLastParts] = React.useState<Part[] | null>(null);
   const [selectedPart, setSelectedPart] = React.useState<Part | null>(null);
 
-  // TTS
-  const [ttsQueue, setTtsQueue] = React.useState<string[]>([]);
-  const [ttsPlaying, setTtsPlaying] = React.useState(false);
+  // Stable refs for timeouts
+  const lastPartsRef = React.useRef<Part[] | null>(null);
+  const selectedPartRef = React.useRef<Part | null>(null);
+  React.useEffect(() => void (lastPartsRef.current = lastParts), [lastParts]);
+  React.useEffect(() => void (selectedPartRef.current = selectedPart), [selectedPart]);
 
-  // mount guard (avoid duplicate portals in HMR)
+  // Prevent duplicate portals in dev/HMR
   React.useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
     if ((window as any)[key]) return;
@@ -76,7 +86,7 @@ export default function AssistantLauncher({
     };
   }, []);
 
-  // Prefill user info
+  // Prefill from Clerk
   React.useEffect(() => {
     if (!isLoaded || !user) return;
     setIntake((s: any) => ({
@@ -94,36 +104,36 @@ export default function AssistantLauncher({
     }));
   }, [isLoaded, user]);
 
-  // TTS runner — speak only human-friendly content
+  // TTS queue (speak only helpful text; skip URLs/JSON blobs)
+  const [ttsQueue, setTtsQueue] = React.useState<string[]>([]);
+  const [ttsPlaying, setTtsPlaying] = React.useState(false);
+
+  function stripUnspeakable(text: string): string | null {
+    try {
+      JSON.parse(text); // control message
+      return null;
+    } catch {}
+    const noUrls = text.replace(/https?:\/\/\S+/g, "").trim();
+    return noUrls || null;
+  }
+
   React.useEffect(() => {
     if (!ttsPlaying && ttsQueue.length > 0 && !muted) {
       const next = ttsQueue[0];
       const speakable = stripUnspeakable(next);
-      if (speakable) {
-        setTtsPlaying(true);
-        speakWithOpenAI(speakable, { voice: "alloy", format: "mp3" })
-          .catch(() => {})
-          .finally(() => {
-            setTtsQueue((q) => q.slice(1));
-            setTtsPlaying(false);
-          });
-      } else {
+      if (!speakable) {
         setTtsQueue((q) => q.slice(1));
+        return;
       }
+      setTtsPlaying(true);
+      speakWithOpenAI(speakable, { voice: "alloy", format: "mp3" })
+        .catch(() => {})
+        .finally(() => {
+          setTtsQueue((q) => q.slice(1));
+          setTtsPlaying(false);
+        });
     }
   }, [ttsQueue, ttsPlaying, muted]);
-
-  function stripUnspeakable(text: string): string | null {
-    try {
-      JSON.parse(text);
-      return null; // UI control data — don’t TTS
-    } catch {}
-    if (/https?:\/\//i.test(text)) {
-      const noUrls = text.replace(/https?:\/\/\S+/g, "").trim();
-      return noUrls || null;
-    }
-    return text.trim() || null;
-  }
 
   function enqueueTTS(message: string) {
     setTtsQueue((q) => [...q, message]);
@@ -134,7 +144,7 @@ export default function AssistantLauncher({
     if (m.role === "assistant") enqueueTTS(m.content);
     if (m.role === "assistant" && onAssistantMessage) {
       try {
-        JSON.parse(m.content); // don’t forward JSON control blocks
+        JSON.parse(m.content);
       } catch {
         onAssistantMessage?.(m.content);
       }
@@ -153,11 +163,12 @@ export default function AssistantLauncher({
     setSelectedPart(null);
   }
 
-  // Helpful nudges
+  // Hints & validators
   function hintForField(field: "device" | "issue") {
-    if (field === "device")
-      return "The exact model is in Settings → About. If it’s tricky, share the brand and any letters/numbers you see.";
-    return 'Short and specific helps: “Screen cracked (touch works)”, “Battery drains fast”, or “Phone won’t boot”.';
+    if (field === "device") {
+      return "Tip: the exact model is in Settings → About. If you’re not sure, share the brand and any letters/numbers you see.";
+    }
+    return 'Tip: short and specific helps — “Screen cracked (touch works)”, “Battery drains fast”, or “Phone won’t boot”.';
   }
 
   function looksLikeFullModel(text: string) {
@@ -170,7 +181,7 @@ export default function AssistantLauncher({
     );
   }
 
-  function detectManufacturer(model: string | undefined): string | null {
+  function detectManufacturer(model?: string | null): string | null {
     if (!model) return null;
     const s = model.toLowerCase();
     if (s.includes("iphone") || s.includes("ipad") || s.includes("mac"))
@@ -180,7 +191,7 @@ export default function AssistantLauncher({
     if (s.includes("pixel")) return "Google";
     if (s.includes("oneplus")) return "OnePlus";
     if (s.includes("motorola") || s.includes("moto")) return "Motorola";
-    if (s.includes("xiaomi") || s.includes("mi") || s.includes("redmi"))
+    if (s.includes("xiaomi") || s.includes("redmi") || s.includes("mi"))
       return "Xiaomi";
     if (s.includes("nokia")) return "Nokia";
     if (s.includes("sony") || s.includes("xperia")) return "Sony";
@@ -188,9 +199,10 @@ export default function AssistantLauncher({
     return null;
   }
 
-  // Fetch prices + images then cache bundle to Convex
+  // Fetch prices + images
   async function fetchPartsAndImages(query: string) {
     if (!query || query.trim().length < 3) return null;
+
     try {
       const [pricesRes, imagesRes] = await Promise.all([
         fetch(`/api/mobilesentrix/prices?query=${encodeURIComponent(query)}`, {
@@ -216,27 +228,24 @@ export default function AssistantLauncher({
         images = ij.images ?? [];
       }
 
-      // pick image heuristics
-      function imgFor(title?: string) {
+      const pickImage = (title?: string | null) => {
         if (!images?.length) return null;
         if (!title) return images[0]?.url || images[0]?.link || null;
-        const lower = title.toLowerCase();
+        const t = title.toLowerCase();
         for (const im of images) {
           const cand = im.url || im.link || im.thumbnail || im.image || im.src;
-          const meta = `${im.title ?? ""} ${im.alt ?? ""} ${
-            im.contextLink ?? ""
-          }`.toLowerCase();
-          if (meta.includes(lower)) return cand;
+          const meta = `${im.title ?? ""} ${im.alt ?? ""} ${im.contextLink ?? ""}`.toLowerCase();
+          if (meta.includes(t)) return cand;
         }
         return images[0]?.url || images[0]?.link || null;
-      }
+      };
 
       if (recommended) {
         recommended = {
           ...recommended,
           type: recommended.type || "Premium",
           eta: recommended.eta || "About 2 hours",
-          image: recommended.image || imgFor(recommended.title ?? query) || undefined,
+          image: recommended.image || pickImage(recommended.title) || undefined,
         };
       }
       if (alternative) {
@@ -244,22 +253,11 @@ export default function AssistantLauncher({
           ...alternative,
           type: alternative.type || "Economical",
           eta: alternative.eta || "About 2 hours",
-          image: alternative.image || imgFor(alternative.title ?? query) || undefined,
+          image: alternative.image || pickImage(alternative.title) || undefined,
         };
       }
 
-      const parts: Part[] = [recommended, alternative].filter(Boolean) as Part[];
-
-      // Cache in Convex for future reuse (safe to ignore if not present)
-      if (parts.length || images.length) {
-        try {
-          await cacheBundle({ query, parts, images });
-        } catch (e) {
-          console.warn("cacheBundle failed", e);
-        }
-      }
-
-      return { recommended, alternative, images };
+      return { recommended, alternative };
     } catch (err) {
       console.error("fetchPartsAndImages error:", err);
       return null;
@@ -271,16 +269,13 @@ export default function AssistantLauncher({
     if (!user) {
       pushMessage({
         role: "assistant",
-        content:
-          "Welcome to ETHUB — please sign in so I can prepare your repair intake.",
+        content: "Welcome to ETHUB — please sign in so I can start your repair intake.",
       });
       return;
     }
     pushMessage({
       role: "assistant",
-      content: `✨ Hello ${
-        intake.name ?? "there"
-      } — I’m ETHUB’s Assistant. What’s the device name and exact model?`,
+      content: "✨ I’m ETHUB’s Assistant. What’s the device name and exact model?",
     });
     setIntakeState("askDeviceModel");
   }
@@ -289,31 +284,13 @@ export default function AssistantLauncher({
     const text = raw.trim();
     if (!text) return;
 
-    // optional moderation
-    try {
-      if (moderateAction) {
-        const mod = await moderateAction({ text });
-        if (mod?.flagged) {
-          pushMessage({
-            role: "assistant",
-            content:
-              "I can’t assist with that. If you’re ready, we can focus on your repair details.",
-          });
-          return;
-        }
-      }
-    } catch {}
-
+    // echo user sometimes to confirm we heard them
     pushMessage({ role: "user", content: text });
 
     switch (intakeState) {
       case "idle": {
         if (/^(start|hi|hello|yes|ready)/i.test(text)) startIntake();
-        else
-          pushMessage({
-            role: "assistant",
-            content: "Say **start** and I’ll begin your repair intake ✨",
-          });
+        else pushMessage({ role: "assistant", content: "Say **start** and I’ll guide your repair intake ✨" });
         break;
       }
 
@@ -321,14 +298,14 @@ export default function AssistantLauncher({
         if (!looksLikeFullModel(text)) {
           pushMessage({
             role: "assistant",
-            content: `I might need the exact model. ${hintForField("device")}`,
+            content: `I think we still need the exact model. ${hintForField("device")}`,
           });
           return;
         }
         setIntake((s: any) => ({ ...s, deviceAndModel: text }));
         pushMessage({
           role: "assistant",
-          content: `Got it — **${text}**. What’s the issue and the service you want? Here’s an example: “screen cracked (touch works)”.`,
+          content: `Got it — **${text}**. What’s the issue and service you want? Here’s an example: “Screen cracked (touch works)”.`,
         });
         setIntakeState("askIssue");
         break;
@@ -354,113 +331,91 @@ export default function AssistantLauncher({
         if (/^y(es)?$/i.test(text)) {
           pushMessage({
             role: "assistant",
-            content: "I’m finding the best parts and live pricing… 💫",
+            content: "Finding the best parts and live pricing… 💫",
             thinking: true,
           });
-          const q = `${intake.deviceAndModel ?? ""} ${
-            intake.service ?? ""
-          }`.trim();
 
-          const parts = await fetchPartsAndImages(q);
-          // clear thinking
-          setMessages((prev) =>
-            prev.map((m) => (m.thinking ? { ...m, thinking: false } : m))
-          );
+          const q = `${intake.deviceAndModel ?? ""} ${intake.service ?? ""}`.trim();
+          const results = await fetchPartsAndImages(q);
 
-          if (!parts || (!parts.recommended && !parts.alternative)) {
+          // stop thinking
+          setMessages((prev) => prev.map((m) => (m.thinking ? { ...m, thinking: false } : m)));
+
+          if (!results || (!results.recommended && !results.alternative)) {
             pushMessage({
               role: "assistant",
               content:
-                "I couldn’t load parts just now. We can try again, or I can note a manual estimate and keep you moving.",
+                "I couldn’t load parts right now. We can try again, or I can note a manual estimate and keep you moving.",
             });
             return;
           }
 
-          const bundle = [parts.recommended, parts.alternative].filter(
-            Boolean
-          ) as Part[];
+          const bundle = [results.recommended, results.alternative].filter(Boolean) as Part[];
           setLastParts(bundle);
 
-          // Emit UI control block for carousel
+          // emit carousel control block
           pushMessage({
             role: "assistant",
             content: JSON.stringify({
               type: "parts_suggestion",
               parts: bundle,
-              context: {
-                device: intake.deviceAndModel,
-                issue: intake.service,
-              },
+              context: { device: intake.deviceAndModel, issue: intake.service },
             }),
           });
 
           setIntakeState("done");
 
-          // Default to Premium after short grace if user doesn’t pick
+          // default to Premium after 10s if no selection
           setTimeout(() => {
-            if (!selectedPart && lastParts?.length) {
-              const premium =
-                lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
-              if (premium) {
-                pushMessage({
-                  role: "assistant",
-                  content:
-                    "I’ll proceed with the premium option for quality and longevity. If you prefer the economical option, just say so.",
-                });
-                void onApprovePart(premium);
-              }
-            }
+            if (selectedPartRef.current) return;
+            const lp = lastPartsRef.current;
+            if (!lp || !lp.length) return;
+            const premium = lp.find((p) => p.type === "Premium") ?? lp[0];
+            if (!premium) return;
+            pushMessage({
+              role: "assistant",
+              content:
+                "I’ll go with the premium option for quality and longevity. If you prefer the economical alternative, tell me and I’ll switch it.",
+            });
+            void onApprovePart(premium);
           }, 10000);
         } else if (/^edit/i.test(text)) {
-          pushMessage({
-            role: "assistant",
-            content:
-              "No problem — share the updated device + model or the corrected issue.",
-          });
+          pushMessage({ role: "assistant", content: "No problem — share the updated device + model or the corrected issue." });
           setIntakeState("askDeviceModel");
         } else {
-          pushMessage({
-            role: "assistant",
-            content: "Intake paused. Say **start** when you’re ready ✨",
-          });
+          pushMessage({ role: "assistant", content: "Intake paused. Say **start** when you’re ready ✨" });
           setIntakeState("idle");
         }
         break;
       }
 
       case "done": {
-        // typed approval: approve / approve premium / approve economical
-        const approveMatch = text.match(
-          /^approve(?:\s+(premium|economical|alt|eco))?$/i
-        );
+        // typed approval: approve / approve premium / approve economical|alt|eco
+        const approveMatch = text.match(/^approve(?:\s+(premium|economical|alt|eco))?$/i);
         if (approveMatch) {
           let choice = approveMatch[1]?.toLowerCase();
           let part: Part | null = null;
 
           if (lastParts && lastParts.length) {
             if (!choice) {
-              part =
-                lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
+              part = lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
             } else if (choice.includes("premium")) {
-              part =
-                lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
+              part = lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
             } else if (/(economical|eco|alt)/i.test(choice)) {
-              part =
-                lastParts.find((p) => p.type !== "Premium") ??
-                lastParts[lastParts.length - 1];
+              part = lastParts.find((p) => p.type !== "Premium") ?? lastParts[lastParts.length - 1];
             }
           }
 
           if (!part) {
             pushMessage({
               role: "assistant",
-              content:
-                "I don’t see any parts to approve. Say **start** to begin a new intake.",
+              content: "I don’t see any parts to approve. Say **start** to begin a new intake.",
             });
-          } else {
-            setSelectedPart(part);
-            await onApprovePart(part);
+            break;
           }
+
+          setSelectedPart(part);
+          await onApprovePart(part);
           break;
         }
 
@@ -478,19 +433,17 @@ export default function AssistantLauncher({
     }
   }
 
+  // Save invoice
   async function onApprovePart(part: Part) {
     const summary = intake.summary ?? {};
     const manufacturer = detectManufacturer(intake.deviceAndModel) ?? null;
     const quote = part.total ?? (part.partPrice ?? 0) + (part.labor ?? 100);
 
     const payload = {
-      ticketId:
-        summary.ID ?? `IC-${Date.now().toString().slice(-6)}`,
+      ticketId: summary.ID ?? `IC-${Date.now().toString().slice(-6)}`,
       description:
         summary.Description ??
-        `${intake.deviceAndModel ?? ""} — ${
-          intake.issue ?? intake.service ?? ""
-        }`,
+        `${intake.deviceAndModel ?? ""} — ${intake.issue ?? intake.service ?? ""}`,
       service: summary.Service ?? intake.service ?? "Repair",
       quote,
       status: "pending",
@@ -504,45 +457,35 @@ export default function AssistantLauncher({
       raw: { intake, part },
     };
 
-    pushMessage({
-      role: "assistant",
-      content: "Saving your intake — I’ve got everything lined up ✨",
-    });
+    pushMessage({ role: "assistant", content: "Saving your intake — almost done ✨" });
 
     try {
-      const res = await authedFetch(
-        "/api/portal/invoices",
-        { method: "POST", body: JSON.stringify(payload) },
-        { retryOnce: true } // parseJson optional
-      );
+      const res = await authedFetch("/api/portal/invoices", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
 
       if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        console.error("save invoice error:", errText || res.status);
-        pushMessage({
-          role: "assistant",
-          content:
-            "I couldn’t save that just now. I’ll keep your details ready and we can try again shortly.",
-        });
-        return;
+        const t = await res.text().catch(() => "");
+        throw new Error(t || `Save failed (HTTP ${res.status})`);
       }
 
       pushMessage({
         role: "assistant",
         content:
-          "✅ All set — your repair is queued under **Pending**. Thanks for choosing ETHUB — we’ll treat your device with care ✨",
+          "✅ All set — your repair is queued under **Pending**. We’ll take it from here and keep you updated. Thank you for choosing ETHUB ✨",
       });
     } catch (err) {
       console.error("save invoice error", err);
       pushMessage({
         role: "assistant",
         content:
-          "I wasn’t able to save that this moment. Your details are safe here — try again when you’re ready.",
+          "I couldn’t save that right now. Your details are safe here — we can retry in a moment.",
       });
     }
   }
 
-  // Render messages (carousel for parts JSON)
+  // Render messages (carousel for parts_suggestion)
   function renderMessage(
     m: { role: Role; content: string; thinking?: boolean },
     idx: number
@@ -565,15 +508,9 @@ export default function AssistantLauncher({
                   >
                     <div className="h-32 w-full grid place-items-center bg-gray-100 rounded">
                       {p.image ? (
-                        <img
-                          src={p.image}
-                          alt={p.title}
-                          className="h-28 object-contain"
-                        />
+                        <img src={p.image} alt={p.title} className="h-28 object-contain" />
                       ) : (
-                        <div className="text-xs text-muted-foreground">
-                          No image
-                        </div>
+                        <div className="text-xs text-muted-foreground">No image</div>
                       )}
                     </div>
                     <div className="mt-2 font-semibold text-sm">{p.title}</div>
@@ -582,16 +519,14 @@ export default function AssistantLauncher({
                     </div>
                     <div className="text-sm">
                       ${((p.partPrice ?? 0) + (p.labor ?? 100)).toFixed(2)}{" "}
-                      <span className="text-xs text-muted-foreground">
-                        (Part + Labor)
-                      </span>
+                      <span className="text-xs text-muted-foreground">(Part + Labor)</span>
                     </div>
                     <div className="mt-2 flex gap-2">
                       <Button
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           setSelectedPart(p);
-                          void onApprovePart(p);
+                          await onApprovePart(p);
                         }}
                       >
                         Select
@@ -613,14 +548,13 @@ export default function AssistantLauncher({
                       )}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      This part matches your repair and will be installed by a technician with care.
+                      This part matches your repair and will be installed with care.
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-2 text-xs">
-                You can also type <b>approve</b>, <b>approve premium</b>, or{" "}
-                <b>approve economical</b>.
+                You can also type <b>approve</b>, <b>approve premium</b>, or <b>approve economical</b>.
               </div>
             </div>
           );
@@ -646,6 +580,7 @@ export default function AssistantLauncher({
 
   if (!mounted) return null;
 
+  // Siri-like rainbow glow
   const rainbowStyle: React.CSSProperties = {
     background:
       "conic-gradient(from 0deg, #ff2d55, #ff9500, #ffcc00, #30d158, #5ac8fa, #5856d6, #ff2d55)",
@@ -708,21 +643,11 @@ export default function AssistantLauncher({
               <div className="flex items-center justify-between p-3 border-b">
                 <div className="flex items-center gap-2">
                   <div className="font-semibold">ETHUB Assistant</div>
-                  <div className="text-xs text-muted-foreground">
-                    Repair intake
-                  </div>
+                  <div className="text-xs text-muted-foreground">Repair intake</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setMuted(!muted)}
-                  >
-                    {muted ? (
-                      <MicOff className="h-5 w-5" />
-                    ) : (
-                      <Mic className="h-5 w-5" />
-                    )}
+                  <Button size="icon" variant="ghost" onClick={() => setMuted(!muted)}>
+                    {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </Button>
                   <Button
                     size="icon"
@@ -731,7 +656,7 @@ export default function AssistantLauncher({
                       setOpen(false);
                       clearConversation();
                     }}
-                    aria-label="Close"
+                    aria-label="Close assistant"
                   >
                     <X className="h-5 w-5" />
                   </Button>
@@ -741,8 +666,7 @@ export default function AssistantLauncher({
               <div className="max-h-[70vh] overflow-auto p-4 space-y-3">
                 {messages.length === 0 && (
                   <div className="text-sm text-muted-foreground">
-                    Say **start** to begin. I’ll prefill what I can when you’re
-                    signed in.
+                    Say **start** to begin. I’ll prefill what I can when you’re signed in.
                   </div>
                 )}
                 <div className="flex flex-col gap-3">
@@ -758,9 +682,7 @@ export default function AssistantLauncher({
                 className="p-4 border-t flex gap-2"
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  const input = e.currentTarget.querySelector(
-                    "input"
-                  ) as HTMLInputElement;
+                  const input = e.currentTarget.querySelector("input") as HTMLInputElement;
                   const val = input?.value?.trim() ?? "";
                   if (!val) return;
                   input.value = "";
