@@ -1,21 +1,23 @@
 // components/assistant-launcher.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Mic, MicOff, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { X, Mic, MicOff, Sparkles, Plus, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
-import { speakWithOpenAI } from "@/lib/tts";
-import { authedFetch } from "@/utils/authedFetch"; // <- token-safe fetch helper (no getToken import here)
-import { useMutation, useAction } from "convex/react";
+import { useUser, SignIn, SignUp } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { speakWithOpenAI } from "@/lib/tts";
+import { authedFetch } from "@/utils/authedFetch";
 
 type Role = "system" | "user" | "assistant";
-type IntakeState = "idle" | "askDeviceModel" | "askIssue" | "confirm" | "done";
+type IntakeState = "idle" | "askDeviceModel" | "askIssue" | "confirm" | "fetching" | "done";
 
 type Part = {
+  id?: string;
   title: string;
   device?: string;
   category?: string;
@@ -27,46 +29,33 @@ type Part = {
   image?: string;
   source?: string;
   createdAt?: number;
+  sku?: string;
 };
 
-const SYSTEM_PROMPT = {
-  role: "system" as const,
-  content:
-    "You are ETHUB Assistant, a friendly, patient receptionist. Guide users step-by-step: ask for device + exact model, issue, and desired service; confirm all details; fetch parts & pricing; present premium first, then economical. Keep language clear, kind, and professional with a touch of sparkle.",
-};
-
-export default function AssistantLauncher({
-  onAssistantMessage,
-}: {
-  onAssistantMessage?: (s: string) => void;
-}) {
+export default function AssistantLauncher() {
   const { user, isLoaded } = useUser();
+  const pathname = usePathname();
+  const afterUrl = useMemo(() => pathname || "/", [pathname]);
 
-  // Convex helpers (optional actions/mutations)
-  const cacheBundle = useMutation(api.parts.cacheBundle); // safe if you created it; otherwise remove
-  const moderateAction = useAction ? useAction(api.openai.moderate) : undefined;
+  const ingest = useAction(api.parts.ingestFromVendor);
 
-  // UI state
-  const [mounted, setMounted] = React.useState(false);
-  const [open, setOpen] = React.useState(false);
-  const [messages, setMessages] = React.useState<
-    Array<{ role: Role; content: string; thinking?: boolean }>
-  >([]);
-  const [busy, setBusy] = React.useState(false);
-  const [muted, setMuted] = React.useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Array<{ role: Role; content: string; thinking?: boolean }>>([]);
+  const [busy, setBusy] = useState(false);
+  const [muted, setMuted] = useState(false);
 
-  // intake state
-  const [intakeState, setIntakeState] = React.useState<IntakeState>("idle");
-  const [intake, setIntake] = React.useState<any>({});
-  const [lastParts, setLastParts] = React.useState<Part[] | null>(null);
-  const [selectedPart, setSelectedPart] = React.useState<Part | null>(null);
+  const [intakeState, setIntakeState] = useState<IntakeState>("idle");
+  const [intake, setIntake] = useState<any>({});
+  const [lastParts, setLastParts] = useState<Part[] | null>(null);
+  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
 
-  // TTS
-  const [ttsQueue, setTtsQueue] = React.useState<string[]>([]);
-  const [ttsPlaying, setTtsPlaying] = React.useState(false);
+  const [authOverlay, setAuthOverlay] = useState<"none" | "signin" | "signup">("none");
 
-  // mount guard (avoid duplicate portals in HMR)
-  React.useEffect(() => {
+  const [ttsQueue, setTtsQueue] = useState<string[]>([]);
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+
+  useEffect(() => {
     const key = "__ETHUB_ASSISTANT_LAUNCHER__";
     if ((window as any)[key]) return;
     (window as any)[key] = true;
@@ -76,8 +65,7 @@ export default function AssistantLauncher({
     };
   }, []);
 
-  // Prefill user info
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isLoaded || !user) return;
     setIntake((s: any) => ({
       ...s,
@@ -91,11 +79,11 @@ export default function AssistantLauncher({
         (user.primaryEmailAddress?.emailAddress ??
           user.emailAddresses?.[0]?.emailAddress),
       phone: s.phone ?? user.phoneNumbers?.[0]?.phoneNumber ?? undefined,
+      userId: user.id,
     }));
   }, [isLoaded, user]);
 
-  // TTS runner — speak only human-friendly content
-  React.useEffect(() => {
+  useEffect(() => {
     if (!ttsPlaying && ttsQueue.length > 0 && !muted) {
       const next = ttsQueue[0];
       const speakable = stripUnspeakable(next);
@@ -107,21 +95,16 @@ export default function AssistantLauncher({
             setTtsQueue((q) => q.slice(1));
             setTtsPlaying(false);
           });
-      } else {
-        setTtsQueue((q) => q.slice(1));
-      }
+      } else setTtsQueue((q) => q.slice(1));
     }
   }, [ttsQueue, ttsPlaying, muted]);
 
   function stripUnspeakable(text: string): string | null {
     try {
       JSON.parse(text);
-      return null; // UI control data — don’t TTS
+      return null;
     } catch {}
-    if (/https?:\/\//i.test(text)) {
-      const noUrls = text.replace(/https?:\/\/\S+/g, "").trim();
-      return noUrls || null;
-    }
+    if (/https?:\/\//i.test(text)) return text.replace(/https?:\/\/\S+/g, "").trim() || null;
     return text.trim() || null;
   }
 
@@ -132,366 +115,90 @@ export default function AssistantLauncher({
   function pushMessage(m: { role: Role; content: string; thinking?: boolean }) {
     setMessages((prev) => [...prev, m]);
     if (m.role === "assistant") enqueueTTS(m.content);
-    if (m.role === "assistant" && onAssistantMessage) {
-      try {
-        JSON.parse(m.content); // don’t forward JSON control blocks
-      } catch {
-        onAssistantMessage?.(m.content);
-      }
-    }
   }
 
-  function clearConversation(keepPrefill = true) {
+  function clearConversation() {
     setMessages([]);
-    setIntake(
-      keepPrefill
-        ? { name: intake.name, email: intake.email, phone: intake.phone }
-        : {}
-    );
     setIntakeState("idle");
     setLastParts(null);
     setSelectedPart(null);
   }
 
-  // Helpful nudges
-  function hintForField(field: "device" | "issue") {
-    if (field === "device")
-      return "The exact model is in Settings → About. If it’s tricky, share the brand and any letters/numbers you see.";
-    return 'Short and specific helps: “Screen cracked (touch works)”, “Battery drains fast”, or “Phone won’t boot”.';
-  }
-
   function looksLikeFullModel(text: string) {
     return (
-      /\b(iphone|ipad|macbook|galaxy|pixel|oneplus|motorola|xiaomi|nokia|surface|sony|htc)\b/i.test(
-        text
-      ) ||
+      /\b(iphone|ipad|macbook|galaxy|pixel|oneplus|motorola|xiaomi|nokia|surface|sony|htc)\b/i.test(text) ||
       /\b[A-Z]{1,3}\d{2,4}\b/.test(text) ||
       /\bSM-?\w+\b/i.test(text)
     );
   }
-
-  function detectManufacturer(model: string | undefined): string | null {
+  function detectManufacturer(model?: string) {
     if (!model) return null;
     const s = model.toLowerCase();
-    if (s.includes("iphone") || s.includes("ipad") || s.includes("mac"))
-      return "Apple";
-    if (s.includes("galaxy") || s.includes("sm-") || s.includes("samsung"))
-      return "Samsung";
+    if (s.includes("iphone") || s.includes("ipad") || s.includes("mac")) return "Apple";
+    if (s.includes("galaxy") || s.includes("sm-") || s.includes("samsung")) return "Samsung";
     if (s.includes("pixel")) return "Google";
     if (s.includes("oneplus")) return "OnePlus";
     if (s.includes("motorola") || s.includes("moto")) return "Motorola";
-    if (s.includes("xiaomi") || s.includes("mi") || s.includes("redmi"))
-      return "Xiaomi";
+    if (s.includes("xiaomi") || s.includes("mi") || s.includes("redmi")) return "Xiaomi";
     if (s.includes("nokia")) return "Nokia";
     if (s.includes("sony") || s.includes("xperia")) return "Sony";
     if (s.includes("surface") || s.includes("microsoft")) return "Microsoft";
     return null;
   }
 
-  // Fetch prices + images then cache bundle to Convex
-  async function fetchPartsAndImages(query: string) {
-    if (!query || query.trim().length < 3) return null;
+  async function saveIntakeDraft(extra?: Partial<{ status: string }>) {
+    const payload = {
+      customerName: intake.name ?? null,
+      contact: {
+        phone: intake.phone ?? null,
+        email: intake.email ?? null,
+        preferred: intake.phone ? "phone" : "email",
+      },
+      deviceModel: intake.deviceAndModel ?? null,
+      issueDescription: intake.issue ?? intake.service ?? null,
+      requestedService: intake.service ?? null,
+      notes: intake.notes ?? null,
+      status: extra?.status ?? "submitted",
+      manufacturer: detectManufacturer(intake.deviceAndModel),
+      userId: intake.userId ?? null,
+      createdAt: Date.now(),
+    };
     try {
-      const [pricesRes, imagesRes] = await Promise.all([
-        fetch(`/api/mobilesentrix/prices?query=${encodeURIComponent(query)}`, {
-          cache: "no-store",
-        }),
-        fetch(`/api/image-search?query=${encodeURIComponent(query)}&num=6`, {
-          cache: "no-store",
-        }),
-      ]);
-
-      let recommended: Part | null = null;
-      let alternative: Part | null = null;
-      let images: any[] = [];
-
-      if (pricesRes.ok) {
-        const pj = await pricesRes.json();
-        recommended = pj.recommended ?? null;
-        alternative = pj.alternative ?? null;
-      }
-
-      if (imagesRes.ok) {
-        const ij = await imagesRes.json();
-        images = ij.images ?? [];
-      }
-
-      // pick image heuristics
-      function imgFor(title?: string) {
-        if (!images?.length) return null;
-        if (!title) return images[0]?.url || images[0]?.link || null;
-        const lower = title.toLowerCase();
-        for (const im of images) {
-          const cand = im.url || im.link || im.thumbnail || im.image || im.src;
-          const meta = `${im.title ?? ""} ${im.alt ?? ""} ${
-            im.contextLink ?? ""
-          }`.toLowerCase();
-          if (meta.includes(lower)) return cand;
-        }
-        return images[0]?.url || images[0]?.link || null;
-      }
-
-      if (recommended) {
-        recommended = {
-          ...recommended,
-          type: recommended.type || "Premium",
-          eta: recommended.eta || "About 2 hours",
-          image: recommended.image || imgFor(recommended.title ?? query) || undefined,
-        };
-      }
-      if (alternative) {
-        alternative = {
-          ...alternative,
-          type: alternative.type || "Economical",
-          eta: alternative.eta || "About 2 hours",
-          image: alternative.image || imgFor(alternative.title ?? query) || undefined,
-        };
-      }
-
-      const parts: Part[] = [recommended, alternative].filter(Boolean) as Part[];
-
-      // Cache in Convex for future reuse (safe to ignore if not present)
-      if (parts.length || images.length) {
-        try {
-          await cacheBundle({ query, parts, images });
-        } catch (e) {
-          console.warn("cacheBundle failed", e);
-        }
-      }
-
-      return { recommended, alternative, images };
-    } catch (err) {
-      console.error("fetchPartsAndImages error:", err);
-      return null;
-    }
-  }
-
-  // FSM
-  function startIntake() {
-    if (!user) {
-      pushMessage({
-        role: "assistant",
-        content:
-          "Welcome to ETHUB — please sign in so I can prepare your repair intake.",
-      });
-      return;
-    }
-    pushMessage({
-      role: "assistant",
-      content: `✨ Hello ${
-        intake.name ?? "there"
-      } — I’m ETHUB’s Assistant. What’s the device name and exact model?`,
-    });
-    setIntakeState("askDeviceModel");
-  }
-
-  async function handleUserInput(raw: string) {
-    const text = raw.trim();
-    if (!text) return;
-
-    // optional moderation
-    try {
-      if (moderateAction) {
-        const mod = await moderateAction({ text });
-        if (mod?.flagged) {
-          pushMessage({
-            role: "assistant",
-            content:
-              "I can’t assist with that. If you’re ready, we can focus on your repair details.",
-          });
-          return;
-        }
-      }
+      await authedFetch("/api/portal/intake-drafts", { method: "POST", body: JSON.stringify(payload) }, { retryOnce: true });
     } catch {}
+    return payload;
+  }
 
-    pushMessage({ role: "user", content: text });
-
-    switch (intakeState) {
-      case "idle": {
-        if (/^(start|hi|hello|yes|ready)/i.test(text)) startIntake();
-        else
-          pushMessage({
-            role: "assistant",
-            content: "Say **start** and I’ll begin your repair intake ✨",
-          });
-        break;
-      }
-
-      case "askDeviceModel": {
-        if (!looksLikeFullModel(text)) {
-          pushMessage({
-            role: "assistant",
-            content: `I might need the exact model. ${hintForField("device")}`,
-          });
-          return;
-        }
-        setIntake((s: any) => ({ ...s, deviceAndModel: text }));
-        pushMessage({
-          role: "assistant",
-          content: `Got it — **${text}**. What’s the issue and the service you want? Here’s an example: “screen cracked (touch works)”.`,
-        });
-        setIntakeState("askIssue");
-        break;
-      }
-
-      case "askIssue": {
-        setIntake((s: any) => ({ ...s, issue: text, service: text }));
-        const summary = {
-          ID: `IC-${Date.now().toString().slice(-6)}`,
-          Description: `${intake.deviceAndModel ?? ""} — ${text}`,
-          Service: text,
-        };
-        setIntake((s: any) => ({ ...s, summary }));
-        pushMessage({
-          role: "assistant",
-          content: `Let’s confirm:\n• Device: ${intake.deviceAndModel}\n• Issue/Service: ${text}\n\nReply **yes** and I’ll check parts & pricing, or say **edit** to adjust.`,
-        });
-        setIntakeState("confirm");
-        break;
-      }
-
-      case "confirm": {
-        if (/^y(es)?$/i.test(text)) {
-          pushMessage({
-            role: "assistant",
-            content: "I’m finding the best parts and live pricing… 💫",
-            thinking: true,
-          });
-          const q = `${intake.deviceAndModel ?? ""} ${
-            intake.service ?? ""
-          }`.trim();
-
-          const parts = await fetchPartsAndImages(q);
-          // clear thinking
-          setMessages((prev) =>
-            prev.map((m) => (m.thinking ? { ...m, thinking: false } : m))
-          );
-
-          if (!parts || (!parts.recommended && !parts.alternative)) {
-            pushMessage({
-              role: "assistant",
-              content:
-                "I couldn’t load parts just now. We can try again, or I can note a manual estimate and keep you moving.",
-            });
-            return;
-          }
-
-          const bundle = [parts.recommended, parts.alternative].filter(
-            Boolean
-          ) as Part[];
-          setLastParts(bundle);
-
-          // Emit UI control block for carousel
-          pushMessage({
-            role: "assistant",
-            content: JSON.stringify({
-              type: "parts_suggestion",
-              parts: bundle,
-              context: {
-                device: intake.deviceAndModel,
-                issue: intake.service,
-              },
-            }),
-          });
-
-          setIntakeState("done");
-
-          // Default to Premium after short grace if user doesn’t pick
-          setTimeout(() => {
-            if (!selectedPart && lastParts?.length) {
-              const premium =
-                lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
-              if (premium) {
-                pushMessage({
-                  role: "assistant",
-                  content:
-                    "I’ll proceed with the premium option for quality and longevity. If you prefer the economical option, just say so.",
-                });
-                void onApprovePart(premium);
-              }
-            }
-          }, 10000);
-        } else if (/^edit/i.test(text)) {
-          pushMessage({
-            role: "assistant",
-            content:
-              "No problem — share the updated device + model or the corrected issue.",
-          });
-          setIntakeState("askDeviceModel");
-        } else {
-          pushMessage({
-            role: "assistant",
-            content: "Intake paused. Say **start** when you’re ready ✨",
-          });
-          setIntakeState("idle");
-        }
-        break;
-      }
-
-      case "done": {
-        // typed approval: approve / approve premium / approve economical
-        const approveMatch = text.match(
-          /^approve(?:\s+(premium|economical|alt|eco))?$/i
-        );
-        if (approveMatch) {
-          let choice = approveMatch[1]?.toLowerCase();
-          let part: Part | null = null;
-
-          if (lastParts && lastParts.length) {
-            if (!choice) {
-              part =
-                lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
-            } else if (choice.includes("premium")) {
-              part =
-                lastParts.find((p) => p.type === "Premium") ?? lastParts[0];
-            } else if (/(economical|eco|alt)/i.test(choice)) {
-              part =
-                lastParts.find((p) => p.type !== "Premium") ??
-                lastParts[lastParts.length - 1];
-            }
-          }
-
-          if (!part) {
-            pushMessage({
-              role: "assistant",
-              content:
-                "I don’t see any parts to approve. Say **start** to begin a new intake.",
-            });
-          } else {
-            setSelectedPart(part);
-            await onApprovePart(part);
-          }
-          break;
-        }
-
-        if (/^(start|new)/i.test(text)) {
-          clearConversation();
-        } else {
-          pushMessage({
-            role: "assistant",
-            content:
-              "Ready when you are. You can **approve**, **approve premium**, or **approve economical**. I’ll queue your repair as soon as you choose ✨",
-          });
-        }
-        break;
-      }
-    }
+  async function addToPartsCard(p: Part) {
+    const card = {
+      title: p.title,
+      device: intake.deviceAndModel ?? p.device ?? null,
+      category: p.category ?? null,
+      type: p.type ?? "Premium",
+      partPrice: p.partPrice ?? null,
+      labor: p.labor ?? 100,
+      total: p.total ?? (p.partPrice ?? 0) + (p.labor ?? 100),
+      image: p.image ?? null,
+      source: p.source ?? "MobileSentrix",
+      sku: p.sku ?? null,
+      createdAt: Date.now(),
+      userId: intake.userId ?? null,
+      notes: null,
+    };
+    try {
+      await authedFetch("/api/parts/card", { method: "POST", body: JSON.stringify(card) }, { retryOnce: true });
+    } catch {}
+    return card;
   }
 
   async function onApprovePart(part: Part) {
-    const summary = intake.summary ?? {};
-    const manufacturer = detectManufacturer(intake.deviceAndModel) ?? null;
+    const manufacturer = detectManufacturer(intake.deviceAndModel);
     const quote = part.total ?? (part.partPrice ?? 0) + (part.labor ?? 100);
 
     const payload = {
-      ticketId:
-        summary.ID ?? `IC-${Date.now().toString().slice(-6)}`,
-      description:
-        summary.Description ??
-        `${intake.deviceAndModel ?? ""} — ${
-          intake.issue ?? intake.service ?? ""
-        }`,
-      service: summary.Service ?? intake.service ?? "Repair",
+      ticketId: `IC-${Date.now().toString().slice(-6)}`,
+      description: `${intake.deviceAndModel ?? ""} — ${intake.issue ?? intake.service ?? ""}`,
+      service: intake.service ?? "Repair",
       quote,
       status: "pending",
       deposit: "$0.00",
@@ -501,54 +208,255 @@ export default function AssistantLauncher({
       name: intake.name ?? null,
       phone: intake.phone ?? null,
       createdAt: Date.now(),
-      raw: { intake, part },
+      selectedPart: {
+        id: part.id ?? crypto.randomUUID(),
+        title: part.title,
+        type: part.type ?? "Premium",
+        partPrice: part.partPrice ?? null,
+        labor: part.labor ?? 100,
+        total: part.total ?? (part.partPrice ?? 0) + (part.labor ?? 100),
+        image: part.image ?? null,
+        source: part.source ?? "MobileSentrix",
+        sku: part.sku ?? null,
+      },
+      partsOffered: lastParts ?? [],
+      raw: { intake },
     };
 
-    pushMessage({
-      role: "assistant",
-      content: "Saving your intake — I’ve got everything lined up ✨",
-    });
-
+    pushMessage({ role: "assistant", content: "Saving your intake…" });
     try {
-      const res = await authedFetch(
-        "/api/portal/invoices",
-        { method: "POST", body: JSON.stringify(payload) },
-        { retryOnce: true } // parseJson optional
-      );
-
+      const res = await authedFetch("/api/portal/invoices", { method: "POST", body: JSON.stringify(payload) }, { retryOnce: true });
       if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        console.error("save invoice error:", errText || res.status);
-        pushMessage({
-          role: "assistant",
-          content:
-            "I couldn’t save that just now. I’ll keep your details ready and we can try again shortly.",
-        });
+        pushMessage({ role: "assistant", content: "Couldn’t save right now. We’ll try again shortly." });
         return;
       }
-
-      pushMessage({
-        role: "assistant",
-        content:
-          "✅ All set — your repair is queued under **Pending**. Thanks for choosing ETHUB — we’ll treat your device with care ✨",
-      });
-    } catch (err) {
-      console.error("save invoice error", err);
-      pushMessage({
-        role: "assistant",
-        content:
-          "I wasn’t able to save that this moment. Your details are safe here — try again when you’re ready.",
-      });
+      pushMessage({ role: "assistant", content: "✅ Queued under Pending." });
+    } catch {
+      pushMessage({ role: "assistant", content: "Save failed. Details are cached here — retry when ready." });
     }
   }
 
-  // Render messages (carousel for parts JSON)
-  function renderMessage(
-    m: { role: Role; content: string; thinking?: boolean },
-    idx: number
-  ) {
-    if (m.role === "assistant") {
-      try {
+  function startIntake() {
+    if (!user) {
+      pushMessage({ role: "assistant", content: "Welcome to ETHUB — please sign in so I can prepare your repair intake." });
+      return;
+    }
+    pushMessage({ role: "assistant", content: `✨ Hello ${intake.name ?? "there"} — What’s the device name and exact model?` });
+    setIntakeState("askDeviceModel");
+  }
+
+  function pickByPreference(parts: Part[] | null, pref: "premium" | "economical") {
+    if (!parts?.length) return null;
+    const cmp = (p: Part) => (p.type || "").toLowerCase();
+    if (pref === "premium") return parts.find((p) => cmp(p).includes("premium")) ?? parts[0];
+    return parts.find((p) => cmp(p).includes("econom")) ?? parts[parts.length - 1];
+  }
+
+  async function handleUserInput(raw: string) {
+    const text = raw.trim();
+    if (!text) return;
+
+    pushMessage({ role: "user", content: text });
+
+    if (intakeState === "idle") {
+      if (/^(start|hi|hello|yes|ready)/i.test(text)) startIntake();
+      else pushMessage({ role: "assistant", content: "Say **start** and I’ll begin your repair intake ✨" });
+      return;
+    }
+
+    if (intakeState === "askDeviceModel") {
+      if (!looksLikeFullModel(text)) {
+        pushMessage({ role: "assistant", content: "I might need the exact model. The exact model is in Settings → About." });
+        return;
+      }
+      setIntake((s: any) => ({ ...s, deviceAndModel: text }));
+      pushMessage({ role: "assistant", content: `Got it — **${text}**. What’s the issue and the service you want? Example: “screen cracked (touch works)”.` });
+      setIntakeState("askIssue");
+      return;
+    }
+
+    if (intakeState === "askIssue") {
+      setIntake((s: any) => ({
+        ...s,
+        issue: text,
+        service: text,
+        summary: {
+          ID: `IC-${Date.now().toString().slice(-6)}`,
+          Description: `${intake.deviceAndModel ?? ""} — ${text}`,
+          Service: text,
+        },
+      }));
+      pushMessage({
+        role: "assistant",
+        content: `Let’s confirm:\n• Device: ${intake.deviceAndModel}\n• Issue/Service: ${text}\n\nReply **yes** and I’ll check parts & pricing, or say **edit** to adjust.`,
+      });
+      setIntakeState("confirm");
+      return;
+    }
+
+    if (intakeState === "confirm") {
+      if (/^y(es)?$/i.test(text)) {
+        await saveIntakeDraft({ status: "submitted" });
+        pushMessage({ role: "assistant", content: "I’m finding the best parts and live pricing… 💫", thinking: true });
+        setIntakeState("fetching");
+        try {
+          const res = await ingest({
+            deviceModel: String(intake.deviceAndModel || ""),
+            customerName: intake.name ?? "Walk-in",
+            issue: String(intake.issue || intake.service || "TBD"),
+            defaultLabor: 30,
+          });
+          setMessages((prev) => prev.map((m) => (m.thinking ? { ...m, thinking: false } : m)));
+          const parts = (res?.partsPreview ?? []).map((p: any) => ({
+            id: crypto.randomUUID(),
+            title: p.title,
+            device: p.device,
+            category: undefined,
+            partPrice: p.partPrice,
+            labor: p.labor,
+            total: p.total ?? ((p.partPrice ?? 0) + (p.labor ?? 0)),
+            type: (p.type as any) ?? "Premium",
+            eta: p.eta ?? "About 2 hours",
+            image: p.image,
+            source: p.source ?? "MobileSentrix",
+            createdAt: p.createdAt ?? Date.now(),
+            sku: undefined,
+          })) as Part[];
+
+          if (!parts.length) {
+            pushMessage({ role: "assistant", content: "No parts found right now. I can note a manual estimate and keep you moving." });
+            setIntakeState("done");
+            return;
+          }
+
+          setLastParts(parts);
+          pushMessage({
+            role: "assistant",
+            content: JSON.stringify({ type: "parts_suggestion", parts, context: { device: intake.deviceAndModel, issue: intake.service } }),
+          });
+          setIntakeState("done");
+        } catch {
+          setMessages((prev) => prev.map((m) => (m.thinking ? { ...m, thinking: false } : m)));
+          pushMessage({ role: "assistant", content: "Couldn’t reach live pricing. Try again or proceed with a manual estimate." });
+          setIntakeState("done");
+        }
+        return;
+      }
+
+      if (/^edit/i.test(text)) {
+        pushMessage({ role: "assistant", content: "No problem — share the updated device + model or the corrected issue." });
+        setIntakeState("askDeviceModel");
+        return;
+      }
+
+      pushMessage({ role: "assistant", content: "Intake paused. Say **start** when you’re ready ✨" });
+      setIntakeState("idle");
+      return;
+    }
+
+    if (intakeState === "done") {
+      if (/^(start|new)/i.test(text)) {
+        clearConversation();
+        return;
+      }
+      if (/^approve(\s+premium)?$/i.test(text)) {
+        const p = pickByPreference(lastParts, "premium");
+        if (p) {
+          setSelectedPart(p);
+          await onApprovePart(p);
+        } else {
+          pushMessage({ role: "assistant", content: "No premium option available." });
+        }
+        return;
+      }
+      if (/^approve\s+econom(ical)?$/i.test(text)) {
+        const p = pickByPreference(lastParts, "economical");
+        if (p) {
+          setSelectedPart(p);
+          await onApprovePart(p);
+        } else {
+          pushMessage({ role: "assistant", content: "No economical option available." });
+        }
+        return;
+      }
+      pushMessage({ role: "assistant", content: "Ready when you are. You can **approve**, **approve premium**, or **approve economical**." });
+      return;
+    }
+  }
+
+  const rainbowStyle: React.CSSProperties = {
+    background: "conic-gradient(from 0deg, #5AC8FA, #5856D6, #FF2D55, #FF9500, #FFCC00, #30D158, #5AC8FA)",
+    filter: "blur(10px)",
+    mixBlendMode: "screen",
+    pointerEvents: "none",
+  };
+
+  const LauncherBubble = (
+    <div className="fixed right-6 bottom-6 z-50">
+      <div className="relative h-24 w-24 flex items-center justify-center">
+        <motion.div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={rainbowStyle}
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
+        />
+        <motion.button
+          aria-label="Open Assistant"
+          onClick={() => {
+            setOpen(true);
+            if (messages.length === 0) {
+              pushMessage({ role: "assistant", content: "✨ Welcome — I’m ETHUB’s Assistant. Say **start** and I’ll take care of your repair intake." });
+            }
+          }}
+          className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center relative z-10"
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 1.03 }}
+        >
+          <Sparkles className="h-7 w-7 animate-pulse" />
+        </motion.button>
+      </div>
+    </div>
+  );
+
+  function GradientBorderButton({ label, onClick, ariaLabel }: { label: string; onClick: () => void; ariaLabel?: string }) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel ?? label}
+        className="relative w-full h-[48px] rounded-xl bg-neutral-950 text-white font-medium text-[14px] shadow-[0_2px_0_rgba(0,0,0,0.45)] hover:bg-neutral-900 active:translate-y-[0.5px] transition-colors overflow-hidden"
+      >
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-xl p-[3.5px]"
+          style={{
+            background: "linear-gradient(90deg, #ff2d55, #ff9500, #ffcc00, #30d158, #5ac8fa, #5856d6, #ff2d55)",
+            backgroundSize: "200% 100%",
+            WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor",
+            maskComposite: "exclude",
+            animation: "ethubRainbowSlide 3.8s linear infinite",
+          }}
+        />
+        <span
+          aria-hidden
+          className="absolute -inset-[10px] rounded-[16px] blur-[20px] opacity-60 pointer-events-none"
+          style={{
+            background: "linear-gradient(90deg, #ff2d55, #ff9500, #ffcc00, #30d158, #5ac8fa, #5856d6, #ff2d55)",
+            backgroundSize: "200% 100%",
+            animation: "ethubRainbowSlide 3.8s linear infinite",
+            mixBlendMode: "screen",
+          }}
+        />
+        <span className="relative z-10">{label}</span>
+        <ArrowRight className="h-[16px] w-[16px] relative z-10 ml-2" />
+      </button>
+    );
+  }
+
+  function renderMessage(m: { role: Role; content: string; thinking?: boolean }, idx: number) {
+    try {
+      if (m.role === "assistant") {
         const parsed = JSON.parse(m.content);
         if (parsed?.type === "parts_suggestion") {
           const parts: Part[] = parsed.parts ?? [];
@@ -559,134 +467,48 @@ export default function AssistantLauncher({
               </div>
               <div className="overflow-x-auto flex gap-4 snap-x pb-2">
                 {parts.map((p: Part, i: number) => (
-                  <div
-                    key={i}
-                    className="snap-center min-w-[280px] bg-white border rounded-xl shadow-sm p-3"
-                  >
+                  <div key={i} className="snap-center min-w-[280px] bg-white border rounded-xl shadow-sm p-3">
                     <div className="h-32 w-full grid place-items-center bg-gray-100 rounded">
-                      {p.image ? (
-                        <img
-                          src={p.image}
-                          alt={p.title}
-                          className="h-28 object-contain"
-                        />
-                      ) : (
-                        <div className="text-xs text-muted-foreground">
-                          No image
-                        </div>
-                      )}
+                      {p.image ? <img src={p.image} alt={p.title} className="h-28 object-contain" /> : <div className="text-xs text-muted-foreground">No image</div>}
                     </div>
                     <div className="mt-2 font-semibold text-sm">{p.title}</div>
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {p.eta || "About 2 hours"} • {p.type || "Premium"}
-                    </div>
+                    <div className="text-xs text-muted-foreground mb-1">{p.eta || "About 2 hours"} • {p.type || "Premium"}</div>
                     <div className="text-sm">
-                      ${((p.partPrice ?? 0) + (p.labor ?? 100)).toFixed(2)}{" "}
-                      <span className="text-xs text-muted-foreground">
-                        (Part + Labor)
-                      </span>
+                      ${((p.partPrice ?? 0) + (p.labor ?? 100)).toFixed(2)} <span className="text-xs text-muted-foreground">(Part + Labor)</span>
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedPart(p);
-                          void onApprovePart(p);
-                        }}
-                      >
-                        Select
+                      <Button size="sm" onClick={() => { setSelectedPart(p); void onApprovePart(p); }}>Select</Button>
+                      <Button size="sm" variant="outline" onClick={() => void addToPartsCard(p)}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> PartsCard
                       </Button>
-                      {p.type !== "Premium" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            pushMessage({
-                              role: "assistant",
-                              content:
-                                "Noted — if you change your mind, I can switch you to Premium anytime.",
-                            })
-                          }
-                        >
-                          Skip
-                        </Button>
-                      )}
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      This part matches your repair and will be installed by a technician with care.
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-2 text-xs">
-                You can also type <b>approve</b>, <b>approve premium</b>, or{" "}
-                <b>approve economical</b>.
-              </div>
+              <div className="mt-2 text-xs">Type <b>approve</b>, <b>approve premium</b>, or <b>approve economical</b>.</div>
             </div>
           );
         }
-      } catch {
-        // not JSON, fall through
       }
-    }
+    } catch {}
 
     return (
       <div
         key={idx}
-        className={`${
-          m.role === "assistant"
-            ? "bg-blue-50 text-gray-900 self-start"
-            : "bg-gray-200 text-gray-800 self-end"
-        } rounded-xl px-3 py-2 shadow-sm max-w-[80%] whitespace-pre-line`}
+        className={`${m.role === "assistant" ? "bg-blue-50 text-gray-900 self-start" : "bg-gray-200 text-gray-800 self-end"} rounded-xl px-3 py-2 shadow-sm max-w-[80%] whitespace-pre-line`}
       >
-        {m.content}
+        {m.thinking ? "…" : m.content}
       </div>
     );
   }
 
   if (!mounted) return null;
 
-  const rainbowStyle: React.CSSProperties = {
-    background:
-      "conic-gradient(from 0deg, #ff2d55, #ff9500, #ffcc00, #30d158, #5ac8fa, #5856d6, #ff2d55)",
-    filter: "blur(10px)",
-    mixBlendMode: "screen",
-    pointerEvents: "none",
-  };
+  const needsAuth = !user && messages.some((m) => m.role === "assistant" && /please sign in/i.test(m.content));
 
   return (
     <>
-      {ReactDOM.createPortal(
-        <div className="fixed right-6 bottom-6 z-50">
-          <div className="relative h-24 w-24 flex items-center justify-center">
-            <motion.div
-              className="absolute inset-0 rounded-full pointer-events-none"
-              style={rainbowStyle}
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
-            />
-            <motion.button
-              aria-label="Open Assistant"
-              onClick={() => {
-                setOpen(true);
-                if (messages.length === 0) {
-                  pushMessage({
-                    role: "assistant",
-                    content:
-                      "✨ Welcome — I’m ETHUB’s Assistant. Say **start** and I’ll take care of your repair intake.",
-                  });
-                }
-              }}
-              className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-2xl grid place-items-center relative z-10"
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 1.03 }}
-            >
-              <Sparkles className="h-7 w-7 animate-pulse" />
-            </motion.button>
-          </div>
-        </div>,
-        document.body
-      )}
+      {ReactDOM.createPortal(LauncherBubble, document.body)}
 
       <AnimatePresence>
         {open && (
@@ -708,49 +530,34 @@ export default function AssistantLauncher({
               <div className="flex items-center justify-between p-3 border-b">
                 <div className="flex items-center gap-2">
                   <div className="font-semibold">ETHUB Assistant</div>
-                  <div className="text-xs text-muted-foreground">
-                    Repair intake
-                  </div>
+                  <div className="text-xs text-muted-foreground">Repair intake</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setMuted(!muted)}
-                  >
-                    {muted ? (
-                      <MicOff className="h-5 w-5" />
-                    ) : (
-                      <Mic className="h-5 w-5" />
-                    )}
+                  <Button size="icon" variant="ghost" onClick={() => setMuted(!muted)} aria-label={muted ? "Unmute" : "Mute"}>
+                    {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => {
-                      setOpen(false);
-                      clearConversation();
-                    }}
-                    aria-label="Close"
-                  >
+                  <Button size="icon" variant="ghost" onClick={() => { setOpen(false); clearConversation(); }} aria-label="Close">
                     <X className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
 
               <div className="max-h-[70vh] overflow-auto p-4 space-y-3">
-                {messages.length === 0 && (
-                  <div className="text-sm text-muted-foreground">
-                    Say **start** to begin. I’ll prefill what I can when you’re
-                    signed in.
-                  </div>
-                )}
+                {messages.length === 0 && <div className="text-sm text-muted-foreground">Say <b>start</b> to begin. I’ll prefill what I can when you’re signed in.</div>}
                 <div className="flex flex-col gap-3">
                   {messages.map((m, i) => (
-                    <div key={i} className="flex">
-                      {renderMessage(m, i)}
-                    </div>
+                    <div key={i} className="flex">{renderMessage(m, i)}</div>
                   ))}
+
+                  {!user && (
+                    <div className="self-start rounded-2xl border bg-white/80 p-3 shadow-sm backdrop-blur-sm w-[min(640px,100%)]">
+                      <div className="text-[13px] text-neutral-800 mb-2">Sign in to use chat.</div>
+                      <div className="flex flex-col gap-2">
+                        <GradientBorderButton label="Sign in" onClick={() => setAuthOverlay("signin")} />
+                        <GradientBorderButton label="Sign up" onClick={() => setAuthOverlay("signup")} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -758,29 +565,47 @@ export default function AssistantLauncher({
                 className="p-4 border-t flex gap-2"
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  const input = e.currentTarget.querySelector(
-                    "input"
-                  ) as HTMLInputElement;
+                  const input = e.currentTarget.querySelector("input") as HTMLInputElement;
                   const val = input?.value?.trim() ?? "";
                   if (!val) return;
+                  setBusy(true);
                   input.value = "";
                   await handleUserInput(val);
+                  setBusy(false);
                 }}
               >
-                <input
-                  name="assistantInput"
-                  placeholder="Type here…"
-                  className="flex-1 rounded-md border px-3 py-2"
-                  disabled={busy}
-                />
-                <Button type="submit" disabled={busy || !isLoaded}>
-                  {busy ? "…" : "Send"}
-                </Button>
+                <input name="assistantInput" placeholder="Type here…" className="flex-1 rounded-md border px-3 py-2" disabled={busy} />
+                <Button type="submit" disabled={busy || !isLoaded}>{busy ? "…" : "Send"}</Button>
               </form>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {authOverlay !== "none" && (
+        <div className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setAuthOverlay("none")}>
+          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-neutral-950 text-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-3 border-b border-white/10">
+              <div className="text-white/90 text-sm font-semibold">{authOverlay === "signin" ? "Login" : "Create your account"}</div>
+              <button onClick={() => setAuthOverlay("none")} className="text-white/70 hover:text-white" aria-label="Close">×</button>
+            </div>
+            <div className="p-3">
+              {authOverlay === "signin" ? (
+                <SignIn routing="hash" afterSignInUrl={afterUrl} fallbackRedirectUrl={afterUrl} appearance={{ elements: { card: "bg-neutral-950", headerTitle: "text-white", headerSubtitle: "text-white/70", formFieldInput: "bg-neutral-900 border-white/15 text-white placeholder:text-white/40", formButtonPrimary: "bg-white text-black hover:bg-white/90 rounded-lg" }, layout: { socialButtonsPlacement: "bottom" } }} />
+              ) : (
+                <SignUp routing="hash" afterSignUpUrl={afterUrl} fallbackRedirectUrl={afterUrl} appearance={{ elements: { card: "bg-neutral-950", headerTitle: "text-white", headerSubtitle: "text-white/70", formFieldInput: "bg-neutral-900 border-white/15 text-white placeholder:text-white/40", formButtonPrimary: "bg-white text-black hover:bg-white/90 rounded-lg" }, layout: { socialButtonsPlacement: "bottom" } }} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        @keyframes ethubRainbowSlide {
+          0% { background-position: 0% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
     </>
   );
 }

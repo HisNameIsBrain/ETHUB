@@ -1,53 +1,90 @@
+// app/api/mobilesentrix/prices/route.ts
 import { NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api"; // <-- NAMED import (not default)
+import { api } from "@/convex/_generated/api";
+import { ConvexReactClient } from "convex/react"; // for serverless, prefer HTTP client
+import { ConvexHttpClient } from "convex/browser"; // works in Next server runtime too
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function getEnv(name: string) {
+  const v = process.env[name];
+  return v && v.trim().length ? v.trim() : undefined;
+}
+
+function normalize(query: string, vendorItems: any[]): any[] {
+  // Map whatever vendor returns to your card model
+  return (vendorItems ?? []).map((it) => {
+    const part = Number(it?.price ?? it?.partPrice ?? 0) || undefined;
+    const labor = Number(it?.labor ?? 0) || undefined;
+    const total = typeof part === "number" && typeof labor === "number" ? part + labor : part ?? labor ?? undefined;
+
+    return {
+      query,
+      title: String(it?.title ?? it?.name ?? "Part"),
+      device: it?.device ?? undefined,
+      partPrice: part,
+      labor,
+      total,
+      type: it?.tier ?? it?.type ?? undefined,          // e.g., "Premium"/"Economical"
+      eta: it?.eta ?? it?.installTime ?? undefined,     // e.g., "≈ 2 hours install"
+      image: it?.image ?? it?.img ?? undefined,
+      source: "MobileSentrix",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  });
+}
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const query = searchParams.get("query") ?? "";
+  const url = new URL(req.url);
+  const query = url.searchParams.get("query")?.trim();
+  if (!query) return NextResponse.json({ error: "Missing `query`" }, { status: 400 });
 
+  const upstreamUrl = getEnv("MS_UPSTREAM_URL");
+  const upstreamKey = getEnv("MS_UPSTREAM_KEY");
 
-  // 1) Try upstream (if configured)
+  // Default: empty results but not a 500
+  let results: any[] = [];
+
   if (upstreamUrl && upstreamKey) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 8000);
     try {
       const r = await fetch(`${upstreamUrl}?q=${encodeURIComponent(query)}`, {
         headers: { Authorization: `Bearer ${upstreamKey}`, Accept: "application/json" },
         cache: "no-store",
+        signal: controller.signal,
       });
+      clearTimeout(t);
       if (r.ok) {
         const data = await r.json();
-        return NextResponse.json(data);
+        const vendorItems = Array.isArray((data as any)?.results) ? (data as any).results : Array.isArray(data) ? data : [];
+        results = normalize(query, vendorItems);
+      } else {
+        results = [];
       }
-      // Log upstream error body for diagnostics
-      const body = await r.text().catch(() => "");
-      console.warn("Mobilesentrix upstream not OK:", r.status, body);
-    } catch (e) {
-      console.warn("Mobilesentrix upstream fetch failed:", e);
+    } catch {
+      // keep results = []
     }
   }
 
-  // 2) Fallback to Convex dummy/seed data
+  // Optional: cache in Convex if you have a server key, otherwise skip
   try {
-    if (!convex) throw new Error("Convex client is not initialized.");
-    if (!api?.parts?.search) {
-      // This happens if you didn’t run `npx convex dev` or haven’t deployed the new function.
-      throw new Error(
-        "Convex API missing parts.search — run `npx convex dev` to regenerate `_generated/api` and `npx convex deploy`."
-      );
+    const convexUrl = getEnv("CONVEX_URL");
+    const adminKey = getEnv("CONVEX_ADMIN_KEY"); // server-only
+    if (convexUrl && adminKey && results.length) {
+      const convex = new ConvexHttpClient(convexUrl, { adminAuth: adminKey });
+      await convex.mutation(api.parts.cacheBundle, {
+        query,
+        results,
+        images: [],
+      });
     }
-
-    const { results } = await convex.query(api.parts.search, { query });
-    const [recommended, alternative] = results;
-    return NextResponse.json({
-      recommended: recommended ?? null,
-      alternative: alternative ?? null,
-      results,
-    });
-  } catch (err) {
-    console.error("fallback convex error", err);
-    // Still return 200 with empty data so UI doesn’t explode
-    return NextResponse.json({ recommended: null, alternative: null, results: [] });
+  } catch {
+    // non-fatal
   }
+
+  return NextResponse.json({ ok: true, query, results }, { status: 200 });
 }

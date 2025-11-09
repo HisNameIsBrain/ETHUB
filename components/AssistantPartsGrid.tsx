@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 type Part = {
@@ -9,7 +10,7 @@ type Part = {
   category: string;
   partPrice: number;
   labor: number;
-  total: number;
+  total?: number;
   image?: string;
   source?: string;
 };
@@ -28,8 +29,12 @@ export default function AssistantPartsGrid({
   React.useEffect(() => {
     let mounted = true;
     async function run() {
-      if (!query) { setParts([]); return; }
-      setLoading(true); setError(null);
+      if (!query) {
+        setParts([]);
+        return;
+      }
+      setLoading(true);
+      setError(null);
       try {
         const res = await fetch(`/api/parts?query=${encodeURIComponent(query)}`, { cache: "no-store" });
         if (!res.ok) throw new Error(await res.text());
@@ -44,7 +49,9 @@ export default function AssistantPartsGrid({
       }
     }
     run();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [query]);
 
   if (!query) return <div className="text-sm text-muted-foreground">Provide a device & service above to fetch parts.</div>;
@@ -53,25 +60,52 @@ export default function AssistantPartsGrid({
   if (parts.length === 0) return <div className="text-sm text-muted-foreground">No parts found for “{query}”.</div>;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {parts.map((p, i) => (
-        <div key={(p as any)._id ?? `${p.title}-${i}`} className="border rounded-lg p-3">
-          {p.image ? (
-            <img src={p.image} alt={p.title} className="h-24 w-full object-cover rounded" />
-          ) : (
-            <div className="h-24 w-full bg-gray-100 rounded" />
-          )}
-          <div className="mt-2 text-sm font-medium">{p.title}</div>
-          <div className="text-xs text-muted-foreground">{p.device} • {p.category}</div>
-          <div className="mt-2 text-sm">
-            Part: ${p.partPrice.toFixed(2)} • Labor: ${p.labor.toFixed(2)}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {parts.map((p, i) => {
+        const key = p._id ?? `${p.title}-${i}`;
+        const total = typeof p.total === "number" ? p.total : (Number(p.partPrice || 0) + Number(p.labor || 0));
+        const schemaHref = p._id
+          ? `/schema/parts/${encodeURIComponent(p._id)}`
+          : `/schema/parts/new?title=${encodeURIComponent(p.title)}&device=${encodeURIComponent(
+              p.device
+            )}&category=${encodeURIComponent(p.category)}`;
+
+        return (
+          <div key={key} className="rounded-lg border p-3">
+            {p.image ? (
+              <img src={p.image} alt={p.title} className="h-24 w-full rounded object-cover" />
+            ) : (
+              <div className="h-24 w-full rounded bg-muted" />
+            )}
+
+            <div className="mt-2 text-sm font-medium">{p.title}</div>
+            <div className="text-xs text-muted-foreground">
+              {p.device} • {p.category}
+            </div>
+
+            <div className="mt-2 text-sm">
+              Part: ${Number(p.partPrice || 0).toFixed(2)} • Labor: ${Number(p.labor || 0).toFixed(2)}
+            </div>
+            <div className="font-semibold">${total.toFixed(2)}</div>
+
+            <div className="mt-2 flex items-center gap-2">
+              <Button size="sm" onClick={() => onApprove({ ...p, total })}>
+                Approve
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={schemaHref}>Edit schema</Link>
+              </Button>
+              {p.source ? (
+                <Button size="sm" variant="ghost" asChild>
+                  <a href={p.source} target="_blank" rel="noreferrer">
+                    Source
+                  </a>
+                </Button>
+              ) : null}
+            </div>
           </div>
-          <div className="font-semibold">${p.total.toFixed(2)}</div>
-          <div className="mt-2">
-            <Button size="sm" onClick={() => onApprove(p)}>Approve</Button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -1,3 +1,8 @@
+.siri-thin-glow-invert{position:relative;isolation:isolate;border-color:transparent!important}
+.siri-thin-glow-invert::before{content:"";position:absolute;inset:-1.5px;border-radius:inherit;background:conic-gradient(from 180deg,#7cf 0deg,#9f7fff 90deg,#ff7de9 180deg,#ffb86b 270deg,#7cf 360deg);filter:blur(6px) saturate(120%);opacity:.65;z-index:-1}
+.siri-thin-glow-invert:hover::before{opacity:.9}
+.dark .siri-thin-glow-invert::before{opacity:.55}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
