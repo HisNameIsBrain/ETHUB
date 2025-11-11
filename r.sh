@@ -1,178 +1,308 @@
-cd /root/AI/ETHUB
+#!/usr/bin/env bash
+set -euo pipefail
 
-cat > convex/seed.ts <<'TS'
-import { mutation } from "./_generated/server";
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONVEX_DIR="$ROOT/convex"
+
+mkdir -p "$CONVEX_DIR"
+
+cat > "$CONVEX_DIR/mcJourneys.ts" <<'EOF'
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const insertInventoryPart = mutation({
-  args: v.object({
+export const getPublishedList = query({
+  args: {},
+  handler: async (ctx) => {
+    const journeys = await ctx.db
+      .query("mcJourneys")
+      .withIndex("by_published", (q) => q.eq("isPublished", true))
+      .order("asc")
+      .collect();
+
+    return journeys;
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const [journey] = await ctx.db
+      .query("mcJourneys")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .take(1);
+
+    return journey ?? null;
+  },
+});
+
+export const create = mutation({
+  args: {
+    userId: v.string(),
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.optional(v.string()),
+    content: v.optional(v.string()),
+    year: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    return await ctx.db.insert("mcJourneys", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("mcJourneys"),
+    title: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    content: v.optional(v.string()),
+    year: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return;
+    await ctx.db.patch(id, { ...patch, updatedAt: Date.now() });
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("mcJourneys") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+EOF
+
+cat > "$CONVEX_DIR/mcServerPlans.ts" <<'EOF'
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const getAllPublic = query({
+  args: {},
+  handler: async (ctx) => {
+    const plans = await ctx.db
+      .query("mcServerPlans")
+      .order("asc")
+      .collect();
+
+    return plans;
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const [plan] = await ctx.db
+      .query("mcServerPlans")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .take(1);
+
+    return plan ?? null;
+  },
+});
+
+export const create = mutation({
+  args: {
+    slug: v.string(),
     name: v.string(),
-    device: v.optional(v.string()),
-    category: v.optional(v.string()),
-    compatibleModels: v.optional(v.array(v.string())),
-    condition: v.optional(v.string()),
-    cost: v.optional(v.number()),
-    price: v.optional(v.number()),
-    currency: v.optional(v.string()),
-    sku: v.optional(v.string()),
-    vendor: v.optional(v.string()),
-    vendorSku: v.optional(v.string()),
-    stock: v.optional(v.number()),
-    tags: v.optional(v.array(v.string())),
-    metadata: v.optional(
-      v.object({
-        category: v.optional(v.string()),
-        device: v.optional(v.string()),
-        notes: v.optional(v.string()),
-        originalCondition: v.optional(v.string()),
-        partNumber: v.optional(v.string()),
-        source: v.optional(v.string()),
-        vendorSku: v.optional(v.string()),
-      })
-    ),
-    createdBy: v.optional(v.string()),
-    updatedBy: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
-  handler: async (ctx, args) => ctx.db.insert("inventoryParts", args),
-});
-
-export const addPartsDoc = mutation({
-  args: v.object({
-    parts: v.array(
-      v.object({
-        query: v.optional(v.string()),
-        title: v.string(),
-        device: v.optional(v.string()),
-        partPrice: v.optional(v.number()),
-        labor: v.optional(v.number()),
-        total: v.optional(v.number()),
-        type: v.optional(v.string()),
-        eta: v.optional(v.string()),
-        image: v.optional(v.string()),
-        source: v.optional(v.string()),
-        createdAt: v.optional(v.number()),
-        updatedAt: v.number(),
-      })
-    ),
-    images: v.array(
-      v.object({
-        url: v.optional(v.string()),
-        title: v.optional(v.string()),
-        link: v.optional(v.string()),
-        mime: v.optional(v.string()),
-        thumbnail: v.optional(v.string()),
-        contextLink: v.optional(v.string()),
-        alt: v.optional(v.string()),
-      })
-    ),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  }),
-  handler: async (ctx, args) => ctx.db.insert("parts", args),
-});
-
-export const insertIntakeDraft = mutation({
-  args: v.object({
-    customerName: v.string(),
-    contact: v.object({
-      phone: v.optional(v.string()),
-      email: v.optional(v.string()),
-      preferred: v.optional(v.union(v.literal("phone"), v.literal("email"))),
-    }),
-    deviceModel: v.string(),
-    issueDescription: v.string(),
-    requestedService: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    status: v.optional(
-      v.union(v.literal("draft"), v.literal("submitted"), v.literal("cancelled"))
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    createdBy: v.optional(v.string()),
-    updatedBy: v.optional(v.string()),
-  }),
-  handler: async (ctx, args) => ctx.db.insert("intakeDrafts", args),
-});
-
-export const insertInvoice = mutation({
-  args: v.object({
-    ticketId: v.string(),
-    name: v.union(v.string(), v.null()),
-    email: v.union(v.string(), v.null()),
-    phone: v.union(v.string(), v.null()),
-    manufacturer: v.union(v.string(), v.null()),
-    description: v.string(),
-    quote: v.union(v.number(), v.null()),
-    deposit: v.string(),
-    service: v.string(),
-    warrantyAcknowledged: v.boolean(),
-    raw: v.any(),
-    status: v.string(),
-    createdAt: v.number(),
-  }),
-  handler: async (ctx, args) => ctx.db.insert("invoices", args),
-});
-
-export const clearInventoryParts = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const cur = ctx.db.query("inventoryParts");
-    for await (const d of cur) await ctx.db.delete(d._id);
-    return { ok: true };
+    shortTag: v.optional(v.string()),
+    description: v.optional(v.string()),
+    specs: v.optional(v.string()),
+    maxPlayers: v.optional(v.number()),
+    ramGb: v.optional(v.number()),
+    storageGb: v.optional(v.number()),
+    monthlyPriceUsd: v.optional(v.number()),
+    isFeatured: v.optional(v.boolean()),
+    sortIndex: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    return await ctx.db.insert("mcServerPlans", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
-export const clearPartsDocs = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const cur = ctx.db.query("parts");
-    for await (const d of cur) await ctx.db.delete(d._id);
-    return { ok: true };
+export const update = mutation({
+  args: {
+    id: v.id("mcServerPlans"),
+    name: v.optional(v.string()),
+    shortTag: v.optional(v.string()),
+    description: v.optional(v.string()),
+    specs: v.optional(v.string()),
+    maxPlayers: v.optional(v.number()),
+    ramGb: v.optional(v.number()),
+    storageGb: v.optional(v.number()),
+    monthlyPriceUsd: v.optional(v.number()),
+    isFeatured: v.optional(v.boolean()),
+    sortIndex: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return;
+    await ctx.db.patch(id, { ...patch, updatedAt: Date.now() });
   },
 });
 
-export const clearIntakeDrafts = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const cur = ctx.db.query("intakeDrafts");
-    for await (const d of cur) await ctx.db.delete(d._id);
-    return { ok: true };
+export const remove = mutation({
+  args: { id: v.id("mcServerPlans") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+EOF
+
+cat > "$CONVEX_DIR/mcButtons.ts" <<'EOF'
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const getByGroup = query({
+  args: { group: v.string() },
+  handler: async (ctx, { group }) => {
+    const buttons = await ctx.db
+      .query("mcButtons")
+      .withIndex("by_group", (q) => q.eq("group", group))
+      .order("asc")
+      .collect();
+
+    return buttons;
   },
 });
 
-export const clearInvoices = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const cur = ctx.db.query("invoices");
-    for await (const d of cur) await ctx.db.delete(d._id);
-    return { ok: true };
+export const create = mutation({
+  args: {
+    key: v.string(),
+    label: v.string(),
+    href: v.string(),
+    variant: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    group: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    return await ctx.db.insert("mcButtons", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
-export const clearAllSeedData = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await Promise.all([
-      (async () => {
-        const cur = ctx.db.query("inventoryParts");
-        for await (const d of cur) await ctx.db.delete(d._id);
-      })(),
-      (async () => {
-        const cur = ctx.db.query("parts");
-        for await (const d of cur) await ctx.db.delete(d._id);
-      })(),
-      (async () => {
-        const cur = ctx.db.query("intakeDrafts");
-        for await (const d of cur) await ctx.db.delete(d._id);
-      })(),
-      (async () => {
-        const cur = ctx.db.query("invoices");
-        for await (const d of cur) await ctx.db.delete(d._id);
-      })(),
-    ]);
-    return { ok: true };
+export const update = mutation({
+  args: {
+    id: v.id("mcButtons"),
+    label: v.optional(v.string()),
+    href: v.optional(v.string()),
+    variant: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    group: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return;
+    await ctx.db.patch(id, { ...patch, updatedAt: Date.now() });
   },
 });
-TS
+
+export const remove = mutation({
+  args: { id: v.id("mcButtons") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+EOF
+
+cat > "$CONVEX_DIR/mcButtonClicks.ts" <<'EOF'
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+
+export const logClick = action({
+  args: {
+    buttonKey: v.string(),
+    path: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.any())),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.insert("mcButtonClicks", {
+      ...args,
+      createdAt: now,
+    });
+  },
+});
+EOF
+
+cat > "$CONVEX_DIR/mcTimelineEvents.ts" <<'EOF'
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const getPublicTimeline = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const events = await ctx.db
+      .query("mcTimelineEvents")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("asc")
+      .collect();
+
+    return events;
+  },
+});
+
+export const create = mutation({
+  args: {
+    userId: v.string(),
+    year: v.string(),
+    title: v.string(),
+    body: v.string(),
+    tweetUrl: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    return await ctx.db.insert("mcTimelineEvents", {
+      ...args,
+      createdAt: now,
+    });
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("mcTimelineEvents"),
+    year: v.optional(v.string()),
+    title: v.optional(v.string()),
+    body: v.optional(v.string()),
+    tweetUrl: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return;
+    await ctx.db.patch(id, patch);
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("mcTimelineEvents") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+EOF
+
+echo "mc* Convex function files created in $CONVEX_DIR"

@@ -3,6 +3,105 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+
+  mcJourneys: defineTable({
+    userId: v.string(),
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.optional(v.string()),
+    content: v.optional(v.string()),
+    year: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_slug", ["slug"])
+    .index("by_published", ["isPublished", "sortIndex"]),
+
+  mcServerPlans: defineTable({
+    slug: v.string(),
+    name: v.string(),
+    shortTag: v.optional(v.string()),
+    description: v.optional(v.string()),
+    specs: v.optional(v.string()),
+    maxPlayers: v.optional(v.number()),
+    ramGb: v.optional(v.number()),
+    storageGb: v.optional(v.number()),
+    monthlyPriceUsd: v.optional(v.number()),
+    isFeatured: v.optional(v.boolean()),
+    sortIndex: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_featured", ["isFeatured", "sortIndex"]),
+
+  mcButtons: defineTable({
+    key: v.string(), // e.g. "launch_realm", "read_journey"
+    label: v.string(),
+    href: v.string(),
+    variant: v.optional(v.string()), // "primary" | "outline" | etc
+    icon: v.optional(v.string()), // optional icon name
+    group: v.optional(v.string()), // e.g. "hero", "footer"
+    sortIndex: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  }).index("by_group", ["group", "sortIndex"]),
+
+  mcButtonClicks: defineTable({
+    buttonKey: v.string(),
+    userId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    path: v.optional(v.string()),
+    createdAt: v.number(),
+    metadata: v.optional(v.record(v.string(), v.any())),
+  }).index("by_button", ["buttonKey", "createdAt"]),
+
+  mcTimelineEvents: defineTable({
+    userId: v.string(),
+    year: v.string(),
+    title: v.string(),
+    body: v.string(),
+    tweetUrl: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+  }).index("by_user", ["userId", "sortIndex"]),
+  minecraftPrograms: defineTable({
+    name: v.string(),
+    description: v.string(),
+    tag: v.optional(v.string()),
+    isActive: v.boolean(),
+    sortOrder: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_isActive", ["isActive"]),
+  minecraftServers: defineTable({
+    name: v.string(),
+    type: v.union(v.literal("bedrock"), v.literal("java")),
+    status: v.union(
+      v.literal("offline"),
+      v.literal("online"),
+      v.literal("maintenance"),
+      v.literal("planned")
+    ),
+    region: v.optional(v.string()),
+    maxPlayers: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    ownerUserId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status", ["status"]),
+
+  minecraftJournalEntries: defineTable({
+    title: v.string(),
+    body: v.string(),
+    dateLabel: v.string(),
+    isPublic: v.boolean(),
+    createdAt: v.number(),
+  })
+.index("by_createdAt", ["createdAt"]),
+
   documents: defineTable({
     title: v.string(),
     content: v.optional(v.string()),
@@ -23,7 +122,8 @@ export default defineSchema({
     isPublished: v.optional(v.boolean()),
   })
     .index("by_parent", ["parentDocument"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_updatedAt", ["updatedAt"]),
 
   propertySchemas: defineTable({
     name: v.string(),
@@ -73,42 +173,42 @@ export default defineSchema({
     coverImage: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
-// --- Inventory parts (stocked items) ---
-inventoryParts: defineTable({
-  name: v.string(),                         // e.g. "iPhone 12 Battery"
-  device: v.optional(v.string()),           // from metadata.device if present
-  category: v.optional(v.string()),         // from metadata.category
-  compatibleModels: v.optional(v.array(v.string())),
-  condition: v.optional(v.string()),        // "OEM", "Premium", etc.
-  cost: v.optional(v.number()),             // internal cost
-  price: v.optional(v.number()),            // retail price
-  currency: v.optional(v.string()),         // "USD"
-  sku: v.optional(v.string()),
-  vendor: v.optional(v.string()),
-  vendorSku: v.optional(v.string()),
-  stock: v.optional(v.number()),            // stock qty
-  tags: v.optional(v.array(v.string())),
-  metadata: v.optional(
-    v.object({
-      category: v.optional(v.string()),
-      device: v.optional(v.string()),
-      notes: v.optional(v.string()),
-      originalCondition: v.optional(v.string()),
-      partNumber: v.optional(v.string()),
-      source: v.optional(v.string()),
-      vendorSku: v.optional(v.string()),
-    })
-  ),
-  createdBy: v.optional(v.string()),
-  updatedBy: v.optional(v.string()),
-  createdAt: v.optional(v.number()),
-  updatedAt: v.number(),
-})
-  .index("by_sku", ["sku"])
-  .index("by_device", ["device"])
-  .index("by_category", ["category"])
-  .index("by_createdAt", ["createdAt"])
-  .index("by_updatedAt", ["updatedAt"]),
+  // --- Inventory parts (stocked items) ---
+  inventoryParts: defineTable({
+    name: v.string(), // e.g. "iPhone 12 Battery"
+    device: v.optional(v.string()),
+    category: v.optional(v.string()),
+    compatibleModels: v.optional(v.array(v.string())),
+    condition: v.optional(v.string()), // "OEM", "Premium", etc.
+    cost: v.optional(v.number()), // internal cost
+    price: v.optional(v.number()), // retail price
+    currency: v.optional(v.string()), // "USD"
+    sku: v.optional(v.string()),
+    vendor: v.optional(v.string()),
+    vendorSku: v.optional(v.string()),
+    stock: v.optional(v.number()), // stock qty
+    tags: v.optional(v.array(v.string())),
+    metadata: v.optional(
+      v.object({
+        category: v.optional(v.string()),
+        device: v.optional(v.string()),
+        notes: v.optional(v.string()),
+        originalCondition: v.optional(v.string()),
+        partNumber: v.optional(v.string()),
+        source: v.optional(v.string()),
+        vendorSku: v.optional(v.string()),
+      })
+    ),
+    createdBy: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_sku", ["sku"])
+    .index("by_device", ["device"])
+    .index("by_category", ["category"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_updatedAt", ["updatedAt"]),
 
   parts: defineTable({
     parts: v.optional(
@@ -152,14 +252,20 @@ inventoryParts: defineTable({
     contact: v.object({
       phone: v.optional(v.string()),
       email: v.optional(v.string()),
-      preferred: v.optional(v.union(v.literal("phone"), v.literal("email"))),
+      preferred: v.optional(
+        v.union(v.literal("phone"), v.literal("email"))
+      ),
     }),
     deviceModel: v.string(),
     issueDescription: v.string(),
     requestedService: v.optional(v.string()),
     notes: v.optional(v.string()),
     status: v.optional(
-      v.union(v.literal("draft"), v.literal("submitted"), v.literal("cancelled"))
+      v.union(
+        v.literal("draft"),
+        v.literal("submitted"),
+        v.literal("cancelled")
+      )
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -196,7 +302,9 @@ inventoryParts: defineTable({
     username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     userId: v.optional(v.string()),
-    role: v.optional(v.union(v.literal("admin"), v.literal("staff"), v.literal("user"))),
+    role: v.optional(
+      v.union(v.literal("admin"), v.literal("staff"), v.literal("user"))
+    ),
     tokenIdentifier: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
@@ -275,7 +383,11 @@ inventoryParts: defineTable({
 
   voiceLogs: defineTable({
     sessionId: v.id("voiceSessions"),
-    kind: v.union(v.literal("input"), v.literal("output"), v.literal("event")),
+    kind: v.union(
+      v.literal("input"),
+      v.literal("output"),
+      v.literal("event")
+    ),
     payloadJson: v.string(),
     createdAt: v.number(),
   })
