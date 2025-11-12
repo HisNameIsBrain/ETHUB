@@ -2,7 +2,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
+import { api } from "./_generated/api";
+
+export async function POST(req: Request) {
+  const session = await auth();                          // await
+  const token = await session?.getToken({ template: "convex" });
+  if (!token) return NextResponse.json({ error: "Missing token" }, { status: 401 });
+
+  const body = await req.json();
+  const result = await fetchMutation(api.inventoryParts.create, body);
+  return NextResponse.json(result);
+}
 
 export async function GET() {
   const { userId } = auth();

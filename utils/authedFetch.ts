@@ -1,5 +1,19 @@
-// utils/authedFetch.ts
-// HMR-safe Clerk token fetcher + authenticated fetch helper
+import { auth } from "@clerk/nextjs";
+
+export async function authedFetch(path: string, options: RequestInit = {}) {
+  const session = await auth();                 // <-- await
+  const token = await session?.getToken({ template: "convex" });
+  if (!token) throw new Error("Missing token");
+
+  return fetch(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 export type AuthedFetchOpts = {
   retryOnce?: boolean;   // retry once on 401 with a fresh token

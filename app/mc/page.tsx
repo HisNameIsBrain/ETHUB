@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -11,71 +13,29 @@ const heroBlocks = [
   { x: "40%", delay: 0.3 },
 ];
 
-const timelineStatic = [
-  {
-    year: "Age 14",
-    title: "First Minecraft Community",
-    body: "Shy, anxious, but reaching out anyway. Found safety and belonging in a small server community instead of school hallways.",
-  },
-  {
-    year: "First Host",
-    title: "Learning Servers by Breaking Them",
-    body: "Taught yourself FTP, configs, plugins, and backups by trial, error, and late-night panic.",
-  },
-  {
-    year: "From Player to Builder",
-    title: "Helping Others Get Online",
-    body: "Started helping friends and strangers get their own servers running. Learned support, patience, and communication.",
-  },
-  {
-    year: "ETHUB Era",
-    title: "Turning Curiosity Into Infrastructure",
-    body: "Built ETHUB to give open access to skills and tools you didn’t have as a kid. eRealms is the gaming wing of that mission.",
-  },
-];
+export default function McHomePage() {
+  const journeys = useQuery(api.mcJourneys.getPublishedList, {}) ?? [];
+  const plans = useQuery(api.mcServerPlans.getAllPublic, {}) ?? [];
 
-const serverCardsStatic = [
-  {
-    name: "Starter Realm",
-    tag: "For first-time hosts",
-    desc: "Perfect for friends-and-family worlds, SMPs, and cozy builds.",
-    specs: "Up to 10 players · 2–3 GB RAM",
-    href: "/erealms/servers/starter",
-  },
-  {
-    name: "Creator Realm",
-    tag: "For content & communities",
-    desc: "For creators who want stable worlds, events, and recordings.",
-    specs: "20–40 players · 4–8 GB RAM",
-    href: "/erealms/servers/creator",
-  },
-  {
-    name: "Dream Realm",
-    tag: "For ambitious projects",
-    desc: "Custom configs, modpacks, and long-term worlds with room to grow.",
-    specs: "50+ players · 8+ GB RAM",
-    href: "/erealms/servers/dream",
-  },
-];
+  const topJourney = journeys[0];
+  const featuredPlans = plans.slice(0, 3);
 
-export default function ERealmsPage() {
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-50">
+    <div className="min-h-screen bg-[#050811] text-slate-50">
       <main className="relative mx-auto flex max-w-6xl flex-col gap-16 px-4 pb-24 pt-20 md:px-8">
-        {/* softer pine + amber background glow */}
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_#064e3b33,_transparent_55%),radial-gradient(circle_at_bottom,_#f9731630,_transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_#22c55e33,_transparent_55%),radial-gradient(circle_at_bottom,_#facc1533,_transparent_55%)]" />
 
-        {/* HERO */}
+        {/* Hero – younger self / impossible dreams */}
         <section className="grid gap-10 md:grid-cols-[1.4fr,1fr] md:items-center">
           <div className="space-y-6">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-black/40 px-3 py-1 text-xs font-medium text-emerald-200"
+              className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-black/40 px-3 py-1 text-xs font-medium text-emerald-300"
             >
               <span className="h-2 w-2 rounded-full bg-emerald-300" />
-              eRealms by ETHUB · Minecraft & Game Servers
+              MC Hub · Worlds for the kid who refused to quit
             </motion.div>
 
             <motion.h1
@@ -84,11 +44,15 @@ export default function ERealmsPage() {
               transition={{ duration: 0.45, delay: 0.05 }}
               className="text-balance text-4xl font-semibold tracking-tight md:text-5xl lg:text-6xl"
             >
-              Make impossible{" "}
-              <span className="bg-gradient-to-br from-emerald-200 via-emerald-300 to-amber-200 bg-clip-text text-transparent">
-                kid dreams
+              From{" "}
+              <span className="bg-gradient-to-br from-emerald-300 via-lime-300 to-amber-300 bg-clip-text text-transparent">
+                shy player
               </span>{" "}
-              real, one block at a time.
+              to the person who builds{" "}
+              <span className="underline decoration-emerald-400 decoration-wavy underline-offset-4">
+                other people&apos;s worlds
+              </span>
+              .
             </motion.h1>
 
             <motion.p
@@ -97,10 +61,11 @@ export default function ERealmsPage() {
               transition={{ duration: 0.45, delay: 0.1 }}
               className="max-w-xl text-sm text-slate-300 md:text-base"
             >
-              eRealms is where your 14-year-old self finally gets the tools,
-              support, and access you didn’t. Built on ETHUB’s mission to open
-              up tech education, this page journals the journey from shy player
-              to server host to builder of other people’s worlds.
+              Minecraft was the door: a shy 14-year-old reaching out to a random
+              community, finding safety on a tiny server, and slowly learning
+              that configs, RAM, and backups were just other ways of saying
+              “this world matters.” MC Hub journals that climb and turns it into
+              a blueprint for anyone who needs it.
             </motion.p>
 
             <motion.div
@@ -112,17 +77,17 @@ export default function ERealmsPage() {
               <Button
                 asChild
                 size="lg"
-                className="rounded-xl px-6 text-sm font-semibold bg-emerald-500/90 hover:bg-emerald-500 text-slate-950"
+                className="rounded-xl px-6 text-sm font-semibold"
               >
-                <Link href="/erealms/servers">Launch a Realm</Link>
+                <Link href="/mc/servers">Launch a Server</Link>
               </Button>
               <Button
                 asChild
                 size="lg"
                 variant="outline"
-                className="rounded-xl border-emerald-500/25 bg-black/50 px-6 text-sm text-emerald-100 hover:bg-emerald-500/5"
+                className="rounded-xl border-emerald-500/40 bg-black/40 px-6 text-sm text-emerald-200 hover:bg-emerald-500/10"
               >
-                <Link href="/erealms/journey">Read the Origin Story</Link>
+                <Link href="/mc/journey">Read the Journey</Link>
               </Button>
             </motion.div>
 
@@ -130,19 +95,21 @@ export default function ERealmsPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.25 }}
-              className="mt-4 rounded-2xl border border-emerald-500/20 bg-black/60 p-4 text-xs text-slate-300 md:text-sm"
+              className="mt-4 rounded-2xl border border-emerald-500/25 bg-black/40 p-4 text-xs text-slate-300 md:text-sm"
             >
-              <p className="font-semibold text-emerald-200">ETHUB Mission</p>
+              <p className="font-semibold text-emerald-200">
+                Why this exists
+              </p>
               <p className="mt-1">
-                ETHUB exists to open up technical training and certification for
-                people who never got a fair shot at it. eRealms applies that
-                same mission to game servers: lowering the barrier so anyone can
-                learn, build, and host their own worlds.
+                This is an open-access corner of ETHUB dedicated to the
+                Minecraft kid you used to be and the kids who are there right
+                now: no corporate jargon, just tools, servers, and receipts that
+                say, “You built this yourself.”
               </p>
             </motion.div>
           </div>
 
-          {/* MC blocks, darker + softer glow */}
+          {/* Floating blocks + journal hook */}
           <div className="relative h-64 md:h-[320px]">
             {heroBlocks.map((block, i) => (
               <motion.div
@@ -155,12 +122,16 @@ export default function ERealmsPage() {
               >
                 <motion.div
                   animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: block.delay }}
-                  className="h-24 w-24 rotate-3 rounded-xl border border-emerald-700/50 bg-gradient-to-br from-emerald-700 to-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)]"
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    delay: block.delay,
+                  }}
+                  className="h-24 w-24 rotate-3 rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500 to-lime-400 shadow-[0_0_40px_rgba(34,197,94,0.5)]"
                 >
-                  <div className="h-1/4 w-full bg-emerald-900/80" />
-                  <div className="h-2/4 w-full bg-emerald-700" />
-                  <div className="h-1/4 w-full bg-[#4a3320]" />
+                  <div className="h-1/4 w-full bg-emerald-700/80" />
+                  <div className="h-2/4 w-full bg-emerald-500" />
+                  <div className="h-1/4 w-full bg-[#5a3a23]" />
                 </motion.div>
               </motion.div>
             ))}
@@ -169,48 +140,75 @@ export default function ERealmsPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="absolute inset-x-4 bottom-0 rounded-2xl border border-slate-800 bg-slate-950/70 p-4 backdrop-blur"
+              className="absolute inset-x-4 bottom-0 rounded-2xl border border-slate-700/60 bg-black/60 p-4 backdrop-blur"
             >
-              <p className="text-xs font-medium uppercase tracking-wide text-emerald-200/90">
+              <p className="text-xs font-medium uppercase tracking-wide text-emerald-300">
                 Journal from the bottom up
               </p>
-              <p className="mt-1 text-xs text-slate-300">
-                From the first DM to a Minecraft community to deploying your own
-                hosting stack, this space exists to track every step – the wins,
-                the wipeouts, and the restarts.
-              </p>
+              {topJourney ? (
+                <Link href={`/mc/journey/${topJourney.slug}`}>
+                  <p className="mt-1 text-xs text-slate-300">
+                    Latest entry:{" "}
+                    <span className="font-medium text-emerald-200">
+                      {topJourney.title}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400 line-clamp-3">
+                    {topJourney.excerpt ??
+                      "Follow the thread from the first DM to a server admin panel and beyond."}
+                  </p>
+                </Link>
+              ) : (
+                <p className="mt-1 text-xs text-slate-300">
+                  Start writing your story in the journal. First entry is the
+                  moment you realized “maybe I can actually do this.”
+                </p>
+              )}
             </motion.div>
           </div>
         </section>
 
-        {/* TIMELINE */}
+        {/* Journey explanation */}
         <section className="space-y-6">
           <h2 className="text-xl font-semibold md:text-2xl">
-            From one player’s story to a blueprint for others
+            The long climb: how one server changed everything
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {timelineStatic.map((item) => (
-              <Card
-                key={item.title}
-                className="border-slate-800 bg-slate-950/70 backdrop-blur"
-              >
-                <CardHeader className="pb-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90">
-                    {item.year}
-                  </div>
-                  <CardTitle className="text-base md:text-lg">
-                    {item.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-300">{item.body}</p>
-                </CardContent>
-              </Card>
-            ))}
+            <Card className="border-slate-700/70 bg-black/50 backdrop-blur">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base md:text-lg">
+                  You at 14: scared, curious, still logging in
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-slate-300">
+                  You reached out to a Minecraft community half out of panic,
+                  half out of hope. That one server became the first place you
+                  felt safe enough to experiment, fail, and reboot without
+                  being laughed out of the room.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-700/70 bg-black/50 backdrop-blur">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base md:text-lg">
+                  MC Hub: receipts that you got back up
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-slate-300">
+                  Every server you stand up, every backup you test, every kid
+                  you help host their first world is proof you kept going. This
+                  hub records the climb so the next shy kid has a map instead of
+                  a guess.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </section>
 
-        {/* PLANS */}
+        {/* Plans preview */}
         <section className="space-y-6">
           <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
             <div>
@@ -218,44 +216,53 @@ export default function ERealmsPage() {
                 Choose how big you want your world to be
               </h2>
               <p className="mt-1 text-sm text-slate-300">
-                Start tiny, grow later. Every plan is designed for learning,
-                not lock-in.
+                Start with a tiny survival world, grow into events and
+                communities. The hardware scales; the intention stays the same.
               </p>
             </div>
             <Button
               asChild
               variant="outline"
-              className="rounded-xl text-xs md:text-sm border-slate-700 hover:bg-slate-800/60"
+              className="rounded-xl text-xs md:text-sm"
             >
-              <Link href="/erealms/servers">Compare all plans</Link>
+              <Link href="/mc/servers">View all plans</Link>
             </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            {serverCardsStatic.map((card) => (
+            {featuredPlans.length === 0 && (
+              <p className="text-sm text-slate-400 md:col-span-3">
+                No plans yet. Add entries to{" "}
+                <code className="rounded bg-slate-900 px-1.5 py-0.5 text-xs">
+                  mcServerPlans
+                </code>{" "}
+                to light this section up.
+              </p>
+            )}
+            {featuredPlans.map((plan) => (
               <Card
-                key={card.name}
-                className="flex flex-col border-slate-800 bg-slate-950/70 backdrop-blur"
+                key={plan._id}
+                className="flex flex-col border-slate-700/70 bg-black/50 backdrop-blur"
               >
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base md:text-lg">
-                    {card.name}
+                    {plan.name}
                   </CardTitle>
-                  <p className="text-xs font-medium text-emerald-200/90">
-                    {card.tag}
-                  </p>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col justify-between gap-3">
                   <div className="space-y-2 text-sm text-slate-300">
-                    <p>{card.desc}</p>
-                    <p className="text-xs text-slate-400">{card.specs}</p>
+                    {plan.description && <p>{plan.description}</p>}
+                    <p className="text-xs text-slate-400">
+                      {plan.maxPlayers != null && `Up to ${plan.maxPlayers} players · `}
+                      {plan.ramGb != null && `${plan.ramGb} GB RAM`}
+                    </p>
                   </div>
                   <Button
                     asChild
                     size="sm"
-                    className="mt-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700"
+                    className="mt-2 rounded-xl text-xs"
                   >
-                    <Link href={card.href}>View details</Link>
+                    <Link href={`/mc/servers/${plan.slug}`}>View details</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -263,17 +270,16 @@ export default function ERealmsPage() {
           </div>
         </section>
 
-        {/* FOOTER CALLOUT */}
-        <section className="mt-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-emerald-600/5 to-slate-900 p-5 text-sm text-slate-100">
+        {/* Footer story */}
+        <section className="mt-4 rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-emerald-500/10 to-sky-500/10 p-5 text-sm text-slate-100">
           <h2 className="text-base font-semibold md:text-lg">
-            A space to archive the version of you that refused to quit
+            A world-log for the version of you nobody believed
           </h2>
           <p className="mt-1 text-sm text-slate-100/90">
-            This project isn’t just about servers. It’s an evidence log that
-            you got back up after every downfall, even when nobody believed a
-            shy 14-year-old could do any of this. Each new realm you launch is
-            proof for the next kid that their “impossible” idea is just an
-            underfunded prototype.
+            This isn&apos;t nostalgia. It&apos;s infrastructure. MC Hub is where you
+            document every leap from “impossible” to “done,” so the next kid
+            doesn&apos;t have to white-knuckle through it with no guidance
+            and a dying laptop.
           </p>
         </section>
       </main>

@@ -35,6 +35,7 @@ import type * as manualQuotes from "../manualQuotes.js";
 import type * as mcButtonClicks from "../mcButtonClicks.js";
 import type * as mcButtons from "../mcButtons.js";
 import type * as mcJourneys from "../mcJourneys.js";
+import type * as mcSeed from "../mcSeed.js";
 import type * as mcServerPlans from "../mcServerPlans.js";
 import type * as mcTimelineEvents from "../mcTimelineEvents.js";
 import type * as migration from "../migration.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   mcButtonClicks: typeof mcButtonClicks;
   mcButtons: typeof mcButtons;
   mcJourneys: typeof mcJourneys;
+  mcSeed: typeof mcSeed;
   mcServerPlans: typeof mcServerPlans;
   mcTimelineEvents: typeof mcTimelineEvents;
   migration: typeof migration;

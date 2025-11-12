@@ -79,13 +79,13 @@ export default function Navbar() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-
   const [svcOpen, setSvcOpen] = React.useState(false);
+  const [svcOpenMobile, setSvcOpenMobile] = React.useState(false);
+
   const [erealmsOpen, setErealmsOpen] = React.useState(false);
   const [journeyOpen, setJourneyOpen] = React.useState(false);
   const [serversOpen, setServersOpen] = React.useState(false);
 
-  const [svcOpenMobile, setSvcOpenMobile] = React.useState(false);
   const [erealmsOpenMobile, setErealmsOpenMobile] = React.useState(false);
   const [journeyOpenMobile, setJourneyOpenMobile] = React.useState(false);
   const [serversOpenMobile, setServersOpenMobile] = React.useState(false);
@@ -153,9 +153,7 @@ export default function Navbar() {
                 </span>
                 <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
                   <UserButton
-                    appearance={{
-                      elements: { userButtonAvatarBox: "rounded-full" },
-                    }}
+                    appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }}
                   />
                 </div>
               </div>
@@ -164,7 +162,7 @@ export default function Navbar() {
             <div className="md:hidden w-9 h-9" />
           </div>
 
-          {/* Row 2: compact search */}
+          {/* Row 2: search */}
           <div className="hidden md:block">
             <form
               onSubmit={(e) => {
@@ -183,7 +181,7 @@ export default function Navbar() {
             </form>
           </div>
 
-          {/* Row 3: desktop tabs */}
+          {/* Row 3: desktop nav */}
           <div className="hidden md:flex items-center gap-1 mt-2">
             <motion.div
               initial={{ opacity: 0 }}
@@ -205,7 +203,7 @@ export default function Navbar() {
               active={isActive("/dashboard")}
             />
 
-            {/* Services dropdown under Dashboard */}
+            {/* Services dropdown */}
             <div className="relative">
               <button
                 onClick={() => setSvcOpen((v) => !v)}
@@ -219,9 +217,7 @@ export default function Navbar() {
                 <FolderCog className="h-4 w-4" />
                 Services
                 <ChevronDown
-                  className={`h-4 w-4 transition ${
-                    svcOpen ? "rotate-180" : ""
-                  }`}
+                  className={`h-4 w-4 transition ${svcOpen ? "rotate-180" : ""}`}
                 />
               </button>
               <AnimatePresence>
@@ -260,13 +256,13 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* eRealms dropdown */}
+            {/* eRealms dropdown -> /app/mc/erealms/... */}
             <div className="relative">
               <button
                 onClick={() => setErealmsOpen((v) => !v)}
                 className={[
                   "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/erealms")
+                  pathname.startsWith("/mc/erealms")
                     ? "bg-primary text-primary-foreground border-transparent"
                     : "hover:bg-white/5 border-transparent",
                 ].join(" ")}
@@ -290,14 +286,14 @@ export default function Navbar() {
                     className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
                   >
                     <Link
-                      href="/erealms"
+                      href="/mc/erealms"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
                       onClick={() => setErealmsOpen(false)}
                     >
                       <FolderCog className="h-4 w-4" /> eRealms Home
                     </Link>
                     <Link
-                      href="/erealms/games"
+                      href="/mc/erealms/games"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
                       onClick={() => setErealmsOpen(false)}
                     >
@@ -308,13 +304,13 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* Journey dropdown */}
+            {/* Journey dropdown -> /app/mc/erealms/journey/... */}
             <div className="relative">
               <button
                 onClick={() => setJourneyOpen((v) => !v)}
                 className={[
                   "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/erealms/journey")
+                  pathname.startsWith("/mc/erealms/journey")
                     ? "bg-primary text-primary-foreground border-transparent"
                     : "hover:bg-white/5 border-transparent",
                 ].join(" ")}
@@ -338,14 +334,14 @@ export default function Navbar() {
                     className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
                   >
                     <Link
-                      href="/erealms/journey"
+                      href="/mc/erealms/journey"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
                       onClick={() => setJourneyOpen(false)}
                     >
                       <FolderCog className="h-4 w-4" /> Journal Index
                     </Link>
                     <Link
-                      href="/erealms/journey/origin-story"
+                      href="/mc/erealms/journey/origin-story"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
                       onClick={() => setJourneyOpen(false)}
                     >
@@ -356,13 +352,13 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* Servers dropdown */}
+            {/* Servers dropdown -> /app/mc/erealms/servers/... */}
             <div className="relative">
               <button
                 onClick={() => setServersOpen((v) => !v)}
                 className={[
                   "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/erealms/servers") ||
+                  pathname.startsWith("/mc/erealms/servers") ||
                   pathname.startsWith("/servers")
                     ? "bg-primary text-primary-foreground border-transparent"
                     : "hover:bg-white/5 border-transparent",
@@ -387,7 +383,7 @@ export default function Navbar() {
                     className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
                   >
                     <Link
-                      href="/erealms/servers"
+                      href="/mc/erealms/servers"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
                       onClick={() => setServersOpen(false)}
                     >
@@ -573,7 +569,7 @@ export default function Navbar() {
                 {/* eRealms nested */}
                 <button
                   onClick={() => setErealmsOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg_white/5 hover:bg-white/5"
+                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
                 >
                   <span className="inline-flex items-center gap-3">
                     <FolderCog className="h-4 w-4" /> eRealms
@@ -594,14 +590,14 @@ export default function Navbar() {
                       className="ml-8 flex flex-col"
                     >
                       <Link
-                        href="/erealms"
+                        href="/mc/erealms"
                         onClick={() => setOpen(false)}
                         className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
                       >
                         eRealms Home
                       </Link>
                       <Link
-                        href="/erealms/games"
+                        href="/mc/erealms/games"
                         onClick={() => setOpen(false)}
                         className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
                       >
@@ -635,14 +631,14 @@ export default function Navbar() {
                       className="ml-8 flex flex-col"
                     >
                       <Link
-                        href="/erealms/journey"
+                        href="/mc/erealms/journey"
                         onClick={() => setOpen(false)}
                         className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
                       >
                         Journal Index
                       </Link>
                       <Link
-                        href="/erealms/journey/origin-story"
+                        href="/mc/erealms/journey/origin-story"
                         onClick={() => setOpen(false)}
                         className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
                       >
@@ -676,7 +672,7 @@ export default function Navbar() {
                       className="ml-8 flex flex-col"
                     >
                       <Link
-                        href="/erealms/servers"
+                        href="/mc/erealms/servers"
                         onClick={() => setOpen(false)}
                         className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
                       >
@@ -742,3 +738,4 @@ export default function Navbar() {
     </>
   );
 }
+

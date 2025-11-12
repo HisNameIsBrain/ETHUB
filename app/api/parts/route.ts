@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
+import { api } from "./_generated/api";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

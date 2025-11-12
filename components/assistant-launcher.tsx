@@ -11,7 +11,49 @@ import { usePathname } from "next/navigation";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { speakWithOpenAI } from "@/lib/tts";
-import { authedFetch } from "@/utils/authedFetch";
+
+import { authedFetch } from "./utils/authedFetch";
+
+async function handleApproveAndSave(part: any) {
+  try {
+    // Step 1: Save temporary partsDoc
+    const docRes = await authedFetch("/api/partsDocs/create", {
+      method: "POST",
+      body: JSON.stringify({ part }),
+    });
+    const partsDoc = await docRes.json();
+
+    // Step 2: Promote to inventoryParts
+    const invRes = await authedFetch("/api/inventoryParts/create", {
+      method: "POST",
+      body: JSON.stringify({
+        name: part.title,
+        device: part.device,
+        price: part.partPrice,
+        labor: part.labor,
+        total: part.total,
+        sku: part.source + "-" + part.title.replace(/\s+/g, "-"),
+        vendor: part.source,
+        stock: 1,
+      }),
+    });
+    const inventory = await invRes.json();
+
+    // Step 3: Optionally create invoice
+    const invoiceRes = await authedFetch("/api/invoices/create", {
+      method: "POST",
+      body: JSON.stringify({
+        partId: inventory.id,
+        device: part.device,
+        total: part.total,
+      }),
+    });
+
+    console.log("✅ Saved successfully:", invoiceRes);
+  } catch (error) {
+    console.error("❌ Failed:", error);
+  }
+}
 
 type Role = "system" | "user" | "assistant";
 type IntakeState = "idle" | "askDeviceModel" | "askIssue" | "confirm" | "fetching" | "done";

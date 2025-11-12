@@ -1,273 +1,413 @@
-// app/(dashboard)/services/page.tsx
+// app/dashboard/services/page.tsx
 "use client";
 
-import type { Route } from "next";
-import { useMemo, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { File, PlusCircle, Globe, Lock } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
-import { ServicesTable } from "@/components/services-table";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 20;
+type Quality = "premium" | "aftermarket";
 
-type Service = {
-  _id: string;
-  slug?: string;
-  title?: string;
-  name?: string;
-  description?: string;
-  deliveryTime?: string;
-  currency?: string;
-  priceCents?: number;
-  price?: number;
-  isPublic?: boolean;
-  archived?: boolean;
-  category?: string;     // <-- used for grouping
-  createdAt?: number;
-  updatedAt: number;
-  createdBy?: string;
+type Part = {
+  id: string;
+  deviceModel: string;
+  partName: string;
+  manufacturer: string;
+  manufacturerLogoUrl: string;
+  imageUrl: string;
+  quality: Quality;
+  partPrice: number;
+  labor: number;
+  warranty: string;
 };
 
-export default function DashboardServicesPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const LABOR_BASE = 65;
+const ITEMS_PER_PAGE = 8;
 
-  const qParam = useMemo(() => (searchParams.get("q") ?? "").toString(), [searchParams]);
-  const offsetParam = useMemo(() => Number(searchParams.get("offset") ?? 0), [searchParams]);
+const mockParts: Part[] = [
+  {
+    id: "ip15pm_oled_oem",
+    deviceModel: "iPhone 15 Pro Max",
+    partName: "OLED Assembly (Genuine OEM)",
+    manufacturer: "Apple",
+    manufacturerLogoUrl: "/logos/apple-oem.png",
+    imageUrl: "/images/parts/iphone-15pm-oled-oem.png",
+    quality: "premium",
+    partPrice: 379.96,
+    labor: LABOR_BASE,
+    warranty: "1-year limited warranty",
+  },
+  {
+    id: "ip15pm_lcd_aq7",
+    deviceModel: "iPhone 15 Pro Max",
+    partName: "LCD Assembly (AQ7 / Incell 120Hz)",
+    manufacturer: "AQ7",
+    manufacturerLogoUrl: "/logos/aq7.png",
+    imageUrl: "/images/parts/iphone-15pm-lcd-aq7.png",
+    quality: "aftermarket",
+    partPrice: 42.35,
+    labor: LABOR_BASE,
+    warranty: "90-day parts warranty",
+  },
+  {
+    id: "ip14pm_oled_soft",
+    deviceModel: "iPhone 14 Pro Max",
+    partName: "OLED Assembly Soft (XO7 120Hz)",
+    manufacturer: "XO7",
+    manufacturerLogoUrl: "/logos/xo7.png",
+    imageUrl: "/images/parts/iphone-14pm-oled-soft.png",
+    quality: "premium",
+    partPrice: 329.99,
+    labor: LABOR_BASE,
+    warranty: "1-year limited warranty",
+  },
+];
 
-  const [q, setQ] = useState(qParam);
-  useEffect(() => setQ(qParam), [qParam]);
+type CartState = Record<string, number>;
 
-  const [needle, setNeedle] = useState(qParam);
-  useEffect(() => {
-    const t = setTimeout(() => setNeedle(q), 250);
-    return () => clearTimeout(t);
-  }, [q]);
+function computeTotalForPart(part: Part, qty: number) {
+  const totalPerUnit = part.partPrice + part.labor;
+  return totalPerUnit * qty;
+}
 
-  const result = useQuery(api.services.fetch, {
-    needle: needle || undefined,
-    offset: Math.max(0, offsetParam),
-    limit: PAGE_SIZE,
-    sort: "created_desc",
-    onlyPublic: true,
-  });
+type PartCardProps = {
+  part: Part;
+  quantity: number;
+  onQuantityChange: (qty: number) => void;
+};
 
-  const createService = useMutation(api.services.create);
+function PartCard({ part, quantity, onQuantityChange }: PartCardProps) {
+  const totalPerUnit = part.partPrice + part.labor;
+  const totalLine = totalPerUnit * quantity;
 
-  const loading = result === undefined;
-  const services = (result?.services as Service[]) ?? [];
-  const totalServices = result?.total ?? 0;
-  const newOffset = result?.offset ?? 0;
-
-  const onCreate = () => {
-    const p = createService({
-      name: "Untitled",
-      description: "",
-      price: 0,
-      isPublic: true,
-      archived: false,
-    }).then((serviceId: string) => router.push(`/services/${serviceId}` as Route));
-
-    toast.promise(p, {
-      loading: "Creating a new service...",
-      success: "Service created!",
-      error: "Failed to create a new service.",
-    });
+  const handleChange = (value: string) => {
+    const parsed = Number(value.replace(/[^\d]/g, ""));
+    const next = Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
+    onQuantityChange(next);
   };
-
-  const onSearchChange = (value: string) => {
-    setQ(value);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("q", value);
-    params.set("offset", "0");
-    router.push(`?${params.toString()}` as Route);
-  };
-
-  const onPageChange = (nextOffset: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("offset", String(Math.max(0, nextOffset)));
-    router.push(`?${params.toString()}` as Route);
-  };
-
-  const grouped = useMemo(() => {
-    if (loading) return [];
-    const map = new Map<string, Service[]>();
-    for (const s of services) {
-      const cat = (s.category || "Uncategorized").trim() || "Uncategorized";
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(s);
-    }
-    const entries = Array.from(map.entries()).map(([cat, list]) => ({
-      cat,
-      list: list.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)),
-    }));
-    entries.sort((a, b) => a.cat.localeCompare(b.cat));
-    return entries;
-  }, [services, loading]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain no-scrollbar">
-          <Tabs defaultValue="all" className="min-w-max">
-            <TabsList className="h-8">
-              <TabsTrigger value="all" className="px-3 py-1 text-xs">All</TabsTrigger>
-              <TabsTrigger value="active" className="px-3 py-1 text-xs">Active</TabsTrigger>
-              <TabsTrigger value="draft" className="px-3 py-1 text-xs">Draft</TabsTrigger>
-              <TabsTrigger value="archived" className="px-3 py-1 text-xs">Archived</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" />
-          </Tabs>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Input
-            className="h-8 text-sm w-full sm:w-64"
-            placeholder="Search…"
-            value={q}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-          <Button size="sm" variant="outline" className="h-8 px-2">
-            <File className="h-4 w-4" />
-            <span className="sr-only sm:not-sr-only sm:ml-1">Export</span>
-          </Button>
-          <Button size="sm" className="h-8 px-2" onClick={onCreate}>
-            <PlusCircle className="h-4 w-4" />
-            <span className="sr-only sm:not-sr-only sm:ml-1">Add</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Mobile: grouped card grids */}
-      <div className="md:hidden space-y-6">
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="p-3 animate-pulse h-32" />
-            ))}
+    <Card className="flex flex-col overflow-hidden border border-emerald-700/40 bg-slate-950/70 text-slate-50 shadow-lg shadow-emerald-900/40">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/dashboard/services/${part.id}`}
+            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-emerald-500/60 bg-slate-900/80"
+          >
+            <img
+              src={part.manufacturerLogoUrl}
+              alt={part.manufacturer}
+              className="h-full w-full object-contain"
+            />
+          </Link>
+          <div className="flex flex-col">
+            <CardTitle className="text-sm font-semibold leading-tight">
+              {part.deviceModel}
+            </CardTitle>
+            <span className="text-xs text-emerald-300/80">
+              {part.partName}
+            </span>
           </div>
-        ) : grouped.length === 0 ? (
-          <div className="text-sm opacity-70">No services.</div>
-        ) : (
-          grouped.map(({ cat, list }) => (
-            <section key={cat} className="space-y-2">
-              <h3 className="text-xs font-semibold opacity-70">{cat}</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {list.map((s) => (
-                  <ServiceCard key={s._id} s={s} />
-                ))}
-              </div>
-            </section>
-          ))
-        )}
+        </div>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-medium",
+            part.quality === "premium"
+              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/60"
+              : "bg-amber-500/15 text-amber-200 border border-amber-400/60"
+          )}
+        >
+          {part.quality === "premium" ? "Premium" : "Aftermarket"}
+        </span>
+      </CardHeader>
 
-        <Pager
-          offset={newOffset}
-          total={totalServices}
-          onPrev={() => onPageChange(newOffset - PAGE_SIZE)}
-          onNext={() => onPageChange(newOffset + PAGE_SIZE)}
-        />
-      </div>
-
-      {/* Desktop: table + category column kept in table (unchanged) */}
-      <div className="hidden md:block">
-        <div className="overflow-x-auto">
-          <ServicesTable
-            loading={loading}
-            services={services}
-            offset={newOffset}
-            servicesPerPage={PAGE_SIZE}
-            totalServices={totalServices}
-            onPageChange={onPageChange}
+      <CardContent className="flex flex-1 flex-col gap-3">
+        <div className="flex items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900/80 p-3">
+          <img
+            src={part.imageUrl}
+            alt={part.partName}
+            className="max-h-40 w-auto object-contain"
           />
         </div>
-      </div>
-    </div>
-  );
-}
 
-function Pager({
-  offset,
-  total,
-  onPrev,
-  onNext,
-}: {
-  offset: number;
-  total: number;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  const atStart = offset <= 0;
-  const atEnd = offset + PAGE_SIZE >= total;
-  return (
-    <div className="mt-3 flex items-center justify-end gap-2">
-      <Button variant="outline" size="sm" onClick={onPrev} disabled={atStart}>
-        Previous
-      </Button>
-      <Button variant="outline" size="sm" onClick={onNext} disabled={atEnd}>
-        Next
-      </Button>
-    </div>
-  );
-}
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className="text-slate-400">Part</span>
+            <span className="font-semibold">
+              ${part.partPrice.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Labor</span>
+            <span className="font-semibold">
+              ${part.labor.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between border-t border-slate-700/80 pt-1">
+            <span className="text-slate-200 text-[11px] font-semibold">
+              Total per unit
+            </span>
+            <span className="text-emerald-300 font-semibold">
+              ${totalPerUnit.toFixed(2)}
+            </span>
+          </div>
+        </div>
 
-function ServiceCard({ s }: { s: Service }) {
-  const title = s.title || s.name || "Untitled";
-  const currency = (s.currency || "USD").toUpperCase();
-  const priceCents =
-    typeof s.priceCents === "number"
-      ? s.priceCents
-      : typeof s.price === "number"
-      ? Math.round((s.price as number) * 100)
-      : 0;
-  const numeric = (priceCents / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
+        <div className="mt-1 text-[11px] text-slate-400">
+          Warranty: <span className="text-slate-200">{part.warranty}</span>
+        </div>
 
-  return (
-    <Card className="p-3 w-full h-full overflow-hidden">
-      <div className="text-sm font-semibold leading-snug line-clamp-2 min-w-0">
-        {title}
-      </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-1 rounded-full border border-slate-700/80 bg-slate-900/80 px-2 py-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-slate-600/70 text-slate-100"
+              onClick={() => onQuantityChange(Math.max(0, quantity - 1))}
+            >
+              -
+            </Button>
+            <input
+              inputMode="numeric"
+              className="h-7 w-12 bg-transparent text-center text-xs text-slate-100 outline-none"
+              value={quantity || ""}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="0"
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-slate-600/70 text-slate-100"
+              onClick={() => onQuantityChange(quantity + 1)}
+            >
+              +
+            </Button>
+          </div>
 
-      <div className="mt-1 flex items-center gap-2">
-        {s.deliveryTime ? (
-          <span className="px-2 py-0.5 rounded-full bg-muted text-foreground/80 text-[11px] whitespace-nowrap">
-            {s.deliveryTime}
+          <div className="text-right text-[11px]">
+            <div className="text-slate-400">Line total</div>
+            <div className="font-semibold text-emerald-300">
+              ${totalLine.toFixed(2)}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between border-t border-slate-700/80 pt-2">
+          <Button
+            asChild
+            size="sm"
+            className="h-8 rounded-full bg-emerald-500 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+          >
+            <Link href={`/dashboard/services/${part.id}`}>
+              View service details
+            </Link>
+          </Button>
+          <span className="text-[11px] text-slate-400">
+            Manufacturer:{" "}
+            <span className="text-slate-200">{part.manufacturer}</span>
           </span>
-        ) : null}
-        <span className="px-2 py-0.5 rounded-full bg-muted text-foreground/80 text-[11px] whitespace-nowrap">
-          {s.isPublic ? (
-            <span className="inline-flex items-center gap-1">
-              <Globe className="h-3 w-3" /> Public
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> Private
-            </span>
-          )}
-        </span>
-      </div>
-
-      <div className="mt-1 text-sm font-medium">
-        {currency}${numeric}
-      </div>
-
-      <div className="mt-2 text-xs text-foreground/70 line-clamp-3 break-words">
-        {s.description?.trim() ? s.description : "No description."}
-      </div>
+        </div>
+      </CardContent>
     </Card>
   );
 }
 
-/* Optional: add in globals.css to hide horizontal scrollbar on tabs
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-*/
+export default function ServicesDashboardPage() {
+  const [qualityPref, setQualityPref] = useState<Quality>("premium");
+  const [page, setPage] = useState(1);
+  const [cart, setCart] = useState<CartState>({});
+
+  const filteredParts = useMemo(() => {
+    const primaryFirst = [...mockParts].sort((a, b) => {
+      if (a.quality === b.quality) return 0;
+      if (a.quality === qualityPref && b.quality !== qualityPref) return -1;
+      if (b.quality === qualityPref && a.quality !== qualityPref) return 1;
+      return a.quality === "premium" ? -1 : 1;
+    });
+    return primaryFirst;
+  }, [qualityPref]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredParts.length / ITEMS_PER_PAGE)
+  );
+
+  const currentPageParts = filteredParts.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
+
+  const handleQuantityChange = (partId: string, qty: number) => {
+    setCart((prev) => {
+      const next = { ...prev };
+      if (qty <= 0) {
+        delete next[partId];
+      } else {
+        next[partId] = qty;
+      }
+      return next;
+    });
+  };
+
+  const cartItems = useMemo(() => {
+    return Object.entries(cart)
+      .map(([id, qty]) => {
+        const part = mockParts.find((p) => p.id === id);
+        if (!part || qty <= 0) return null;
+        const lineTotal = computeTotalForPart(part, qty);
+        return { part, qty, lineTotal };
+      })
+      .filter(Boolean) as { part: Part; qty: number; lineTotal: number }[];
+  }, [cart]);
+
+  const cartTotal = cartItems.reduce(
+    (sum, item) => sum + item.lineTotal,
+    0
+  );
+
+  return (
+    <div className="flex h-full flex-col gap-4 bg-slate-950/90 p-4 text-slate-50">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">
+            Device Services & Parts
+          </h1>
+          <p className="text-xs text-slate-400">
+            Prioritizing premium assemblies, with aftermarket as secondary
+            options.
+          </p>
+        </div>
+
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-600/70 bg-slate-900/80 p-1">
+          <button
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold transition",
+              qualityPref === "premium"
+                ? "bg-emerald-500 text-slate-950 shadow"
+                : "text-slate-300"
+            )}
+            onClick={() => setQualityPref("premium")}
+          >
+            Premium first
+          </button>
+          <button
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold transition",
+              qualityPref === "aftermarket"
+                ? "bg-amber-400 text-slate-950 shadow"
+                : "text-slate-300"
+            )}
+            onClick={() => setQualityPref("aftermarket")}
+          >
+            Aftermarket focus
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2.5fr)_minmax(260px,1fr)]">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {currentPageParts.map((part) => (
+              <PartCard
+                key={part.id}
+                part={part}
+                quantity={cart[part.id] ?? 0}
+                onQuantityChange={(qty) => handleQuantityChange(part.id, qty)}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs text-slate-400">
+            <div>
+              Page {page} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 rounded-full border-slate-700 bg-slate-900 text-xs"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                ← Prev
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 rounded-full border-slate-700 bg-slate-900 text-xs"
+                onClick={() =>
+                  setPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={page >= totalPages}
+              >
+                Next →
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <aside className="flex h-full flex-col rounded-2xl border border-emerald-700/60 bg-slate-950/95 p-3 shadow-lg shadow-emerald-900/40">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Cart</h2>
+            <span className="text-[11px] text-slate-400">
+              {cartItems.length} line item
+              {cartItems.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          <div className="flex-1 space-y-2 overflow-y-auto pr-1 text-xs">
+            {cartItems.length === 0 && (
+              <div className="rounded-lg border border-dashed border-slate-700/80 bg-slate-900/80 p-3 text-[11px] text-slate-500">
+                Set quantities on parts to start a new sale.
+              </div>
+            )}
+
+            {cartItems.map(({ part, qty, lineTotal }) => (
+              <div
+                key={part.id}
+                className="rounded-lg border border-slate-800 bg-slate-900/80 p-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold">
+                      {part.deviceModel}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {part.partName}
+                    </span>
+                  </div>
+                  <div className="text-right text-[10px] text-slate-400">
+                    <div>Qty: {qty}</div>
+                    <div>${lineTotal.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 border-t border-slate-800 pt-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Order total</span>
+              <span className="text-base font-semibold text-emerald-300">
+                ${cartTotal.toFixed(2)}
+              </span>
+            </div>
+
+            <Button
+              className="mt-2 h-9 w-full rounded-full bg-emerald-500 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+              disabled={cartItems.length === 0}
+            >
+              Proceed to checkout (ETHUB)
+            </Button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}

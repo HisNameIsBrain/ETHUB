@@ -1,7 +1,17 @@
 // app/api/seed/route.ts
 import { NextResponse } from "next/server";
 import { fetchAction } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
+import { api } from "./_generated/api";
+
+export async function POST(req: Request) {
+  const session = await auth();                          // await
+  const token = await session?.getToken({ template: "convex" });
+  if (!token) return NextResponse.json({ error: "Missing token" }, { status: 401 });
+
+  const body = await req.json();
+  const result = await fetchMutation(api.inventoryParts.create, body);
+  return NextResponse.json(result);
+}
 
 /**
  * API endpoint for seeding Convex via seedPortalData.

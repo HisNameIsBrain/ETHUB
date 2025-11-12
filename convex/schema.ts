@@ -3,105 +3,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-
-  mcJourneys: defineTable({
-    userId: v.string(),
-    slug: v.string(),
-    title: v.string(),
-    excerpt: v.optional(v.string()),
-    content: v.optional(v.string()),
-    year: v.optional(v.string()),
-    sortIndex: v.optional(v.number()),
-    isPublished: v.optional(v.boolean()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_user", ["userId"])
-    .index("by_slug", ["slug"])
-    .index("by_published", ["isPublished", "sortIndex"]),
-
-  mcServerPlans: defineTable({
-    slug: v.string(),
-    name: v.string(),
-    shortTag: v.optional(v.string()),
-    description: v.optional(v.string()),
-    specs: v.optional(v.string()),
-    maxPlayers: v.optional(v.number()),
-    ramGb: v.optional(v.number()),
-    storageGb: v.optional(v.number()),
-    monthlyPriceUsd: v.optional(v.number()),
-    isFeatured: v.optional(v.boolean()),
-    sortIndex: v.optional(v.number()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_slug", ["slug"])
-    .index("by_featured", ["isFeatured", "sortIndex"]),
-
-  mcButtons: defineTable({
-    key: v.string(), // e.g. "launch_realm", "read_journey"
-    label: v.string(),
-    href: v.string(),
-    variant: v.optional(v.string()), // "primary" | "outline" | etc
-    icon: v.optional(v.string()), // optional icon name
-    group: v.optional(v.string()), // e.g. "hero", "footer"
-    sortIndex: v.optional(v.number()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  }).index("by_group", ["group", "sortIndex"]),
-
-  mcButtonClicks: defineTable({
-    buttonKey: v.string(),
-    userId: v.optional(v.string()),
-    sessionId: v.optional(v.string()),
-    path: v.optional(v.string()),
-    createdAt: v.number(),
-    metadata: v.optional(v.record(v.string(), v.any())),
-  }).index("by_button", ["buttonKey", "createdAt"]),
-
-  mcTimelineEvents: defineTable({
-    userId: v.string(),
-    year: v.string(),
-    title: v.string(),
-    body: v.string(),
-    tweetUrl: v.optional(v.string()),
-    sortIndex: v.optional(v.number()),
-    createdAt: v.optional(v.number()),
-  }).index("by_user", ["userId", "sortIndex"]),
-  minecraftPrograms: defineTable({
-    name: v.string(),
-    description: v.string(),
-    tag: v.optional(v.string()),
-    isActive: v.boolean(),
-    sortOrder: v.optional(v.number()),
-    createdAt: v.number(),
-  }).index("by_isActive", ["isActive"]),
-  minecraftServers: defineTable({
-    name: v.string(),
-    type: v.union(v.literal("bedrock"), v.literal("java")),
-    status: v.union(
-      v.literal("offline"),
-      v.literal("online"),
-      v.literal("maintenance"),
-      v.literal("planned")
-    ),
-    region: v.optional(v.string()),
-    maxPlayers: v.optional(v.number()),
-    notes: v.optional(v.string()),
-    ownerUserId: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_status", ["status"]),
-
-  minecraftJournalEntries: defineTable({
-    title: v.string(),
-    body: v.string(),
-    dateLabel: v.string(),
-    isPublic: v.boolean(),
-    createdAt: v.number(),
-  })
-.index("by_createdAt", ["createdAt"]),
-
   documents: defineTable({
     title: v.string(),
     content: v.optional(v.string()),
@@ -118,7 +19,6 @@ export default defineSchema({
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
 
-    // add this back:
     isPublished: v.optional(v.boolean()),
   })
     .index("by_parent", ["parentDocument"])
@@ -179,14 +79,14 @@ export default defineSchema({
     device: v.optional(v.string()),
     category: v.optional(v.string()),
     compatibleModels: v.optional(v.array(v.string())),
-    condition: v.optional(v.string()), // "OEM", "Premium", etc.
-    cost: v.optional(v.number()), // internal cost
-    price: v.optional(v.number()), // retail price
-    currency: v.optional(v.string()), // "USD"
+    condition: v.optional(v.string()),
+    cost: v.optional(v.number()),
+    price: v.optional(v.number()),
+    currency: v.optional(v.string()),
     sku: v.optional(v.string()),
     vendor: v.optional(v.string()),
     vendorSku: v.optional(v.string()),
-    stock: v.optional(v.number()), // stock qty
+    stock: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
     metadata: v.optional(
       v.object({
@@ -367,6 +267,86 @@ export default defineSchema({
     .index("by_isPublic", ["isPublic"])
     .index("by_createdAt", ["createdAt"])
     .searchIndex("search_all", { searchField: "search" }),
+
+  // ========================= MINECRAFT / eREALMS TABLES ============================
+mcTimelineEvents: defineTable({
+  userId: v.string(),
+  title: v.string(),
+  description: v.optional(v.string()),
+  body: v.optional(v.string()),        // ← add this to match existing docs
+  year: v.optional(v.string()),
+  dateLabel: v.optional(v.string()),
+  kind: v.optional(v.string()),
+  icon: v.optional(v.string()),
+  link: v.optional(v.string()),
+  sortIndex: v.optional(v.number()),
+  createdAt: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
+}).index("by_user", ["userId"]),
+
+mcServerPlans: defineTable({
+  slug: v.string(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  monthlyPriceUsd: v.optional(v.number()), // your field
+  currency: v.optional(v.string()),        // now optional
+  isFeatured: v.optional(v.boolean()),
+  shortTag: v.optional(v.string()),
+  specs: v.optional(v.string()),
+  maxPlayers: v.optional(v.number()),
+  ramGb: v.optional(v.number()),
+  storageGb: v.optional(v.number()),
+  features: v.optional(v.array(v.string())),
+  isPublic: v.optional(v.boolean()),
+  sortIndex: v.optional(v.number()),
+  createdAt: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_slug", ["slug"])
+  .index("by_isPublic", ["isPublic"])
+  .index("by_isFeatured", ["isFeatured"]),
+
+  mcJourneys: defineTable({
+    userId: v.string(),
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.optional(v.string()),
+    content: v.optional(v.string()),
+    year: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_slug", ["slug"])
+    .index("by_published", ["isPublished", "sortIndex"]),
+
+mcButtons: defineTable({
+  key: v.optional(v.string()),       // e.g. "erealms_back_to_journal"
+  label: v.string(),
+  group: v.optional(v.string()),     // make optional to match args
+  href: v.optional(v.string()),
+  icon: v.optional(v.string()),
+  description: v.optional(v.string()),
+  variant: v.optional(v.string()),   // e.g. "ghost"
+  sortIndex: v.optional(v.number()),
+  createdAt: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_group", ["group"]),
+
+mcButtonClicks: defineTable({
+  buttonKey: v.string(), // string key like "erealms_back_to_journal"
+  userId: v.optional(v.string()),
+  path: v.optional(v.string()),      // route where click happened
+  sessionId: v.optional(v.string()), // optional tracking id
+  metadata: v.optional(v.record(v.string(), v.any())),
+  createdAt: v.number(),
+})
+  .index("by_buttonKey", ["buttonKey"])
+  .index("by_user", ["userId"])
+  .index("by_createdAt", ["createdAt"]),
 
   // =========================== VOICE & AI TELEMETRY ================================
   voiceSessions: defineTable({

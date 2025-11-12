@@ -1,100 +1,113 @@
 "use client";
-import { motion, useAnimationControls } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
 
-type SiriGlowProps = {
-  height ? : string; // e.g. "4px"
-  position ? : "top" | "bottom";
-  className ? : string;
-  progress ? : number; // 0..1 (if provided, controls width directly)
-  auto ? : boolean; // true = track document readyState / reloads
-  glowStrength ? : number; // px blur for glow
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useAnimationControls } from "framer-motion";
+
+export type SiriGlowProps = {
+  height?: string;
+  position?: "top" | "bottom";
+  className?: string;
+  progress?: number; // 0..1; if provided, component is controlled
+  auto?: boolean; // auto = use document.readyState + beforeunload
+  glowStrength?: number;
 };
 
 export function SiriGlow({
   height = "4px",
   position = "top",
   className = "",
-  progress, // controlled
+  progress,
   auto = true,
   glowStrength = 12,
 }: SiriGlowProps) {
-  const [internal, setInternal] = useState(0); // 0..1
+  const [internal, setInternal] = useState(0);
   const controls = useAnimationControls();
-  const raf = useRef < number | null > (null);
-  
+  const raf = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
   const pct = Math.max(0, Math.min(1, progress ?? internal));
   const barWidth = useMemo(() => `${pct * 100}%`, [pct]);
-  
-  // Animate rainbow sweep forever
+
   useEffect(() => {
     controls.start({
       backgroundPosition: ["0% 50%", "100% 50%"],
       transition: { repeat: Infinity, duration: 2, ease: "linear" },
     });
   }, [controls]);
-  
-  // Auto-progress based on document readyState + a “smart” loader curve
+
   useEffect(() => {
     if (!auto || progress !== undefined) return;
-    
+
     const clamp = (v: number) => Math.max(0, Math.min(1, v));
-    
+
+    const cancel = () => {
+      if (raf.current !== null) {
+        cancelAnimationFrame(raf.current);
+        raf.current = null;
+      }
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+
     const tick = () => {
-      setInternal((p) => {
-        // Ease: approach 0.9 asymptotically while loading
-        const next = p + (0.9 - p) * 0.08; // faster at start, slower near 90%
-        return clamp(next);
+      setInternal((prev) => {
+        const inc = prev < 0.7 ? 0.02 : 0.005;
+        return clamp(prev + inc);
       });
       raf.current = requestAnimationFrame(tick);
     };
-    
+
     const start = () => {
       cancel();
-      setInternal(0.02); // jump visible
+      setInternal(0.02);
       raf.current = requestAnimationFrame(tick);
     };
-    
+
     const complete = () => {
       cancel();
       setInternal(1);
-      // fade out after short delay
-      setTimeout(() => setInternal(0), 400);
+      timeoutRef.current = window.setTimeout(() => {
+        setInternal(0);
+      }, 400);
     };
-    
-    const cancel = () => {
-      if (raf.current) cancelAnimationFrame(raf.current);
-      raf.current = null;
+
+    if (document.readyState === "loading") {
+      start();
+    } else if (document.readyState === "interactive") {
+      setInternal(0.6);
+    } else {
+      setInternal(0);
+    }
+
+    const onReadyStateChange = () => {
+      if (document.readyState === "complete") {
+        complete();
+      }
     };
-    
-    // initial state on mount
-    if (document.readyState === "loading") start();
-    else if (document.readyState === "interactive") setInternal(0.6);
-    else setInternal(0);
-    
-    const onReady = () => complete();
-    const onBeforeUnload = () => start(); // when user reloads/navigates away
-    
-    document.addEventListener("readystatechange", () => {
-      if (document.readyState === "complete") onReady();
-    });
+
+    const onBeforeUnload = () => {
+      start();
+    };
+
+    document.addEventListener("readystatechange", onReadyStateChange);
     window.addEventListener("beforeunload", onBeforeUnload);
-    
+
     return () => {
       cancel();
+      document.removeEventListener("readystatechange", onReadyStateChange);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [auto, progress]);
-  
-  // Style bits (rainbow + glow)
+
   const gradient =
     "linear-gradient(90deg, red, orange, yellow, green, cyan, blue, violet)";
-  
+
   const visible = pct > 0 && pct < 1 ? 1 : pct === 1 ? 1 : 0;
-  
+
   return (
     <>
-      {/* Glow */}
       <motion.div
         className={`pointer-events-none fixed ${position}-0 left-0 z-50 ${className}`}
         style={{
@@ -107,9 +120,8 @@ export function SiriGlow({
         }}
         animate={controls}
       />
-      {/* Solid bar */}
       <motion.div
-        className={`fixed ${position}-0 left-0 w-0 z-50 ${className}`}
+        className={`fixed ${position}-0 left-0 z-50 ${className}`}
         style={{
           height,
           width: barWidth,
@@ -122,5 +134,3 @@ export function SiriGlow({
     </>
   );
 }
-
-export default SiriGlow;
