@@ -1,22 +1,34 @@
-// components/services/services-table.tsx
+// components/services-table.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
-} from "@/components/ui/card";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type Service = {
+export type Service = {
   _id: string;
   name: string;
   description?: string;
-  price?: number;
+  deliveryTime?: string;
+  currency?: string;        // "USD"
+  priceCents?: number;      // integer cents
+  isPublic?: boolean;
+  archived?: boolean;
+  slug?: string;
+  updatedAt?: number;
+  tags?: string[];
+  category?: string;
+};
+
+type Props = {
+  services: Service[];
+  offset: number;
+  servicesPerPage: number;
+  totalServices: number;
+  onPageChange?: (nextOffset: number) => void;
+  loading?: boolean;
+  className?: string;
 };
 
 export function ServicesTable({
@@ -25,138 +37,188 @@ export function ServicesTable({
   servicesPerPage,
   totalServices,
   onPageChange,
-  autoAdvanceMs = 4500,
-}: {
-  services: Service[];
-  offset: number;
-  servicesPerPage: number;
-  totalServices: number;
-  onPageChange?: (nextOffset: number) => void;
-  autoAdvanceMs?: number;
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [index, setIndex] = useState(0);
-
-  const rows = useMemo(() => services ?? [], [services]);
-
-  // auto-advance between the visible “rows”
-  useEffect(() => {
-    if (rows.length <= 1 || !autoAdvanceMs) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % rows.length), autoAdvanceMs);
-    return () => clearInterval(id);
-  }, [rows.length, autoAdvanceMs]);
-
-  // smooth scroll to the current row
-  useEffect(() => {
-    const el = containerRef.current?.children[index] as HTMLElement | undefined;
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [index]);
-
-  const canPrev = offset > 0;
-  const canNext = offset + servicesPerPage < totalServices;
+  loading,
+  className,
+}: Props) {
+  const pageCount = Math.max(1, Math.ceil(totalServices / Math.max(1, servicesPerPage)));
+  const currentPage = Math.min(pageCount, Math.floor(offset / Math.max(1, servicesPerPage)) + 1);
+  const nextOffset = (Math.min(pageCount, currentPage + 1) - 1) * servicesPerPage;
+  const prevOffset = (Math.max(1, currentPage - 1) - 1) * servicesPerPage;
 
   return (
-    <Card className="bg-black text-white border border-white/10">
-      <CardHeader className="border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Services</CardTitle>
-            <CardDescription className="text-white/60">
-              Browse available services. One at a time, like the Apple hero.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
-              disabled={!canPrev}
-              onClick={() => onPageChange?.(Math.max(0, offset - servicesPerPage))}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
-              disabled={!canNext}
-              onClick={() =>
-                onPageChange?.(Math.min(
-                  totalServices - (totalServices % servicesPerPage || servicesPerPage),
-                  offset + servicesPerPage
-                ))
-              }
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+    <div className={cn("w-full", className)}>
+      {/* Header (desktop only) */}
+      <div className="hidden md:grid grid-cols-[2fr_1.1fr_0.9fr_1.1fr_0.9fr_1fr] gap-4 px-4 py-2 text-sm text-muted-foreground">
+        <div>Service</div>
+        <div>Delivery</div>
+        <div>Currency</div>
+        <div>Price (cents)</div>
+        <div>Public</div>
+        <div>Tags</div>
+      </div>
 
-        {/* table header like your black screenshot */}
-        <Table className="mt-3">
-          <TableHeader>
-            <TableRow className="border-white/10">
-              <TableHead className="text-white/60 uppercase">Title</TableHead>
-              <TableHead className="text-white/60 uppercase">Description</TableHead>
-              <TableHead className="text-white/60 uppercase text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-        </Table>
-      </CardHeader>
+      <div className="space-y-3">
+        {loading
+          ? Array.from({ length: servicesPerPage || 10 }).map((_, i) => (
+              <RowSkeleton key={i} />
+            ))
+          : services.map((s) => <Row key={s._id} s={s} />)}
+      </div>
 
-      <CardContent className="p-0">
-        {/* one-at-a-time “rows” with hero + table row */}
-        <div
-          ref={containerRef}
-          className="max-h-[70vh] overflow-y-auto snap-y snap-mandatory"
+      <Pager
+        currentPage={currentPage}
+        pageCount={pageCount}
+        onPrev={() => onPageChange?.(prevOffset)}
+        onNext={() => onPageChange?.(nextOffset)}
+      />
+    </div>
+  );
+}
+
+function Row({ s }: { s: Service }) {
+  // Mobile: cards (CSS grid), Desktop: 6-column table-like row
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-card",
+        "p-4 md:px-4 md:py-3",
+        // Desktop grid (table-like)
+        "md:grid md:grid-cols-[2fr_1.1fr_0.9fr_1.1fr_0.9fr_1fr] md:items-center md:gap-4",
+        // Mobile becomes a vertical stack; no inner scroll
+        "flex flex-col gap-2"
+      )}
+    >
+      {/* Service title + slug (desktop column 1, mobile top) */}
+      <div className="min-w-0">
+        <div className="font-semibold truncate">{s.name || "Untitled"}</div>
+        {s.slug ? (
+          <div className="text-xs text-muted-foreground break-all">{s.slug}</div>
+        ) : null}
+      </div>
+
+      {/* Delivery */}
+      <div className="md:justify-self-start">
+        <Badge tone={toneForDelivery(s.deliveryTime)}>{s.deliveryTime || "—"}</Badge>
+      </div>
+
+      {/* Currency */}
+      <div className="md:justify-self-start">
+        <Pill>{s.currency || "USD"}</Pill>
+      </div>
+
+      {/* Price cents */}
+      <div className="font-semibold text-blue-600 dark:text-blue-300 md:justify-self-start tabular-nums">
+        {typeof s.priceCents === "number" ? s.priceCents.toLocaleString() : "—"}
+      </div>
+
+      {/* Public */}
+      <div className="md:justify-self-start">
+        <Badge
+          tone={
+            s.archived ? "muted" : s.isPublic ? "success" : "warning"
+          }
         >
-          {rows.map((s) => (
-            <section key={s._id} className="snap-start min-h-[65vh] flex items-center px-4 py-10">
-              <div className="w-full">
-                {/* Apple-like hero */}
-                <div className="text-center space-y-2">
-                  <h2 className="text-4xl md:text-5xl font-semibold">{s.name}</h2>
-                  <p className="text-white/70 text-lg md:text-xl">
-                    {s.description || "Premium device service."}
-                  </p>
-                  <div className="flex items-center justify-center gap-3 pt-3">
-                    <Button
-                      variant="outline"
-                      className="border-white/30 text-white hover:bg-white/10"
-                      onClick={() => alert(`Info about: ${s.name}`)}
-                    >
-                      ?
-                    </Button>
-                    <Link href={`/main/services/${s._id}`} prefetch>
-                      <Button className="bg-white text-black hover:opacity-90">Buy</Button>
-                    </Link>
-                  </div>
-                </div>
+          {s.archived ? "Archived" : s.isPublic ? "Public" : "Private"}
+        </Badge>
+      </div>
 
-                {/* the black "row" */}
-                <div className="mt-8 rounded-xl border border-white/12 overflow-hidden">
-                  <div className="grid grid-cols-12">
-                    <div className="col-span-4 border-r border-white/10 p-4">
-                      <div className="text-sm text-white/60 uppercase">serviceId</div>
-                      <div className="mt-1 font-mono text-sm break-all">{s._id}</div>
-                    </div>
-                    <div className="col-span-8 p-4">
-                      <div className="text-sm text-white/60 uppercase">name</div>
-                      <div className="mt-1">{s.name}</div>
-                    </div>
-                  </div>
-                </div>
+      {/* Tags */}
+      <div className="md:justify-self-start">
+        {s.tags?.length ? (
+          <div className="flex flex-wrap gap-1">
+            {s.tags.slice(0, 6).map((t, i) => (
+              <span
+                key={`${t}-${i}`}
+                className="rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </div>
 
-              </div>
-            </section>
-          ))}
-        </div>
-      </CardContent>
+      {/* Description: spans full width (always last, full row) */}
+      <div className="md:col-span-6 pt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+        {s.description?.trim() ? s.description : "No description."}
+      </div>
+    </div>
+  );
+}
 
-      <CardFooter className="border-t border-white/10 flex items-center justify-between">
-        <div className="text-xs text-white/60">
-          Showing {Math.min(offset + 1, totalServices)}–
-          {Math.min(offset + servicesPerPage, totalServices)} of {totalServices}
-        </div>
-      </CardFooter>
-    </Card>
+function RowSkeleton() {
+  return (
+    <div className="rounded-xl border p-4 md:px-4 md:py-3 md:grid md:grid-cols-[2fr_1.1fr_0.9fr_1.1fr_0.9fr_1fr] md:gap-4">
+      <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+      <div className="h-6 w-24 bg-muted rounded-full animate-pulse mt-2 md:mt-0" />
+      <div className="h-6 w-14 bg-muted rounded-full animate-pulse mt-2 md:mt-0" />
+      <div className="h-5 w-20 bg-muted rounded animate-pulse mt-2 md:mt-0" />
+      <div className="h-6 w-16 bg-muted rounded-full animate-pulse mt-2 md:mt-0" />
+      <div className="h-4 w-28 bg-muted rounded animate-pulse mt-2 md:mt-0" />
+      <div className="h-4 w-3/4 bg-muted rounded animate-pulse col-span-full mt-3" />
+    </div>
+  );
+}
+
+/* ---------- Small utilities ---------- */
+
+function Badge({
+  children,
+  tone = "muted",
+}: React.PropsWithChildren<{ tone?: "muted" | "success" | "warning" }>) {
+  const toneClasses =
+    tone === "success"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900"
+      : tone === "warning"
+      ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
+      : "bg-muted text-muted-foreground";
+  return (
+    <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-xs border", toneClasses)}>
+      {children}
+    </span>
+  );
+}
+function Pill({ children }: React.PropsWithChildren) {
+  return (
+    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+function toneForDelivery(s?: string): "muted" | "success" | "warning" {
+  if (!s) return "muted";
+  const t = s.toLowerCase();
+  if (t.includes("instant") || t.includes("0-") || t.includes("min")) return "success";
+  if (t.includes("day")) return "warning";
+  return "muted";
+}
+
+function Pager({
+  currentPage,
+  pageCount,
+  onPrev,
+  onNext,
+}: {
+  currentPage: number;
+  pageCount: number;
+  onPrev?: () => void;
+  onNext?: () => void;
+}) {
+  return (
+    <div className="mt-3 flex items-center justify-between text-sm px-1 md:px-0">
+      <div className="text-muted-foreground">
+        Page {currentPage} of {pageCount}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onPrev} disabled={!onPrev || currentPage <= 1}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={!onNext || currentPage >= pageCount}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }

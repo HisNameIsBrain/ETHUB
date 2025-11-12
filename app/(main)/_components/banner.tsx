@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -25,7 +26,7 @@ export const Banner = ({ documentId }: BannerProps) => {
       success: "Note deleted!",
       error: "Failed to delete note.",
     });
-    router.push("/documents");
+    router.push("/documents" as Route);
   };
   
   const onRestore = () => {

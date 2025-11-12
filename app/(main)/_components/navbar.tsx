@@ -1,15 +1,14 @@
 "use client";
-
+import { Title, TitleSkeleton } from "@/app/(main)/_components/title";
+import { PublishToggle as Publish } from "@/app/(main)/_components/publish";
+import MenuSkeleton from "@/app/(main)/_components/menu-skeleton";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { MenuIcon } from "lucide-react";
-import { Title } from "@/app/(main)/_components/title";
 import { Banner } from "@/app/(main)/_components/banner";
 import { Menu } from "@/app/(main)/_components/menu";
-import { Publish } from "@/app/(main)/_components/publish";
-
 interface NavbarProps {
   isCollapsed: boolean;
   onResetWidth: () => void;
@@ -19,15 +18,15 @@ export const Navbar = ({ isCollapsed, onResetWidth }: NavbarProps) => {
   const params = useParams();
 
   const document = useQuery(api.documents.getById, {
-    documentId: params.documentId as Id<"documents">,
+    id: params.documentId as Id<"documents">,
   });
 
   if (document === undefined) {
     return (
       <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
-        <Title.Skeleton />
+        <TitleSkeleton />
         <div className="flex items-center gap-x-2">
-          <Menu.Skeleton />
+          <MenuSkeleton />
         </div>
       </nav>
     );

@@ -1,0 +1,43 @@
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+
+// ❌ remove the top-level await block (ctx, args, img are undefined)
+
+export const saveImages = mutation({
+  args: {
+    query: v.string(),
+    images: v.array(
+      v.object({
+        link: v.string(),
+        title: v.optional(v.string()),
+        mime: v.optional(v.string()),
+        thumbnail: v.optional(v.string()),
+        contextLink: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    for (const img of args.images) {
+      await ctx.db.insert("partImages", {
+        query: args.query,
+        cachedAt: Date.now(), // ✅ required by schema
+        title: img.title ?? "", // ✅ ensure title is defined
+        link: img.link,
+        mime: img.mime,
+        thumbnail: img.thumbnail,
+        contextLink: img.contextLink,
+      });
+    }
+  },
+});
+
+export const getCachedImages = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("partImages")
+      .filter((q) => q.eq(q.field("query"), args.query))
+      .order("desc")
+      .collect();
+  },
+});

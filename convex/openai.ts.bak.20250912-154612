@@ -1,0 +1,72 @@
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+import OpenAI from "openai";
+
+// Allowed chat models
+const OPENAI_MODELS = new Set([
+  "gpt-4o-mini",
+  "gpt-4o",
+  "gpt-4.1-mini",
+  "gpt-4.1",
+  "o3-mini",
+]);
+
+// Constrain audio formats to avoid TS/validation issues
+const audioFormatValidator = v.union(
+  v.literal("mp3"),
+  v.literal("wav"),
+  v.literal("ogg"),
+  v.literal("pcm")
+);
+
+export const ask = mutation({
+  args: {
+    prompt: v.string(),
+    model: v.optional(v.string()),
+    system: v.optional(v.string()),
+    // Keep these for your UI/forms and analytics, but we won't synthesize on the server
+    voice: v.optional(v.string()),
+    audioFormat: v.optional(audioFormatValidator),
+    temperature: v.optional(v.number()),
+  },
+  handler: async (
+    ctx,
+    {
+      prompt,
+      model = "gpt-4o-mini",
+      system,
+      voice,                 // kept for analytics/client-side TTS
+      audioFormat = "mp3",   // kept for analytics/client-side TTS
+      temperature = 0.2,
+    }
+  ) => {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("Missing OPENAI_API_KEY");
+    }
+    if (!OPENAI_MODELS.has(model)) {
+      throw new Error(`Unsupported model: ${model}`);
+    }
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const messages: OpenAI.ChatCompletionMessageParam[] = [];
+    if (system?.trim()) messages.push({ role: "system", content: system });
+    messages.push({ role: "user", content: prompt });
+
+    const chat = await client.chat.completions.create({
+      model,
+      messages,
+      temperature,
+    });
+
+    const text = chat.choices?.[0]?.message?.content ?? "";
+
+    return {
+      text,
+      modelUsed: model,
+      tts: voice
+        ? { requested: true, voice, format: audioFormat }
+        : { requested: false },
+    };
+  },
+});

@@ -1,25 +1,10 @@
-// components/top-siri-loader.tsx
 "use client";
-
-import { motion, AnimatePresence } from "framer-motion";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import * as React from "react";
 import { SiriGlow } from "@/components/siri-glow";
 
-const SWEEP_ONCE_MS = 600; // one pass
-const TOTAL_MS = SWEEP_ONCE_MS * 2; // exactly two full swipes
-
 export default function TopSiriLoader() {
-  const pathname = usePathname();
-  const [loading, setLoading] = useState(false);
-  
-  useEffect(() => {
-    setLoading(true);
-    const t = setTimeout(() => setLoading(false), TOTAL_MS);
-    return () => clearTimeout(t);
-  }, [pathname]);
-  
   return (
+<<<<<<< HEAD
     <>
       <AnimatePresence>
         {loading && (
@@ -163,3 +148,14 @@ function AuroraPool() {
     </div>
   );
 }
+=======
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[96] h-1.5">
+      <div className="mx-auto h-full w-[96%] overflow-hidden rounded-full bg-white/10">
+        <div className="relative h-full w-full blur-[2px] opacity-90">
+          <SiriGlow rotateSec={5.2} innerRotateSec={6.4} blurPx={12} insetPercent={-6} opacity={0.8} thicknessPx={10} inner />
+        </div>
+      </div>
+    </div>
+  );
+}
+>>>>>>> release/ollama-workspace

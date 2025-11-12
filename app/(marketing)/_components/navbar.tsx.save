@@ -1,0 +1,209 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
+import { SiriGlowInvert } from "@/components/siri-glow-invert";
+import TopSiriLoader from "@/components/top-siri-loader";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Menu, X, Sparkles, LayoutDashboard, FileText, Settings as Cog, User as UserIcon,
+} from "lucide-react";
+import * as React from "react";
+
+function NavItem({
+  href,
+  label,
+  Icon,
+  active,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  active: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.div whileHover={{ y: -1, scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+      <Link
+        href={href}
+        onClick={onClick}
+        className={[
+          "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
+          active ? "bg-primary text-primary-foreground border-transparent" : "hover:bg-white/5 border-transparent",
+        ].join(" ")}
+      >
+        <Icon className="h-4 w-4" />
+        {label}
+      </Link>
+    </motion.div>
+  );
+}
+
+function ProfileButtonLg() {
+  return (
+    <div className="relative h-12 w-12">
+      <span className="absolute -inset-[12%] pointer-events-none">
+        <SiriGlowInvert
+          rotateSec={3.6}
+          innerRotateSec={4.6}
+          blurPx={2}
+          insetPercent={0}
+          opacity={0.22}
+          thicknessPx={5}
+          inner
+        />
+      </span>
+      <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
+        <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />
+      </div>
+    </div>
+  );
+}
+
+export default function Navbar() {
+  const pathname = usePathname() ?? "";
+  const [open, setOpen] = React.useState(false);
+
+  const nav = [
+    { href: "/services", label: "Services", Icon: Sparkles },
+    { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+    { href: "/documents", label: "Documents", Icon: FileText },
+    { href: "/settings", label: "Settings", Icon: Cog },
+  ];
+
+  return (
+    <>
+      {/* radiant top glow */}
+      <TopSiriLoader />
+
+      <nav className="sticky top-0 z-[90] w-full border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+          {/* left: menu + brand */}
+          <div className="flex items-center gap-2">
+            <button
+              aria-label="Open menu"
+              onClick={() => setOpen(true)}
+              className="h-9 w-9 grid place-items-center rounded-lg border hover:bg-white/5 transition md:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+
+            <Link href="/" className="flex items-center gap-2" aria-label="Home">
+              <img src="/logo.svg" alt="ETHUB" className="hidden h-7 w-auto sm:block" />
+              <span className="sm:hidden text-base font-semibold">ETECHHUB</span>
+            </Link>
+          </div>
+
+          {/* middle: desktop tabs */}
+          <div className="hidden md:flex items-center gap-1">
+            {nav.map(({ href, label, Icon }) => (
+              <NavItem
+                key={href}
+                href={href}
+                label={label}
+                Icon={Icon}
+                active={pathname === href || pathname.startsWith(href + "/")}
+              />
+            ))}
+          </div>
+
+          {/* right: profile (small) */}
+          <div className="hidden md:flex items-center">
+            <div className="relative h-10 w-10">
+              <span className="absolute -inset-[10%] pointer-events-none">
+                <SiriGlowInvert
+                  rotateSec={3.6}
+                  innerRotateSec={4.6}
+                  blurPx={10}
+                  insetPercent={-8}
+                  opacity={0.85}
+                  thicknessPx={9}
+                  inner
+                />
+              </span>
+              <div className="relative h-full w-full overflow-hidden rounded-full border border-white/10 bg-black/40 backdrop-blur">
+                <UserButton appearance={{ elements: { userButtonAvatarBox: "rounded-full" } }} />
+              </div>
+            </div>
+          </div>
+
+          {/* right: mobile brand spacer */}
+          <div className="md:hidden w-9 h-9" />
+        </div>
+      </nav>
+
+      {/* mobile left drawer (overlays, 1/4 page) */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 z-[95] bg-black/50 backdrop-blur-sm md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="absolute left-0 top-0 h-full w-[25%] min-w-[260px] max-w-xs border-r bg-background shadow-xl"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 280, damping: 30 }}
+            >
+              <div className="flex items-center justify-between p-3 border-b">
+                <span className="font-medium">Menu</span>
+                <button
+                  aria-label="Close menu"
+                  onClick={() => setOpen(false)}
+                  className="h-8 w-8 grid place-items-center rounded-md border hover:bg-white/5 transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Account section */}
+              <div className="p-3 border-b">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    whileHover={{ rotate: 2, scale: 1.02 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                  >
+                    <ProfileButtonLg />
+                  </motion.div>
+                  <div className="flex flex-col">
+                    <div className="inline-flex items-center gap-2 font-medium">
+                      <UserIcon className="h-4 w-4" />
+                      Account
+                    </div>
+                    <span className="text-xs text-muted-foreground">Profile & settings</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* nav links */}
+              <div className="p-2 space-y-1">
+                {nav.map(({ href, label, Icon }) => {
+                  const active = pathname === href || pathname.startsWith(href + "/");
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setOpen(false)}
+                      className={[
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                        active ? "bg-primary text-primary-foreground" : "hover:bg-white/5",
+                      ].join(" ")}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

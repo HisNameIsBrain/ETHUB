@@ -1,74 +1,109 @@
 "use client";
 
-import { SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/app/(marketing)/_components/logo";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { Route } from "next";
+import { useRouter, usePathname } from "next/navigation";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function ServicesNavbar() {
-  const { user, isLoaded } = useUser();
+const ORDER_PATH = "/order" as Route;
+const SERVICES_PATH = "/services" as Route;
+const DASHBOARD_PATH = "/dashboard" as Route;
+const ADMIN_PATH = "/admin" as Route;
+const SIGN_IN_PATH = "/sign-in" as Route;
+const SIGN_UP_PATH = "/sign-up" as Route;
+
+export default function ServicesNavbar() {
   const router = useRouter();
-
-  const isAdmin = isLoaded && user?.publicMetadata?.role === "admin";
+  const pathname = usePathname();
 
   return (
-    <div className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-gray-700 bg-background z-10">
-      {/* Left side: Menu and Logo */}
-      <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => router.push("/")}>
-              Home
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/services")}>
-              Services
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/order")}>
-              Order
-            </DropdownMenuItem>
-            <SignedIn>
-              <DropdownMenuItem onClick={() => router.push("/documents")}>
-                Documents
+    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+        <Link
+          href={("/" as Route as Route as Route as Route)}
+          className="text-base font-semibold tracking-tight"
+        >
+          Tech Hub
+        </Link>
+
+        <nav className="hidden gap-6 md:flex">
+          <Link
+            href={(SERVICES_PATH as Route)}
+            className={cn(
+              "text-sm font-medium hover:text-orange-500",
+              pathname === SERVICES_PATH && "text-orange-500",
+            )}
+          >
+            Services
+          </Link>
+          <Link
+            href={(ORDER_PATH as Route)}
+            className={cn(
+              "text-sm font-medium hover:text-orange-500",
+              pathname === ORDER_PATH && "text-orange-500",
+            )}
+          >
+            Order
+          </Link>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                Menu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => router.push(SERVICES_PATH)}>
+                Services
               </DropdownMenuItem>
-            </SignedIn>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onClick={() => router.push(ORDER_PATH)}>
+                Order
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <SignedIn>
+                <DropdownMenuItem onClick={() => router.push(DASHBOARD_PATH)}>
+                  Dashboard
+                </DropdownMenuItem>
+              </SignedIn>
+              <SignedOut>
+                <DropdownMenuItem asChild>
+                  <Link href={(SIGN_IN_PATH as Route)}>Sign in</Link>
+                </DropdownMenuItem>
+              </SignedOut>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <Logo />
-      </div>
-
-      {/* Right side: Admin + Auth */}
-      <div className="flex items-center gap-2">
-        <SignedIn>
-          {isAdmin && isLoaded && user && (
+          <SignedIn>
+            <UserButton afterSignOutUrl={"/" as Route} />
             <Button
               variant="destructive"
-              onClick={() => router.push("/admin")}
+              onClick={() => router.push(ADMIN_PATH)}
             >
               Admin
             </Button>
-          )}
-          <UserButton afterSignOutUrl="/" />
-        </SignedIn>
+          </SignedIn>
 
-        <SignedOut>
-          <Button variant="outline" onClick={() => router.push("/sign-in")}>
-            Sign In
-          </Button>
-        </SignedOut>
+          <SignedOut>
+            <Button variant="default" onClick={() => router.push(SIGN_IN_PATH)}>
+              Sign In
+            </Button>
+            <Button variant="default" onClick={() => router.push(SIGN_UP_PATH)}>
+              Get Started
+            </Button>
+          </SignedOut>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

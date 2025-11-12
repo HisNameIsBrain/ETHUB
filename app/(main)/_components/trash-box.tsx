@@ -1,66 +1,82 @@
 "use client";
+import type { Route } from "next";
+// app/(main)/_components/trash-box.tsx
+"use client";
 
+import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import React, { useState } from "react";
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Spinner } from "@/components/spinner";
 import { Search, Trash, Undo } from "lucide-react";
 import { ConfirmModal } from "@/components/modals/confirm-modal";
 import { Input } from "@/components/ui/input";
 
+// Minimal shape we need for UI (matches Convex docs table)
+type UIDocument = {
+  _id: Id<"documents">;
+  title: string;
+};
+
 export const TrashBox = () => {
   const router = useRouter();
   const params = useParams();
-  const documents = useQuery(api.documents.getTrash);
+
+  const documents = useQuery(api.documents.getTrash) as UIDocument[] | undefined;
   const restore = useMutation(api.documents.restore);
   const remove = useMutation(api.documents.remove);
-  
+
   const [search, setSearch] = useState("");
-  
-  const filteredDocuments = documents?.filter((document) => {
-    return document.title.toLowerCase().includes(search.toLowerCase());
-  });
-  
-  const onClick = (documentId: string) => {
-    router.push(`/documents/${documentId}`);
+
+  const filteredDocuments = documents?.filter((document: UIDocument) =>
+    (document.title ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const onClick = (documentId: Id<"documents">) => {
+    router.push(`/documents/${documentId}` as Route);
   };
-  
+
   const onRestore = (
-    event: React.MouseEvent < HTMLDivElement, MouseEvent > ,
-    documentId: Id < "documents" > ,
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    documentId: Id<"documents">
   ) => {
     event.stopPropagation();
     const promise = restore({ id: documentId });
-    
     toast.promise(promise, {
-      loading: "Restoring note...",
-      success: "Note restored!",
-      error: " Failed to restore note.",
+      loading: "Restoring page…",
+      success: "Page restored!",
+      error: "Failed to restore page.",
     });
   };
-  
-  const onRemove = (documentId: Id < "documents" > ) => {
+
+  const onRemove = (documentId: Id<"documents">) => {
     const promise = remove({ id: documentId });
-    
     toast.promise(promise, {
-      loading: "Deleting note...",
-      success: "Note deleted!",
-      error: " Failed to delete note.",
+      loading: "Deleting permanently…",
+      success: "Page deleted.",
+      error: "Failed to delete page.",
     });
-    
-    if (params.documentId === documentId) router.push("/documents");
+
+    // params.documentId can be string | string[] | undefined
+    const openId = Array.isArray(params?.documentId)
+      ? params.documentId[0]
+      : params?.documentId;
+
+    if (openId && String(openId) === String(documentId)) {
+      router.push("/documents" as Route);
+    }
   };
-  
-  if (documents === undefined)
+
+  if (documents === undefined) {
     return (
       <div className="h-full flex items-center justify-center p-4">
         <Spinner size="lg" />
       </div>
     );
-  
+  }
+
   return (
     <div className="text-sm">
       <div className="flex items-center gap-x-1 p-2">
@@ -77,6 +93,7 @@ export const TrashBox = () => {
         <p className="hidden last:block text-xs text-center text-muted-foreground pb-2">
           No documents found.
         </p>
+
         {filteredDocuments?.map((document) => (
           <div
             key={document._id}

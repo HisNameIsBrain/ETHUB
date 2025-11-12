@@ -1,0 +1,311 @@
+
+"use client";
+
+import * as React from "react";
+import { useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export type Service = {
+  _id: string;
+  slug: string;
+  name: string;
+  category?: string;
+  deliveryTime?: string;
+  isPublic: boolean;
+  archived: boolean;
+  priceCents?: number;
+  currency?: string;
+  price?: number;
+  description?: string;
+  tags?: string[];
+  updatedAt: number;
+};
+
+type Props = {
+  services: Service[];
+  offset: number;
+  servicesPerPage: number;
+  totalServices: number;
+  onPageChange?: (nextOffset: number) => void;
+  autoAdvanceMs?: number;
+  loading?: boolean;
+  className?: string;
+};
+
+export function ServicesTable({
+  services,
+  offset,
+  servicesPerPage,
+  totalServices,
+  onPageChange,
+  autoAdvanceMs,
+  loading,
+  className,
+}: Props) {
+  const pageCount = Math.max(1, Math.ceil(totalServices / Math.max(1, servicesPerPage)));
+  const currentPage = Math.min(pageCount, Math.floor(offset / Math.max(1, servicesPerPage)) + 1);
+
+  const nextOffset = useMemo(() => {
+    const nextPage = Math.min(pageCount, currentPage + 1);
+    return (nextPage - 1) * servicesPerPage;
+  }, [currentPage, pageCount, servicesPerPage]);
+
+  const prevOffset = useMemo(() => {
+    const prevPage = Math.max(1, currentPage - 1);
+    return (prevPage - 1) * servicesPerPage;
+  }, [currentPage, servicesPerPage]);
+
+  useEffect(() => {
+    if (!autoAdvanceMs || autoAdvanceMs <= 0 || !onPageChange || pageCount <= 1) return;
+    const id = setInterval(() => {
+      const next = currentPage >= pageCount ? 0 : nextOffset;
+      onPageChange(next);
+    }, autoAdvanceMs);
+    return () => clearInterval(id);
+  }, [autoAdvanceMs, currentPage, nextOffset, onPageChange, pageCount]);
+
+  const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <section
+      className={cn(
+        // Fill screen, but allow the PAGE (not the table) to scroll only if necessary.
+        "w-full min-h-[calc(100vh-140px)]",
+        "flex flex-col",
+        "overflow-visible", // <-- never create scrollbars here
+        className
+      )}
+    >
+      {children}
+    </section>
+  );
+
+  const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div
+      className={cn(
+        "flex-1 rounded-xl border bg-background",
+        "overflow-visible", // <-- keep visible, let content dictate height
+        "p-0"
+      )}
+    >
+      {children}
+    </div>
+  );
+
+  const COLS = 6;
+
+  if (loading) {
+    return (
+      <Wrapper>
+        <Shell>
+          <div className="p-3 border-b text-base font-semibold">Services</div>
+          <div className="divide-y">
+            {Array.from({ length: servicesPerPage || 8 }).map((_, i) => (
+              <div key={i} className="p-4 grid grid-cols-12 gap-3">
+                <div className="h-5 rounded bg-muted animate-pulse col-span-5" />
+                <div className="h-5 rounded bg-muted animate-pulse col-span-2" />
+                <div className="h-5 rounded bg-muted animate-pulse col-span-2" />
+                <div className="h-5 rounded bg-muted animate-pulse col-span-3" />
+                <div className="h-4 rounded bg-muted animate-pulse col-span-12 mt-2" />
+              </div>
+            ))}
+          </div>
+        </Shell>
+        <Pager
+          currentPage={currentPage}
+          pageCount={pageCount}
+          onPrev={() => onPageChange?.(prevOffset)}
+          onNext={() => onPageChange?.(nextOffset)}
+        />
+      </Wrapper>
+    );
+  }
+
+  if (!services?.length) {
+    return (
+      <Wrapper>
+        <Shell>
+          <div className="p-3 border-b text-base font-semibold">Services</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">No services found.</div>
+        </Shell>
+        <Pager
+          currentPage={currentPage}
+          pageCount={pageCount}
+          onPrev={() => onPageChange?.(prevOffset)}
+          onNext={() => onPageChange?.(nextOffset)}
+        />
+      </Wrapper>
+    );
+  }
+
+  return (
+    <Wrapper>
+      <Shell>
+        <div className="overflow-visible"> {/* ensure table never scrolls inside */}
+          <Table className="text-[1rem] md:text-[1.02rem]">
+            <TableHeader className="bg-muted/40">
+              <TableRow>
+                <TableHead className="min-w-[260px] md:min-w-[320px]">Service</TableHead>
+                <TableHead className="min-w-[128px]">Delivery</TableHead>
+                <TableHead className="min-w-[96px]">Currency</TableHead>
+                <TableHead className="min-w-[140px]">Price (cents)</TableHead>
+                <TableHead className="min-w-[110px]">Public</TableHead>
+                <TableHead className="min-w-[220px]">Tags</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {services.map((s) => {
+                const currency = s.currency ?? "USD";
+                const cents =
+                  typeof s.priceCents === "number"
+                    ? s.priceCents
+                    : typeof s.price === "number"
+                    ? Math.round(s.price * 100)
+                    : undefined;
+
+                return (
+                  <React.Fragment key={s._id}>
+                    <TableRow className={cn(s.archived && "opacity-60")}>
+                      {/* Title */}
+                      <TableCell className="align-top">
+                        <div className="font-semibold leading-snug whitespace-pre-wrap break-words">
+                          {s.name || "Untitled"}
+                        </div>
+                        {s.slug ? (
+                          <div className="text-xs text-muted-foreground break-words">{s.slug}</div>
+                        ) : null}
+                      </TableCell>
+
+                      {/* Delivery */}
+                      <TableCell className="align-top">
+                        <span className={cn(
+                          "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
+                          deliveryBadgeClass(s.deliveryTime)
+                        )}>
+                          {s.deliveryTime ?? "—"}
+                        </span>
+                      </TableCell>
+
+                      {/* Currency */}
+                      <TableCell className="align-top">
+                        <Badge variant="secondary" className="text-xs">{currency}</Badge>
+                      </TableCell>
+
+                      {/* Price (cents) */}
+                      <TableCell className="align-top">
+                        <span className="inline-block rounded-md bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-200">
+                          {cents !== undefined ? cents.toLocaleString() : "—"}
+                        </span>
+                      </TableCell>
+
+                      {/* Public */}
+                      <TableCell className="align-top">
+                        {statusBadge(s.isPublic, s.archived)}
+                      </TableCell>
+
+                      {/* Tags */}
+                      <TableCell className="align-top">
+                        {!!s.tags?.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {s.tags.map((t) => (
+                              <Badge key={t} variant="secondary" className="text-[11px]">
+                                {t}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Full-width description directly below */}
+                    <TableRow className={cn(s.archived && "opacity-60")}>
+                      <TableCell colSpan={COLS} className="pt-0">
+                        {s.description ? (
+                          <div className="mt-2 rounded-md border bg-muted/20 p-3 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {s.description}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-muted-foreground">No description.</div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </Shell>
+
+      <Pager
+        currentPage={currentPage}
+        pageCount={pageCount}
+        onPrev={() => onPageChange?.(prevOffset)}
+        onNext={() => onPageChange?.(nextOffset)}
+      />
+    </Wrapper>
+  );
+}
+
+/* ---------- UI bits ---------- */
+
+function Pager({
+  currentPage,
+  pageCount,
+  onPrev,
+  onNext,
+}: {
+  currentPage: number;
+  pageCount: number;
+  onPrev?: () => void;
+  onNext?: () => void;
+}) {
+  return (
+    <div className="mt-3 flex items-center justify-between text-sm">
+      <div className="text-muted-foreground">
+        Page {currentPage} of {pageCount}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onPrev} disabled={!onPrev || currentPage <= 1}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={!onNext || currentPage >= pageCount}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function statusBadge(isPublic: boolean, archived: boolean) {
+  if (archived)
+    return <Badge variant="secondary" className="bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">Archived</Badge>;
+  if (isPublic) return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Public</Badge>;
+  return <Badge className="bg-amber-500 hover:bg-amber-500 text-white">Private</Badge>;
+}
+
+function deliveryBadgeClass(d?: string) {
+  if (!d) return "bg-muted text-muted-foreground";
+  const t = d.toLowerCase();
+  if (t.includes("instant") || /(^|[^0-9])0-?1?\s*min/.test(t))
+    return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200";
+  if (t.includes("min"))
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200";
+  if (t.includes("hour") || t.includes("day"))
+    return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200";
+  return "bg-muted text-muted-foreground";
+}
+
+export default ServicesTable;

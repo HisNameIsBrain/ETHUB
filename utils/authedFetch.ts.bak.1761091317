@@ -1,0 +1,91 @@
+export function makeAuthedFetch(tokenSupplier: () => Promise<string | null>) {
+  return async function authedFetch(
+    url: string,
+    init: RequestInit = {},
+    options: { retryOnce?: boolean; parseJson?: boolean } = {}
+  ) {
+    const { retryOnce = true, parseJson = false } = options;
+
+    const doFetch = async (t: string) =>
+      fetch(url, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...(init.headers || {}),
+          Authorization: `Bearer ${t}`,
+        },
+        credentials: "include",
+        cache: "no-store",
+      });
+
+    let token = await tokenSupplier();
+    if (!token) throw new Error("[authedFetch] Missing JWT token");
+
+    let res = await doFetch(token);
+
+    if (retryOnce && res.status === 401) {
+      const fresh = await tokenSupplier().catch(() => null);
+      if (fresh) res = await doFetch(fresh);
+    }
+
+    if (parseJson) {
+      try {
+        const data = await res.json();
+        return { ok: res.ok, status: res.status, data };
+      } catch {
+        return { ok: res.ok, status: res.status, data: null };
+      }
+    }
+
+    return res;
+  };
+}
+
+// === ETHUB::authedFetch (BEGIN) ===
+// utils/authedFetch.ts
+// Non-destructive: this block can be appended safely; it only exports authedFetch.
+// It fetches a Clerk-issued JWT from /api/auth/token and attaches it to API calls.
+
+let __ETHUB_token_cache: string | null = null;
+let __ETHUB_token_ts = 0;
+const __ETHUB_TOKEN_TTL_MS = 4 * 60 * 1000; // refresh roughly every ~4 minutes
+
+async function __ethub_getServerToken(): Promise<string> {
+  const now = Date.now();
+  if (__ETHUB_token_cache && (now - __ETHUB_token_ts) < __ETHUB_TOKEN_TTL_MS) {
+    return __ETHUB_token_cache;
+  }
+  const r = await fetch("/api/auth/token", { method: "GET", credentials: "include", cache: "no-store" });
+  if (!r.ok) throw new Error(`Token fetch failed (${r.status})`);
+  const data = await r.json();
+  if (!data?.token) throw new Error("No token returned");
+  __ETHUB_token_cache = data.token;
+  __ETHUB_token_ts = now;
+  return __ETHUB_token_cache;
+}
+
+export async function authedFetch(
+  url: string,
+  init: RequestInit = {},
+  opts: { retryOnce?: boolean } = {}
+) {
+  const { retryOnce = true } = opts;
+  const doFetch = async (t: string) => {
+    const headers = new Headers(init.headers || {});
+    if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    headers.set("Authorization", `Bearer ${t}`);
+    return fetch(url, { ...init, headers, credentials: "include", cache: "no-store" });
+  };
+
+  let token = await __ethub_getServerToken();
+  let res = await doFetch(token);
+
+  if (retryOnce && res.status === 401) {
+    // force refresh
+    __ETHUB_token_cache = null;
+    token = await __ethub_getServerToken();
+    res = await doFetch(token);
+  }
+  return res;
+}
+// === ETHUB::authedFetch (END) ===

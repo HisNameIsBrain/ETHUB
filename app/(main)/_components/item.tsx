@@ -1,3 +1,5 @@
+"use client";
+import type { Route } from "next";
 // "use client";
 
 import {
@@ -58,7 +60,7 @@ export const Item = ({
   const onArchive = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     event.stopPropagation();
     if (!id) return;
-    const promise = archive({ id }).then(() => router.push("/documents"));
+    const promise = archive({ id }).then(() => router.push("/documents" as Route));
 
     toast.promise(promise, {
       loading: "Moving to trash...",
@@ -81,7 +83,7 @@ export const Item = ({
         if (!expanded) {
           onExpand?.();
         }
-        router.push(`/documents/${documentId}`);
+        router.push(`/documents/${documentId}` as Route);
       },
     );
 
