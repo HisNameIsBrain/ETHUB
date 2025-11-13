@@ -31,7 +31,6 @@ export function Heading() {
   const [subCharIndex, setSubCharIndex] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  // headline typewriter
   React.useEffect(() => {
     if (titleIndex < HEADLINE.length) {
       const t = setTimeout(() => {
@@ -42,7 +41,6 @@ export function Heading() {
     }
   }, [titleIndex]);
 
-  // rotating subline typewriter
   React.useEffect(() => {
     const current = SUBS[subIndex];
     const typing = isDeleting ? 28 : 55;
@@ -67,10 +65,10 @@ export function Heading() {
   }, [subIndex, subCharIndex, isDeleting]);
 
   return (
-    <section className="relative w-full">
-      <div className="mx-auto max-w-3xl px-4 pt-12 md:pt-16 text-center">
+    <section className="relative w-full bg-transparent">
+      <div className="mx-auto max-w-3xl px-4 pt-12 md:pt-16 text-center bg-transparent">
         <h1
-          className="font-bold leading-[1.1] tracking-tight text-4xl md:text-5xl"
+          className="font-bold leading-[1.1] tracking-tight text-4xl md:text-5xl bg-transparent"
           aria-live="polite"
         >
           {titleText}
@@ -78,17 +76,16 @@ export function Heading() {
         </h1>
 
         <p
-          className="mt-4 text-base md:text-lg text-muted-foreground min-h-[2.25rem]"
+          className="mt-4 text-base md:text-lg text-muted-foreground min-h-[2.25rem] bg-transparent"
           aria-live="polite"
         >
           {subText}
           <span className="animate-pulse" aria-hidden="true">|</span>
         </p>
 
-        {/* CTA */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-center bg-transparent">
           {isLoading ? (
-            <div className="inline-flex items-center justify-center rounded-xl border px-5 py-3">
+            <div className="inline-flex items-center justify-center rounded-xl border px-5 py-3 bg-transparent">
               <Spinner size="lg" />
             </div>
           ) : isAuthenticated ? (
@@ -109,9 +106,8 @@ export function Heading() {
         </div>
       </div>
 
-      {/* Optional illustration row – keep your existing asset here */}
-      <div className="mx-auto mt-12 max-w-4xl px-4 flex justify-center">
-        {/* <img src="/illustrations/hero-figure.svg" alt="Illustration" className="w-full max-w-md opacity-90" /> */}
+      <div className="mx-auto mt-12 max-w-4xl px-4 flex justify-center bg-transparent">
+        {/* <img .../> */}
       </div>
     </section>
   );

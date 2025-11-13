@@ -54,6 +54,7 @@ import type * as template from "../template.js";
 import type * as tokens_markUsed from "../tokens/markUsed.js";
 import type * as tools_backfill_documents from "../tools/backfill_documents.js";
 import type * as users from "../users.js";
+import type * as utils_authedFetch from "../utils/authedFetch.js";
 import type * as voice from "../voice.js";
 
 /**
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   "tokens/markUsed": typeof tokens_markUsed;
   "tools/backfill_documents": typeof tools_backfill_documents;
   users: typeof users;
+  "utils/authedFetch": typeof utils_authedFetch;
   voice: typeof voice;
 }>;
 export declare const api: FilterApi<

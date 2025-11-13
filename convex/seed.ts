@@ -1,90 +1,132 @@
-import { mutation } from "./_generated/server";
+// convex/seed.ts
+"use node";
+
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
-type SeedResult = {
-  device: string;
-  insertedInventory: number;
-  insertedParts: number;
-};
+type IngestResult = { device: string; inserted: number; reset: boolean };
 
-// ===================== CLEAR TABLES =====================
-export const clearAllSeedData = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await Promise.all([
-      (async () => {
-        for await (const d of ctx.db.query("inventoryParts")) await ctx.db.delete(d._id);
-      })(),
-      (async () => {
-        for await (const d of ctx.db.query("parts")) await ctx.db.delete(d._id);
-      })(),
-      (async () => {
-        for await (const d of ctx.db.query("intakeDrafts")) await ctx.db.delete(d._id);
-      })(),
-      (async () => {
-        for await (const d of ctx.db.query("invoices")) await ctx.db.delete(d._id);
-      })(),
-    ]);
-    return { ok: true };
-  },
-});
-
-// ===================== INSERT HELPERS =====================
-export const insertInventoryPart = mutation({
-  args: v.object({
-    name: v.string(),
-    device: v.optional(v.string()),
-    category: v.optional(v.string()),
-    compatibleModels: v.optional(v.array(v.string())),
-    condition: v.optional(v.string()),
-    cost: v.optional(v.number()),
-    price: v.optional(v.number()),
-    currency: v.optional(v.string()),
-    sku: v.optional(v.string()),
-    vendor: v.optional(v.string()),
-    vendorSku: v.optional(v.string()),
-    stock: v.optional(v.number()),
-    tags: v.optional(v.array(v.string())),
-    metadata: v.optional(
-      v.object({
-        category: v.optional(v.string()),
-        device: v.optional(v.string()),
-        notes: v.optional(v.string()),
-        originalCondition: v.optional(v.string()),
-        partNumber: v.optional(v.string()),
-        source: v.optional(v.string()),
-        vendorSku: v.optional(v.string()),
-      })
-    ),
-    createdBy: v.optional(v.string()),
-    updatedBy: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
-  handler: async (ctx, args) => ctx.db.insert("inventoryParts", args),
-});
-
-// ===================== SEED PIPELINE =====================
-export const ingestFromVendor = mutation({
+export const seedParts = action({
   args: v.object({
     device: v.string(),
     count: v.optional(v.number()),
     reset: v.optional(v.boolean()),
   }),
-  handler: async (ctx, { device, count = 6, reset = false }): Promise<SeedResult> => {
-    if (reset) {
-      await ctx.runMutation(api.seed.clearAllSeedData, {});
+  handler: async (
+    ctx,
+    { device, count = 10, reset = false }
+  ): Promise<IngestResult> => {
+    const now = Date.now();
+    const items: Array<{
+      title: string;
+      device: string;
+      type: string;
+      query: string;
+      source: string;
+      partPrice: number;
+      labor: number;
+      total: number;
+      eta: string;
+      image?: string;
+      createdAt: number;
+      updatedAt: number;
+    }> = Array.from({ length: count }).map((_, i) => ({
+      title: `${device} Part ${i + 1}`,
+      device,
+      type: "generic",
+      query: `${device} replacement`,
+      source: "seed",
+      partPrice: 49.99 + i,
+      labor: 30,
+      total: 79.99 + i,
+      eta: "2-4 days",
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    const res: IngestResult = await ctx.runAction(api.parts.ingestFromVendor, {
+      device,
+      count,
+      reset,
+      items,
+    });
+
+    return res;
+  },
+});
+
+export const seedCommon = action({
+  args: v.object({
+    devices: v.array(v.string()),
+    count: v.optional(v.number()),
+    reset: v.optional(v.boolean()),
+  }),
+  handler: async (
+    ctx,
+    { devices, count = 6, reset = false }
+  ): Promise<IngestResult[]> => {
+    const results: IngestResult[] = [];
+    for (const device of devices) {
+      const r: IngestResult = await ctx.runAction(api.seed.seedParts, {
+        device,
+        count,
+        reset,
+      });
+      results.push(r);
     }
+    return results;
+  },
+});
 
-    // pull data from MobileSentrix via existing pullSeedParts
-    // @ts-expect-error: Convex FunctionReference cast
-    const result = await ctx.runAction(api.actions.pullSeedParts, { device, count });
+export const seedParts = action({
+  args: v.object({
+    device: v.string(),
+    count: v.optional(v.number()),
+    reset: v.optional(v.boolean()),
+  }),
+  handler: async (ctx, { device, count = 10, reset = false }) => {
+    // Supply mock items or pipe in from a vendor client later
+    const now = Date.now();
+    const items = Array.from({ length: count }).map((_, i) => ({
+      title: `${device} Part ${i + 1}`,
+      device,
+      type: "generic",
+      query: `${device} replacement`,
+      source: "seed",
+      partPrice: 49.99 + i,
+      labor: 30,
+      total: 79.99 + i,
+      eta: "2-4 days",
+      image: undefined,
+      createdAt: now,
+      updatedAt: now,
+    }));
 
-    return {
-      device: result.device,
-      insertedInventory: result.insertedInventory,
-      insertedParts: result.insertedParts,
-    };
+    const res = await ctx.runAction(api.parts.ingestFromVendor, {
+      device,
+      count,
+      reset,
+      items,
+    });
+
+    return res; // { device, inserted, reset }
+  },
+});
+
+// Convenience action to quickly seed common devices
+export const seedCommon = action({
+  args: v.object({
+    devices: v.array(v.string()),
+    count: v.optional(v.number()),
+    reset: v.optional(v.boolean()),
+  }),
+  handler: async (ctx, { devices, count = 6, reset = false }) => {
+    const results = [];
+    for (const device of devices) {
+      const r = await ctx.runAction(api.seed.seedParts, { device, count, reset });
+      results.push(r);
+    }
+    return results;
   },
 });

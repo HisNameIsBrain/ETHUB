@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
@@ -17,8 +19,13 @@ import {
   Settings as Cog,
   User as UserIcon,
   Search,
+  Server,
+  Laptop,
+  Users,
 } from "lucide-react";
 import * as React from "react";
+
+type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
 function NavItem({
   href,
@@ -29,7 +36,7 @@ function NavItem({
 }: {
   href: string;
   label: string;
-  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  Icon: IconType;
   active: boolean;
   onClick?: () => void;
 }) {
@@ -79,6 +86,7 @@ export default function Navbar() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+
   const [svcOpen, setSvcOpen] = React.useState(false);
   const [svcOpenMobile, setSvcOpenMobile] = React.useState(false);
 
@@ -115,7 +123,6 @@ export default function Navbar() {
                 aria-label="Open menu"
                 onClick={() => {
                   setOpen(true);
-                  setTimeout(() => {}, 220);
                 }}
                 className="h-9 w-9 grid place-items-center rounded-lg border hover:bg-white/5 transition md:hidden"
               >
@@ -256,7 +263,7 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* eRealms dropdown -> /app/mc/erealms/... */}
+            {/* eRealms dropdown -> /mc/erealms/... */}
             <div className="relative">
               <button
                 onClick={() => setErealmsOpen((v) => !v)}
@@ -304,7 +311,7 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* Journey dropdown -> /app/mc/erealms/journey/... */}
+            {/* Journey dropdown -> /mc/erealms/journey/... */}
             <div className="relative">
               <button
                 onClick={() => setJourneyOpen((v) => !v)}
@@ -352,7 +359,7 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* Servers dropdown -> /app/mc/erealms/servers/... */}
+            {/* Servers dropdown -> /mc/erealms/servers/... */}
             <div className="relative">
               <button
                 onClick={() => setServersOpen((v) => !v)}
@@ -401,6 +408,37 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
+            {/* Core app tabs */}
+            <NavItem
+              href="/portal"
+              label="Portal"
+              Icon={PanelsTopLeft}
+              active={isActive("/portal")}
+            />
+            <NavItem
+              href="/repair"
+              label="Repair"
+              Icon={FolderCog}
+              active={isActive("/repair")}
+            />
+            <NavItem
+              href="/mc"
+              label="MC"
+              Icon={Server}
+              active={isActive("/mc")}
+            />
+            <NavItem
+              href="/pc"
+              label="PC"
+              Icon={Laptop}
+              active={isActive("/pc")}
+            />
+            <NavItem
+              href="/customers"
+              label="Customers"
+              Icon={Users}
+              active={isActive("/customers")}
+            />
             <NavItem
               href="/documents"
               label="Documents"
@@ -408,10 +446,10 @@ export default function Navbar() {
               active={isActive("/documents")}
             />
             <NavItem
-              href="/portal"
-              label="Portal"
-              Icon={PanelsTopLeft}
-              active={isActive("/portal")}
+              href="/admin"
+              label="Admin"
+              Icon={Cog}
+              active={isActive("/admin")}
             />
           </div>
         </div>
@@ -518,10 +556,15 @@ export default function Navbar() {
                   <LayoutDashboard className="h-4 w-4" /> Dashboard
                 </Link>
 
-                {/* Services nested */}
+                {/* Services (mobile nested) */}
                 <button
                   onClick={() => setSvcOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                  className={[
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition",
+                    pathname.startsWith("/dashboard/services")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
                 >
                   <span className="inline-flex items-center gap-3">
                     <FolderCog className="h-4 w-4" /> Services
@@ -532,44 +575,41 @@ export default function Navbar() {
                     }`}
                   />
                 </button>
-                <AnimatePresence initial={false}>
-                  {svcOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
+                {svcOpenMobile && (
+                  <div className="pl-10 space-y-1 text-sm">
+                    <Link
+                      href="/dashboard/services"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
                     >
-                      <Link
-                        href="/dashboard/services"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        All Services
-                      </Link>
-                      <Link
-                        href="/dashboard/services/new"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        New Service
-                      </Link>
-                      <Link
-                        href="/dashboard/services/categories"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Categories
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <FolderCog className="h-3 w-3" /> All Services
+                    </Link>
+                    <Link
+                      href="/dashboard/services/new"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
+                    >
+                      <Sparkles className="h-3 w-3" /> New Service
+                    </Link>
+                    <Link
+                      href="/dashboard/services/categories"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
+                    >
+                      <PanelsTopLeft className="h-3 w-3" /> Categories
+                    </Link>
+                  </div>
+                )}
 
-                {/* eRealms nested */}
+                {/* eRealms (mobile) */}
                 <button
                   onClick={() => setErealmsOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                  className={[
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition",
+                    pathname.startsWith("/mc/erealms")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
                 >
                   <span className="inline-flex items-center gap-3">
                     <FolderCog className="h-4 w-4" /> eRealms
@@ -580,37 +620,34 @@ export default function Navbar() {
                     }`}
                   />
                 </button>
-                <AnimatePresence initial={false}>
-                  {erealmsOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
+                {erealmsOpenMobile && (
+                  <div className="pl-10 space-y-1 text-sm">
+                    <Link
+                      href="/mc/erealms"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
                     >
-                      <Link
-                        href="/mc/erealms"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        eRealms Home
-                      </Link>
-                      <Link
-                        href="/mc/erealms/games"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Games
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <FolderCog className="h-3 w-3" /> eRealms Home
+                    </Link>
+                    <Link
+                      href="/mc/erealms/games"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
+                    >
+                      <FolderCog className="h-3 w-3" /> Games
+                    </Link>
+                  </div>
+                )}
 
-                {/* Journey nested */}
+                {/* Journey (mobile) */}
                 <button
                   onClick={() => setJourneyOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                  className={[
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition",
+                    pathname.startsWith("/mc/erealms/journey")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
                 >
                   <span className="inline-flex items-center gap-3">
                     <FolderCog className="h-4 w-4" /> Journey
@@ -621,37 +658,35 @@ export default function Navbar() {
                     }`}
                   />
                 </button>
-                <AnimatePresence initial={false}>
-                  {journeyOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
+                {journeyOpenMobile && (
+                  <div className="pl-10 space-y-1 text-sm">
+                    <Link
+                      href="/mc/erealms/journey"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
                     >
-                      <Link
-                        href="/mc/erealms/journey"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Journal Index
-                      </Link>
-                      <Link
-                        href="/mc/erealms/journey/origin-story"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Origin Story
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <FolderCog className="h-3 w-3" /> Journal Index
+                    </Link>
+                    <Link
+                      href="/mc/erealms/journey/origin-story"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
+                    >
+                      <FolderCog className="h-3 w-3" /> Origin Story
+                    </Link>
+                  </div>
+                )}
 
-                {/* Servers nested */}
+                {/* Servers (mobile) */}
                 <button
                   onClick={() => setServersOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                  className={[
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition",
+                    pathname.startsWith("/mc/erealms/servers") ||
+                    pathname.startsWith("/servers")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
                 >
                   <span className="inline-flex items-center gap-3">
                     <FolderCog className="h-4 w-4" /> Servers
@@ -662,32 +697,90 @@ export default function Navbar() {
                     }`}
                   />
                 </button>
-                <AnimatePresence initial={false}>
-                  {serversOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
+                {serversOpenMobile && (
+                  <div className="pl-10 space-y-1 text-sm">
+                    <Link
+                      href="/mc/erealms/servers"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
                     >
-                      <Link
-                        href="/mc/erealms/servers"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        eRealms Servers
-                      </Link>
-                      <Link
-                        href="/servers"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        All Server Offers
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <FolderCog className="h-3 w-3" /> eRealms Servers
+                    </Link>
+                    <Link
+                      href="/servers"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-1 hover:bg-white/5"
+                    >
+                      <FolderCog className="h-3 w-3" /> All Server Offers
+                    </Link>
+                  </div>
+                )}
+
+                {/* Core app folders */}
+                <Link
+                  href="/portal"
+                  onClick={() => setOpen(false)}
+                  className={[
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/portal")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  <PanelsTopLeft className="h-4 w-4" /> Portal
+                </Link>
+
+                <Link
+                  href="/repair"
+                  onClick={() => setOpen(false)}
+                  className={[
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/repair")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  <FolderCog className="h-4 w-4" /> Repair
+                </Link>
+
+                <Link
+                  href="/mc"
+                  onClick={() => setOpen(false)}
+                  className={[
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/mc")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  <Server className="h-4 w-4" /> MC
+                </Link>
+
+                <Link
+                  href="/pc"
+                  onClick={() => setOpen(false)}
+                  className={[
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/pc")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  <Laptop className="h-4 w-4" /> PC
+                </Link>
+
+                <Link
+                  href="/customers"
+                  onClick={() => setOpen(false)}
+                  className={[
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    isActive("/customers")
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  <Users className="h-4 w-4" /> Customers
+                </Link>
 
                 <Link
                   href="/documents"
@@ -703,32 +796,16 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  href="/portal"
+                  href="/admin"
                   onClick={() => setOpen(false)}
                   className={[
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                    isActive("/portal")
+                    isActive("/admin")
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-white/5",
                   ].join(" ")}
                 >
-                  <PanelsTopLeft className="h-4 w-4" /> Portal
-                </Link>
-              </div>
-
-              {/* Settings pinned bottom */}
-              <div className="mt-auto p-2 border-t">
-                <Link
-                  href="/dashboard/settings"
-                  onClick={() => setOpen(false)}
-                  className={[
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                    isActive("/dashboard/settings")
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  <Cog className="h-4 w-4" /> Settings
+                  <Cog className="h-4 w-4" /> Admin
                 </Link>
               </div>
             </motion.div>
@@ -738,4 +815,3 @@ export default function Navbar() {
     </>
   );
 }
-
