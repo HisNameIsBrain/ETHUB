@@ -1,40 +1,58 @@
 name: dependabot-autofix
+
 on:
   pull_request_target:
     types: [opened, synchronize]
+
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
   autofix:
+    # Only act on Dependabot PRs
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0  # required so git-auto-commit can push
 
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "pnpm"
+          cache: npm
 
-      - run: pnpm install
+      - name: Install dependencies
+        run: npm ci
 
-      # Try to fix lint/prettier automatically
-      - run: |
-          pnpm -s prettier -w . || true
-          pnpm -s eslint . --ext .ts,.tsx --fix || true
+      # Auto-fix what can be auto-fixed
+      - name: Run format & lint autofix
+        run: |
+          npx prettier --write . || true
+          npx eslint . --ext .ts,.tsx --fix || true
 
-      # Run typecheck so PR status reflects reality
-      - run: pnpm -s typecheck || pnpm -s tsc --noEmit
+      # Optional: keep as "soft" checks so they don't block autofixes
+      - name: Typecheck (soft)
+        run: npm run typecheck || npx tsc --noEmit
         continue-on-error: true
 
+      - name: Tests (soft)
+        run: npm test
+        continue-on-error: true
+
+      # Hard gate: build must pass or the job fails
+      - name: Build (required)
+        run: npm run build
+
       - name: Commit changes (if any)
+        if: success()  # only commit if build (and earlier hard steps) succeeded
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: autofix(eslint/prettier) on dependabot PR"
+          commit_message: "chore: autofix (prettier/eslint) on dependabot PR"
+          branch: ${{ github.event.pull_request.head.ref }}
