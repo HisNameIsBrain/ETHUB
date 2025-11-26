@@ -1,16 +1,20 @@
 "use client";
 
+import React, { use } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
 type JourneyPageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export default function JourneyPage({ params }: JourneyPageProps) {
-  const journey = useQuery(api.mcJourneys.getBySlug, { slug: params.slug });
+  // Next.js 15.5+: params is a Promise in client components
+  const { slug } = use(params);
+
+  const journey = useQuery(api.mcJourneys.getBySlug, { slug });
 
   if (journey === undefined) {
     return (
@@ -38,9 +42,13 @@ export default function JourneyPage({ params }: JourneyPageProps) {
     );
   }
 
+  const lines =
+    journey.content?.split("\n").filter((l: string) => l.trim().length > 0) ?? [];
+
   return (
     <div className="min-h-screen bg-[#020617] text-slate-50">
       <main className="relative mx-auto max-w-2xl px-4 pb-24 pt-20 md:px-8">
+        {/* subtle aurora / radial wash */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_#22c55e22,_transparent_55%),radial-gradient(circle_at_bottom,_#0ea5e922,_transparent_55%)]" />
         <motion.div
           aria-hidden
@@ -60,12 +68,21 @@ export default function JourneyPage({ params }: JourneyPageProps) {
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
             eRealms Journal
           </p>
+
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
             {journey.title}
           </h1>
-          {journey.year && (
+
+          {journey.year ? (
             <p className="text-xs text-slate-400">Year: {journey.year}</p>
-          )}
+          ) : null}
+
+          {/* If your schema has createdAt/updatedAt, this will show nicely. */}
+          {"createdAt" in journey && journey.createdAt ? (
+            <p className="text-[11px] text-slate-500">
+              {new Date(Number(journey.createdAt)).toLocaleDateString()}
+            </p>
+          ) : null}
         </header>
 
         <motion.article
@@ -74,10 +91,8 @@ export default function JourneyPage({ params }: JourneyPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
         >
-          {journey.content ? (
-            journey.content.split("\n").map((line, idx) => (
-              <p key={idx}>{line}</p>
-            ))
+          {lines.length > 0 ? (
+            lines.map((line: string, idx: number) => <p key={idx}>{line}</p>)
           ) : (
             <p className="text-sm text-slate-300">
               No content yet. Add this in the dashboard when you’re ready.

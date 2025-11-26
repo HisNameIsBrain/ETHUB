@@ -12,7 +12,7 @@ import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { speakWithOpenAI } from "@/lib/tts";
 
-import { authedFetch } from "./utils/authedFetch";
+import { authedFetch } from "@/utils/authedFetch";
 
 async function handleApproveAndSave(part: any) {
   try {

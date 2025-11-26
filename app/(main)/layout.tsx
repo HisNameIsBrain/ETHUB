@@ -4,10 +4,8 @@ import { useEffect } from "react";
 import { useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import AssistantLauncher from "@/components/assistant-launcher";
-import { SiriGlow } from "@/components/siri-glow";
-import { SiriGlowInvert } from "@/components/siri-glow-invert";
 import { SearchCommand } from "@/components/search-command";
-import { Navbar } from "./_components/navbar";
+import { Navigation } from "@/app/(main)/_components/navigation"; // documents navbar already themed
 import { EnsureUser } from "@/components/ensure-user";
 import { Spinner } from "@/components/spinner";
 
@@ -16,14 +14,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/");
-    }
+    if (!isLoading && !isAuthenticated) router.push("/");
   }, [isLoading, isAuthenticated, router]);
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Spinner size="lg" />
       </div>
     );
@@ -35,23 +31,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <>
       <EnsureUser />
       <AssistantLauncher />
-      <div className="min-h-screen h-full flex dark:bg-[#1F1F1F]">
-        <SiriGlow position="top" />
-        <SiriGlowInvert position="bottom" />
-        <Navbar />
-        <div className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-40 border-b bg-background/60 backdrop-blur">
-            <div className="flex h-14 items-center gap-3 px-4">
-              <SearchCommand />
-              <h1 className="text-sm font-semibold tracking-tight">Dashboard</h1>
-            </div>
-          </header>
-          <main className="flex-1 px-4 py-6">
-            {children}
-          </main>
-          <footer className="border-t px-4 py-6 text-xs opacity-70">
-            © {new Date().getFullYear()} ETHUB • All rights reserved
-          </footer>
+
+      {/* App frame */}
+      <div className="min-h-screen w-full bg-background text-foreground">
+        {/* Your left Navigation renders separately (sidebar + TopNav via navbarRef) */}
+        <div className="flex w-full h-screen">
+          {children}
         </div>
       </div>
     </>

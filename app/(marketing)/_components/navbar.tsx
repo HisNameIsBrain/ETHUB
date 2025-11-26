@@ -2,6 +2,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { SiriGlowInvert } from "@/components/siri-glow-invert";
+import { ThemeToggle } from "@/components/theme-toggle";
 import TopSiriLoader from "@/components/top-siri-loader";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -121,7 +122,7 @@ export default function Navbar() {
               >
                 <Menu className="h-4 w-4" />
               </button>
-
+	       <ThemeToggle/>
               <Link href="/" className="flex items-center gap-2" aria-label="Home">
                 <motion.span
                   className="hidden sm:inline-flex items-center gap-2"

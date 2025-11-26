@@ -1,12 +1,55 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typedRoutes: true,
+
+  // Safe Image Optimization
   images: {
+    // Only allow the domains you explicitly trust
     remotePatterns: [
       { protocol: "https", hostname: "files.edgestore.dev" },
       { protocol: "https", hostname: "images.unsplash.com" },
-      // add more hostnames here if needed
     ],
+  },
+
+  poweredByHeader: false, // remove "X-Powered-By: Next.js"
+
+  reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: [
+              "accelerometer=()",
+              "camera=()",
+              "display-capture=()",
+              "fullscreen=(self)",
+              "geolocation=()",
+              "gyroscope=()",
+              "microphone=()",
+              "payment=()",
+              "usb=()"
+            ].join(", "),
+          },
+        ],
+      },
+    ];
+  },
+
+  // No experimental features enabled by default.
+  // This avoids caching/security pitfalls.
+  experimental: {
+    // ppr: false,
   },
 };
 

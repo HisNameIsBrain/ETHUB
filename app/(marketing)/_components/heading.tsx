@@ -23,6 +23,10 @@ const SUBS = [
 export function Heading() {
   const { isAuthenticated, isLoading } = useConvexAuth();
 
+  // Hydration guard: keep SSR + first client render identical
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
   const [titleText, setTitleText] = React.useState("");
   const [titleIndex, setTitleIndex] = React.useState(0);
 
@@ -74,7 +78,9 @@ export function Heading() {
           aria-live="polite"
         >
           {titleText}
-          <span className="animate-pulse" aria-hidden="true">|</span>
+          <span className="animate-pulse" aria-hidden="true">
+            |
+          </span>
         </h1>
 
         <p
@@ -82,12 +88,19 @@ export function Heading() {
           aria-live="polite"
         >
           {subText}
-          <span className="animate-pulse" aria-hidden="true">|</span>
+          <span className="animate-pulse" aria-hidden="true">
+            |
+          </span>
         </p>
 
         {/* CTA */}
         <div className="mt-8 flex justify-center">
-          {isLoading ? (
+          {!mounted ? (
+            // Stable SSR placeholder to avoid hydration mismatch
+            <div className="inline-flex items-center justify-center rounded-xl border px-5 py-3 opacity-0 pointer-events-none">
+              Access workspace
+            </div>
+          ) : isLoading ? (
             <div className="inline-flex items-center justify-center rounded-xl border px-5 py-3">
               <Spinner size="lg" />
             </div>

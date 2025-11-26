@@ -1,22 +1,19 @@
-// app/providers.tsx
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
-import { ConvexClientProvider } from "@/components/providers/convex-provider";
-import { Toaster } from "@/components/ui/sonner";
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import type { ThemeProviderProps } from "next-themes/dist/types";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
-  const pk = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (!pk) {
-    console.warn("Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
-  }
-
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
-    <ClerkProvider publishableKey={pk}>
-      <ConvexClientProvider>
-        {children}
-        <Toaster richColors />
-      </ConvexClientProvider>
-    </ClerkProvider>
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      {...props}
+    >
+      {children}
+    </NextThemesProvider>
   );
 }

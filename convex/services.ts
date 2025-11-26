@@ -4,10 +4,6 @@ import { buildServiceSearch } from "./lib/search";
 
 /* ---------------------------- helpers ---------------------------- */
 
-<<<<<<< HEAD
-// --- utils ---
-=======
->>>>>>> release/ollama-workspace
 function slugify(input: string) {
   return (input || "")
     .toLowerCase()
@@ -16,15 +12,6 @@ function slugify(input: string) {
     .replace(/(^-|-$)+/g, "");
 }
 
-<<<<<<< HEAD
-async function uniqueSlug(ctx: any, name: string) {
-  const base = slugify(name) || "service";
-  let slug = base;
-  let i = 1;
-  // requires index("by_slug", ["slug"])
-  // eslint-disable-next-line no-await-in-loop
-  while (await ctx.db.query("services").withIndex("by_slug", (q: any) => q.eq("slug", slug)).first()) {
-=======
 async function uniqueSlug(ctx: any, baseTitle: string) {
   const base = slugify(baseTitle) || "service";
   let slug = base, i = 1;
@@ -34,17 +21,12 @@ async function uniqueSlug(ctx: any, baseTitle: string) {
       .withIndex("by_slug", (q: any) => q.eq("slug", slug))
       .first();
     if (!ex) return slug;
->>>>>>> release/ollama-workspace
     slug = `${base}-${i++}`;
   }
 }
 
-<<<<<<< HEAD
-// --- mutations ---
-=======
 /* ----------------------------- create ---------------------------- */
 
->>>>>>> release/ollama-workspace
 export const create = mutation({
   args: {
     title: v.string(),
@@ -52,59 +34,13 @@ export const create = mutation({
     tags: v.optional(v.array(v.string())),
     category: v.optional(v.string()),
     deliveryTime: v.optional(v.string()),
-<<<<<<< HEAD
-    isPublic: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    const slug = await uniqueSlug(ctx, args.name);
-    
-    return await ctx.db.insert("services", {
-      name: args.name,
-      description: args.description,
-      price: args.price,
-      deliveryTime: args.deliveryTime,
-      isPublic: args.isPublic,
-      slug,
-      createdAt: now,
-      updatedAt: now,
-    });
-  },
-});
-
-export const update = mutation({
-  args: {
-    id: v.id("services"),
-    name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    price: v.optional(v.float64()),
-    deliveryTime: v.optional(v.string()),
-=======
     priceCents: v.optional(v.number()),
     currency: v.optional(v.string()),
     sourceUrl: v.optional(v.string()),
->>>>>>> release/ollama-workspace
     isPublic: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-<<<<<<< HEAD
-    const { id, ...rest } = args;
-    const patch: Record < string, unknown > = { updatedAt: Date.now() };
-    
-    for (const [k, v_] of Object.entries(rest)) {
-      if (v_ !== undefined) patch[k] = v_;
-    }
-    if (patch.name && typeof patch.name === "string") {
-      patch.slug = await uniqueSlug(ctx, patch.name);
-    }
-    
-    await ctx.db.patch(id, patch);
-  },
-});
-
-// delete a specific service by id (use to remove the bad row)
-export const removeById = mutation({
-=======
     const now = Date.now();
     const slug = await uniqueSlug(ctx, args.title);
 
@@ -181,25 +117,12 @@ export const update = mutation({
 /* ----------------------------- remove ---------------------------- */
 
 export const remove = mutation({
->>>>>>> release/ollama-workspace
   args: { id: v.id("services") },
   handler: async (ctx, { id }) => {
     await ctx.db.delete(id);
   },
 });
 
-<<<<<<< HEAD
-// --- queries ---
-export const getPublics = query({
-  args: {},
-  handler: async (ctx) => {
-    const all = await ctx.db.query("services").collect();
-    return all
-      .filter((s) => s.isPublic)
-      .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-  },
-});
-=======
 /* ----------------------------- upsert ---------------------------- */
 /** Update by id/slug or insert new (auto-slug from title). */
 export const upsert = mutation({
@@ -382,4 +305,3 @@ export const getArchived = query({
     return items.filter((s) => s.archived === true);
   },
 });
->>>>>>> release/ollama-workspace

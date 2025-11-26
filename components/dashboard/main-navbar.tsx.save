@@ -1,0 +1,19 @@
+        animate={{ rotate: -360, scale: [0.9, 1.02, 0.9] }}
+        transition={{
+          rotate: { duration: 5.5, ease: "linear", repeat: Infinity },
+          scale: { duration: 1.8, repeat: Infinity },
+        }}
+      />
+
+      {/* Pulse halo */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-cyan-400/30 via-fuchsia-400/30 to-amber-400/30 blur-xl"
+        animate={{
+          scale: [0.9, 1.15, 0.9],
+          opacity: [0.35, 0.6, 0.35],
+        }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}

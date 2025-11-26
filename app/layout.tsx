@@ -1,12 +1,13 @@
-"use client";
-
+// app/layout.tsx
 import "./globals.css";
 import { Suspense } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
+
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
+import { MainNavbar } from "@/components/dashboard/main-navbar";
 import { Toaster } from "@/components/ui/sonner";
-import Navbar from "@/app/(marketing)/_components/navbar";
-//import AssistantLauncher from "@/components/assistant-launcher";
 import { SiriFlow } from "@/components/siri-flow";
+import { ThemeProvider } from "./providers";
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -14,20 +15,20 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <ConvexClientProvider>
-            <Navbar />
-		<SiriFlow />
-            <Suspense fallback={null}>{children}</Suspense>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body className="min-h-screen bg-background text-foreground antialiased">
+          <ThemeProvider>
+            <ConvexClientProvider>
+              <SiriFlow />
+              <MainNavbar />
 
-            {/* Global toaster */}
-            <Toaster richColors />
-       </ConvexClientProvider>
-      </body>
-    </html>
+              <Suspense fallback={null}>{children}</Suspense>
+              <Toaster richColors />
+            </ConvexClientProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
-
-	
-	

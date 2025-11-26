@@ -1,29 +1,61 @@
 import { NextResponse } from "next/server";
 import { fetchQuery } from "convex/nextjs";
-import { api } from "./_generated/api";
+import { api as convexApi } from "@/convex/_generated/api";
+import { auth } from "@clerk/nextjs/server";
+
+export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const query = searchParams.get("query") ?? undefined;
-  const page = parseInt(searchParams.get("page") || "1", 10);
+  const url = new URL(req.url);
+  const q = url.searchParams.get("query") ?? "";
+  const pageParam = url.searchParams.get("page") ?? "1";
+  const page = Math.max(parseInt(pageParam, 10) || 1, 1);
   const perPage = 20;
 
-  // fetch up to (page * perPage) results
-  const allParts = await fetchQuery(api.parts.searchFlat, {
-    q: query,
-    limitDocs: 100,
-    limit: page * perPage,
-  });
+  if (!q.trim()) {
+    return NextResponse.json({
+      page,
+      perPage,
+      total: 0,
+      totalPages: 0,
+      results: [],
+    });
+  }
 
-  // slice out only the results for this page
-  const start = (page - 1) * perPage;
-  const paginated = allParts.slice(start, start + perPage);
+// Clerk -> Convex auth
+const { getToken, userId } = await auth(); // <-- THIS is the fix
+const token = await getToken({ template: "convex" });
 
-  return NextResponse.json({
-    page,
-    perPage,
-    total: allParts.length,
-    totalPages: Math.ceil(allParts.length / perPage),
-    results: paginated,
-  });
+  if (!token || !userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const allParts = await fetchQuery(
+      convexApi.parts.searchFlat,
+      {
+        q,
+        limitDocs: 100,
+        limit: page * perPage,
+      },
+      { token }
+    );
+
+    const start = (page - 1) * perPage;
+    const results = allParts.slice(start, start + perPage);
+
+    return NextResponse.json({
+      page,
+      perPage,
+      total: allParts.length,
+      totalPages: Math.ceil(allParts.length / perPage),
+      results,
+    });
+  } catch (err) {
+    console.error("GET /api/parts failed:", err);
+    return NextResponse.json(
+      { error: (err as Error).message ?? "Unknown error" },
+      { status: 500 }
+    );
+  }
 }

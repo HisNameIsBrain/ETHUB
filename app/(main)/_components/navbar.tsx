@@ -1,4 +1,5 @@
 "use client";
+
 import { Title, TitleSkeleton } from "@/app/(main)/_components/title";
 import { PublishToggle as Publish } from "@/app/(main)/_components/publish";
 import MenuSkeleton from "@/app/(main)/_components/menu-skeleton";
@@ -9,6 +10,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { MenuIcon } from "lucide-react";
 import { Banner } from "@/app/(main)/_components/banner";
 import { Menu } from "@/app/(main)/_components/menu";
+
 interface NavbarProps {
   isCollapsed: boolean;
   onResetWidth: () => void;
@@ -17,16 +19,22 @@ interface NavbarProps {
 export const Navbar = ({ isCollapsed, onResetWidth }: NavbarProps) => {
   const params = useParams();
 
-  const document = useQuery(api.documents.getById, {
-    id: params.documentId as Id<"documents">,
-  });
+  const document = useQuery(
+    api.documents.getById,
+    params.documentId
+      ? { id: params.documentId as Id<"documents"> }
+      : "skip"
+  );
 
+  // Loading skeleton
   if (document === undefined) {
     return (
-      <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center justify-between">
-        <TitleSkeleton />
-        <div className="flex items-center gap-x-2">
-          <MenuSkeleton />
+      <nav className="sticky top-0 z-[90] w-full border-b border-border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
+        <div className="flex h-14 items-center justify-between px-3">
+          <TitleSkeleton />
+          <div className="flex items-center gap-1.5">
+            <MenuSkeleton />
+          </div>
         </div>
       </nav>
     );
@@ -36,22 +44,27 @@ export const Navbar = ({ isCollapsed, onResetWidth }: NavbarProps) => {
 
   return (
     <>
-      <nav className="bg-background dark:bg-[#1F1F1F] px-3 py-2 w-full flex items-center gap-x-4">
-        {isCollapsed && (
-          <MenuIcon
-            role="button"
-            onClick={onResetWidth}
-            className="h-6 w-6 text-muted-foreground"
-          />
-        )}
-        <div className="flex items-center justify-between w-full">
-          <Title initialData={document} />
-          <div className="flex items-center gap-x-2">
-            <Publish initialData={document} />
-            <Menu documentId={document._id} />
+      <nav className="sticky top-0 z-[90] w-full border-b border-border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
+        <div className="flex h-14 items-center gap-2 px-3">
+          {isCollapsed && (
+            <MenuIcon
+              role="button"
+              onClick={onResetWidth}
+              className="h-5 w-5 text-muted-foreground hover:text-foreground transition"
+            />
+          )}
+
+          <div className="flex items-center justify-between w-full min-w-0">
+            <Title initialData={document} />
+
+            <div className="flex items-center gap-1.5">
+              <Publish initialData={document} />
+              <Menu documentId={document._id} />
+            </div>
           </div>
         </div>
       </nav>
+
       {document.isArchived && <Banner documentId={document._id} />}
     </>
   );

@@ -168,7 +168,8 @@ export const update = mutation({
           .query("users")
           .withIndex("by_username", (q: any) => q.eq("username", trimmed))
           .first();
-        if (clash && clash._id !== id) throw new Error("Username already exists");
+        if (clash && clash._id !== id)
+          throw new Error("Username already exists");
       }
       patch.username = trimmed;
     }
@@ -233,30 +234,4 @@ export const me = query({
   },
 });
 
-/** Seed example user (handy for local dev) */
-export const seedTestUser = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const email = "test@example.com";
-    const exists = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q: any) => q.eq("email", email))
-      .first();
-    if (exists) return exists._id;
-
-    const now = Date.now();
-    // seed user without a clerkId (blank) so it meets required field in schema
-    return await ctx.db.insert("users", {
-      clerkId: "",
-      email,
-      name: "Test User",
-      username: "testuser",
-      createdAt: now,
-      updatedAt: now,
-      imageUrl: undefined,
-      userId: undefined,
-      role: undefined,
-      tokenIdentifier: undefined,
-    });
-  },
-});
+export const upsert = ensureUser;

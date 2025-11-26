@@ -1,127 +1,191 @@
-// convex/schema.ts
-import { defineSchema, defineTable } from "convex/server";
+import { query, mutation, action } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
-export default defineSchema({
-  // --- Inventory parts (stocked items) ---
-  inventoryParts: defineTable({
-    name: v.string(),                         // e.g. "iPhone 12 Battery"
-    device: v.optional(v.string()),           // from metadata.device if present
-    category: v.optional(v.string()),         // from metadata.category
-    compatibleModels: v.optional(v.array(v.string())),
-    condition: v.optional(v.string()),        // "OEM", "Premium", etc.
-    cost: v.optional(v.number()),             // internal cost
-    price: v.optional(v.number()),            // retail price
-    currency: v.optional(v.string()),         // "USD"
-    sku: v.optional(v.string()),
-    vendor: v.optional(v.string()),
-    vendorSku: v.optional(v.string()),
-    stock: v.optional(v.number()),            // stock qty
-    tags: v.optional(v.array(v.string())),
-    metadata: v.optional(
-      v.object({
-        category: v.optional(v.string()),
-        device: v.optional(v.string()),
-        notes: v.optional(v.string()),
-        originalCondition: v.optional(v.string()),
-        partNumber: v.optional(v.string()),
-        source: v.optional(v.string()),
-        vendorSku: v.optional(v.string()),
-      })
-    ),
-    createdBy: v.optional(v.string()),
-    updatedBy: v.optional(v.string()),
+type PartItem = {
+  title: string;
+  device?: string;
+  type?: string;
+  query?: string;
+  source?: string;
+  partPrice?: number;
+  labor?: number;
+  total?: number;
+  eta?: string;
+  image?: string;
+  createdAt?: number;
+  updatedAt: number;
+};
+
+type PartsDoc = {
+  _id: Id<"parts">;
+  parts?: PartItem[];
+  images?: string[];
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+type FlatPart = {
+  _id: Id<"parts">; // doc id
+  title: string;
+  device?: string;
+  type?: string;
+  query?: string;
+  source?: string;
+  partPrice?: number;
+  labor?: number;
+  total?: number;
+  eta?: string;
+  image?: string;
+  updatedAt: number;
+};
+
+export const getAll = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit = 200 }) => {
+    return await ctx.db.query("parts").order("desc").take(limit);
+  },
+});
+
+// Flatten: docs[].parts[] → FlatPart[]
+export const searchFlat = query({
+  args: {
+    q: v.optional(v.string()),
+    limitDocs: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { q, limitDocs = 200, limit = 200 }) => {
+    const docs = (await ctx.db
+      .query("parts")
+      .order("desc")
+      .take(limitDocs)) as PartsDoc[];
+
+    const out: FlatPart[] = [];
+
+    for (const d of docs) {
+      const items = d.parts ?? [];
+      for (const p of items) {
+        out.push({
+          _id: d._id,
+          title: p.title,
+          device: p.device,
+          type: p.type,
+          query: p.query,
+          source: p.source,
+          partPrice: p.partPrice,
+          labor: p.labor,
+          total: p.total,
+          eta: p.eta,
+          image: p.image,
+          updatedAt: p.updatedAt,
+        });
+      }
+    }
+
+    if (q && q.trim()) {
+      const needle = q.toLowerCase();
+      const filtered = out.filter((x) =>
+        [
+          x.title,
+          x.device,
+          x.type,
+          x.query,
+          x.source,
+        ].some((f) => f?.toLowerCase().includes(needle))
+      );
+      return filtered.slice(0, limit);
+    }
+
+    return out.slice(0, limit);
+  },
+});
+
+// Create: wrap a single part into doc.parts[] to match schema
+export const create = mutation({
+  args: v.object({
+    title: v.string(),
+    device: v.optional(v.string()),
+    type: v.optional(v.string()),
+    query: v.optional(v.string()),
+    source: v.optional(v.string()),
+    partPrice: v.optional(v.number()),
+    labor: v.optional(v.number()),
+    total: v.optional(v.number()),
+    eta: v.optional(v.string()),
+    image: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
-  })
-    .index("by_sku", ["sku"])
-    .index("by_device", ["device"])
-    .index("by_category", ["category"])
-    .index("by_createdAt", ["createdAt"])
-    .index("by_updatedAt", ["updatedAt"]),
+  }),
+  handler: async (ctx, part) => {
+    const now = Date.now();
+    const docId = await ctx.db.insert("parts", {
+      parts: [part],
+      images: [],
+      createdAt: part.createdAt ?? now,
+      updatedAt: part.updatedAt ?? now,
+    });
+    return docId;
+  },
+});
 
-  // --- Parts docs coming from assistant / vendor lookups ---
-  parts: defineTable({
-    parts: v.optional(
+export const remove = mutation({
+  args: v.object({ id: v.id("parts") }),
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+    return id;
+  },
+});
+
+// Bulk ingest; optionally reset existing device docs, then insert provided items
+export const ingestFromVendor = action({
+  args: v.object({
+    device: v.string(),
+    count: v.optional(v.number()),
+    reset: v.optional(v.boolean()),
+    items: v.optional(
       v.array(
         v.object({
-          query: v.optional(v.string()),
           title: v.string(),
           device: v.optional(v.string()),
+          type: v.optional(v.string()),
+          query: v.optional(v.string()),
+          source: v.optional(v.string()),
           partPrice: v.optional(v.number()),
           labor: v.optional(v.number()),
           total: v.optional(v.number()),
-          type: v.optional(v.string()),
           eta: v.optional(v.string()),
           image: v.optional(v.string()),
-          source: v.optional(v.string()),
           createdAt: v.optional(v.number()),
           updatedAt: v.number(),
         })
       )
     ),
-    images: v.optional(
-      v.array(
-        v.object({
-          url: v.optional(v.string()),
-          title: v.optional(v.string()),
-          link: v.optional(v.string()),
-          mime: v.optional(v.string()),
-          thumbnail: v.optional(v.string()),
-          contextLink: v.optional(v.string()),
-          alt: v.optional(v.string()),
-        })
-      )
-    ),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  }).index("by_createdAt", ["createdAt"]),
+  }),
+  handler: async (ctx, { device, count = 6, reset = false, items = [] }) => {
+    if (reset) {
+      const existing = (await ctx.runQuery(api.parts.getAll, {
+        limit: 500,
+      })) as PartsDoc[];
 
-  // =============================== INTAKE DRAFTS ====================================
-  intakeDrafts: defineTable({
-    customerName: v.string(),
-    contact: v.object({
-      phone: v.optional(v.string()),
-      email: v.optional(v.string()),
-      preferred: v.optional(
-        v.union(v.literal("phone"), v.literal("email"))
-      ),
-    }),
-    deviceModel: v.string(),
-    issueDescription: v.string(),
-    requestedService: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    status: v.optional(
-      v.union(
-        v.literal("draft"),
-        v.literal("submitted"),
-        v.literal("cancelled")
-      )
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    createdBy: v.optional(v.string()),
-    updatedBy: v.optional(v.string()),
-  })
-    .index("by_status", ["status"])
-    .index("by_createdAt", ["createdAt"]),
+      const toDelete = existing.filter((x) =>
+        (x.parts ?? []).some((p) => p.device === device)
+      );
 
-  // ================================== INVOICES ======================================
-  invoices: defineTable({
-    ticketId: v.string(),
-    name: v.union(v.string(), v.null()),
-    email: v.union(v.string(), v.null()),
-    phone: v.union(v.string(), v.null()),
-    manufacturer: v.union(v.string(), v.null()),
-    description: v.string(),
-    quote: v.union(v.number(), v.null()),
-    deposit: v.string(),
-    service: v.string(),
-    warrantyAcknowledged: v.boolean(),
-    raw: v.any(),
-    status: v.string(),
-    createdAt: v.optional(v.number()),
-  })
-    .index("by_status", ["status"])
-    .index("by_createdAt", ["createdAt"]),
+      for (const doc of toDelete) {
+        await ctx.runMutation(api.parts.remove, { id: doc._id });
+      }
+    }
+
+    const selected = items.slice(0, count);
+    for (const part of selected) {
+      await ctx.runMutation(api.parts.create, part);
+    }
+
+    return {
+      device,
+      inserted: selected.length,
+      reset: !!reset,
+    };
+  },
 });
