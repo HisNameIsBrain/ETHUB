@@ -46,11 +46,20 @@ const nextConfig = {
     ];
   },
 
-  // No experimental features enabled by default.
-  // This avoids caching/security pitfalls.
-  experimental: {
-    // ppr: false,
+experimental: {
+    // keep any existing experimental options you already have here
+    // ...
+    allowedDevOrigins: [
+      // Localhost (default dev)
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+
+      // Add your external dev origin(s) here:
+      // replace PORT with your actual dev port (1455, 3000, etc.)
+      "http://138.68.234.156:3000",
+      "http://138.68.234.156:1455",
+    ],
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

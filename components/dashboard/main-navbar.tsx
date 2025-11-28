@@ -1,3 +1,4 @@
+// components/dashboard/main-navbar.tsx
 "use client";
 
 import * as React from "react";
@@ -18,6 +19,13 @@ import {
   LogIn,
   UserPlus,
   LogOut,
+  FileCode2,
+  TerminalSquare,
+  FolderTree,
+  Network,
+  MonitorPlay,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 
@@ -27,32 +35,37 @@ type NavItem = {
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 };
 
+// DevOS tabs + Documents + a Home link
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/", label: "Home", Icon: Home },
-  { href: "/dashboard/search", label: "Search", Icon: Search },
-  { href: "/dashboard/services", label: "Services", Icon: Server },
+  { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
+  { href: "/dashboard/code", label: "Code Studio", Icon: FileCode2 },
+  { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
+  { href: "/dashboard/files", label: "File Manager", Icon: FolderTree },
+  { href: "/dashboard/preview", label: "Live Preview", Icon: MonitorPlay },
+  // use Server icon for Docker; it exists in all lucide versions
+  { href: "/dashboard/docker", label: "Docker", Icon: Server },
+  { href: "/dashboard/ssh", label: "SSH Sessions", Icon: Network },
+  { href: "/documents", label: "Documents", Icon: FileText },
   { href: "/dashboard/settings", label: "Settings", Icon: Settings },
+  { href: "/dashboard/admin", label: "Admin", Icon: ShieldCheck },
+  { href: "/", label: "Home", Icon: Home },
 ];
 
 export function MainNavbar() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
   const { user } = useUser();
   const { signOut } = useClerk();
 
   const [navOpen, setNavOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
 
-  const toggleTheme = () =>
-    setTheme(theme === "light" ? "dark" : "light");
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
+      {/* main bar */}
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:px-6">
-        {/* LEFT: menu + icon */}
+        {/* LEFT: mobile menu + dashboard icon */}
         <div className="flex items-center gap-2">
-          {/* dropdown menu (mobile) */}
+          {/* mobile menu for tabs */}
           <button
             type="button"
             onClick={() => setNavOpen((v) => !v)}
@@ -86,19 +99,7 @@ export function MainNavbar() {
 
         {/* RIGHT: theme toggle + auth/profile */}
         <div className="flex items-center gap-2">
-          {/* theme toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80 shadow-sm transition hover:bg-white/10 hover:text-foreground"
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? (
-              <MoonStar className="h-4 w-4" />
-            ) : (
-              <SunMedium className="h-4 w-4" />
-            )}
-          </button>
+          <ThemeToggleButton />
 
           {/* auth / profile */}
           {!user ? (
@@ -140,27 +141,30 @@ export function MainNavbar() {
 
               {profileOpen && (
                 <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-background/95 p-1 text-sm shadow-xl backdrop-blur">
-                  {navItems.map(({ href, label, Icon }) => {
-                    const active =
-                      pathname === href ||
-                      pathname?.startsWith(href + "/");
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={
-                          "flex items-center gap-2 rounded-lg px-2 py-1.5 transition " +
-                          (active
-                            ? "bg-white/10 text-foreground"
-                            : "text-foreground/75 hover:bg-white/5 hover:text-foreground")
-                        }
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {label}
-                      </Link>
-                    );
-                  })}
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground/75 transition hover:bg-white/5 hover:text-foreground"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/documents"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground/75 transition hover:bg-white/5 hover:text-foreground"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Documents
+                  </Link>
+                  <Link
+                    href="/dashboard/settings"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground/75 transition hover:bg-white/5 hover:text-foreground"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
 
                   <button
                     type="button"
@@ -177,7 +181,7 @@ export function MainNavbar() {
         </div>
       </div>
 
-      {/* desktop nav row */}
+      {/* DESKTOP TABS ROW (DevOS tabs) */}
       <nav className="mx-auto hidden max-w-7xl items-center gap-1 px-3 pb-2 md:flex md:px-6">
         {navItems.map(({ href, label, Icon }) => {
           const active =
@@ -211,9 +215,9 @@ export function MainNavbar() {
         })}
       </nav>
 
-      {/* mobile dropdown panel */}
+      {/* MOBILE TABS DROPDOWN */}
       {navOpen && (
-        <div className="border-b border-white/10 bg-background/95 px-3 pb-3 pt-2 shadow-lg backdrop-blur md:hidden">
+        <div className="border-t border-white/10 bg-background/95 px-3 pb-3.pt-2 shadow-lg backdrop-blur md:hidden">
           <div className="flex flex-col gap-1">
             {navItems.map(({ href, label, Icon }) => {
               const active =
@@ -235,31 +239,46 @@ export function MainNavbar() {
                 </Link>
               );
             })}
-
-            {!user && (
-              <div className="mt-1 flex gap-2">
-                <Link
-                  href="/sign-in"
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-sm font-medium text-foreground/90 hover:bg-white/10"
-                  onClick={() => setNavOpen(false)}
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/sign-up"
-                  className="flex-1 rounded-xl bg-foreground px-3 py-2 text-center text-sm font-semibold text-background hover:opacity-90"
-                  onClick={() => setNavOpen(false)}
-                >
-                  Sign up
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       )}
     </header>
   );
 }
+
+/* Hydration-safe theme toggle */
+
+function ThemeToggleButton() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = resolvedTheme === "dark";
+
+  const handleToggle = () => {
+    setTheme(isDark ? "light" : "dark");
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80 shadow-sm transition hover:bg-white/10 hover:text-foreground"
+      aria-label="Toggle theme"
+    >
+      {mounted && isDark ? (
+        <SunMedium className="h-4 w-4" />
+      ) : (
+        <MoonStar className="h-4 w-4" />
+      )}
+    </button>
+  );
+}
+
+/* Avatar + Siri rings */
 
 function ProfileAvatar({
   name,
@@ -284,7 +303,7 @@ function ProfileAvatar({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="grid h-full w-full place-items-center text-xs font-semibold text-foreground">
+        <div className="grid h-full w-full.place-items-center text-xs font-semibold text-foreground">
           {initials}
         </div>
       )}

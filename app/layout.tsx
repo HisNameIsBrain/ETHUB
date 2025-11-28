@@ -1,8 +1,6 @@
 // app/layout.tsx
 import "./globals.css";
 import { Suspense } from "react";
-import { ClerkProvider } from "@clerk/nextjs";
-
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { MainNavbar } from "@/components/dashboard/main-navbar";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,7 +13,6 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body className="min-h-screen bg-background text-foreground antialiased">
           <ThemeProvider>
@@ -29,6 +26,5 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </ThemeProvider>
         </body>
       </html>
-    </ClerkProvider>
   );
 }

@@ -1,0 +1,19 @@
+name: ethub
+region: nyc
+services:
+  - name: web
+    environment_slug: node-js
+    github:
+      repo: HisNameIsBrain/ETHUB
+      branch: release/ollama-workspace
+      deploy_on_push: true
+    build_command: npm install && npm run build
+    run_command: npm run start
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SITE_URL
+        value: http://ethub-mgm-01.ondigitalocean.app

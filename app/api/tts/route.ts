@@ -1,68 +1,72 @@
 // app/api/tts/route.ts
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
+import OpenAI from "openai";
 
-export const runtime = "edge";
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs"; // use Node runtime (Buffer etc. available)
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, voice = "alloy", format = "mp3" } = await req.json();
+    const body = await req.json();
+
+    const text: string = body.text;
+    const voice: string = body.voice || "alloy";
+    const format: "mp3" | "opus" | "aac" | "flac" =
+      body.format || "mp3";
 
     if (!text || typeof text !== "string") {
-      return new Response("Missing `text`", { status: 400 });
+      return new Response(
+        JSON.stringify({ error: "Missing 'text' in request body." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return new Response("OPENAI_API_KEY not set", { status: 500 });
+    if (!process.env.OPENAI_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "OPENAI_API_KEY is not set." }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    // Call OpenAI TTS (Edge-safe: fetch + Web APIs only)
-    const upstream = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini-tts",
-        voice,
-        input: text,
-        format, // "mp3" | "wav" | "ogg"
-      }),
+    const speech = await client.audio.speech.create({
+      model: "gpt-4o-mini-tts",
+      voice,
+      input: text,
+      format,
     });
 
-    if (!upstream.ok) {
-      // Pass through provider error for easier debugging
-      const errText = await upstream.text();
-      return new Response(errText, { status: upstream.status });
-    }
+    const audioBuffer = Buffer.from(await speech.arrayBuffer());
 
-    const buf = await upstream.arrayBuffer();
-    const contentType =
-      format === "wav" ? "audio/wav" :
-      format === "ogg" ? "audio/ogg" :
-      "audio/mpeg";
+    // Content-Type based on format
+    const mimeType =
+      format === "mp3"
+        ? "audio/mpeg"
+        : format === "aac"
+        ? "audio/aac"
+        : format === "flac"
+        ? "audio/flac"
+        : "audio/ogg"; // opus
 
-    return new Response(buf, {
+    return new Response(audioBuffer, {
       status: 200,
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": mimeType,
+        "Content-Length": String(audioBuffer.length),
         "Cache-Control": "no-store",
       },
     });
-  } catch (e: any) {
+  } catch (error: any) {
+    console.error("TTS API error:", error);
     return new Response(
-      JSON.stringify({ error: e?.message ?? "Unknown error" }),
+      JSON.stringify({
+        error: "Failed to generate speech.",
+        detail: error?.message || String(error),
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }
 
-// Health check (handy in browser or uptime checks)
-export async function GET() {
-  return Response.json(
-    { ok: true, route: "/api/tts", runtime, dynamic },
-    { headers: { "cache-control": "no-store" } }
-  );
-}
