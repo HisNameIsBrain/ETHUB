@@ -2,18 +2,20 @@
 
 import * as React from "react";
 import { useQuery } from "convex/react";
-// If you use codegen, you can instead:
-// import { api } from "@/convex/_generated/api";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 
 const PAGE_SIZE = 10;
 
 export default function ServicesPage() {
-  // If you use codegen: const raw = useQuery(api.services.getPublics) ?? [];
   const raw = useQuery("services:getPublics") ?? undefined; // undefined while loading
   const [q, setQ] = React.useState("");
   const [page, setPage] = React.useState(1);
@@ -37,7 +39,9 @@ export default function ServicesPage() {
 
   React.useEffect(() => {
     // if data changes or search term changes, clamp page back into range
-    setPage((p) => Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE))));
+    setPage((p) =>
+      Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE)))
+    );
   }, [q, services.length]);
 
   const pageItems =
@@ -59,11 +63,68 @@ export default function ServicesPage() {
       </div>
 
       <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-      <p className="mt-2 text-muted-foreground">
-        Browse available services.
-      </p>
+      <p className="mt-2 text-muted-foreground">Browse available services.</p>
 
       {/* Loading */}
       {isLoading && (
         <div className="mt-6 text-sm text-muted-foreground">Loading services…</div>
       )}
+
+      {!isLoading && (
+        <div className="mt-6 overflow-hidden rounded border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-1/3">Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-24 text-right">Price</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageItems.map((svc: any) => (
+                <TableRow key={svc._id}>
+                  <TableCell className="font-medium">{svc.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {svc.description || "No description"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {svc.priceCents != null ? `$${(svc.priceCents / 100).toFixed(2)}` : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {pageItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                    No services found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+        <span>
+          Showing {startIndex}-{endIndex} of {total}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <span>
+            Page {safePage} of {lastPage}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={safePage >= lastPage}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

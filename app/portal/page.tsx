@@ -171,7 +171,7 @@ export default function PortalPage() {
   }) as AnyIntake[] | undefined;
 
   const jobs = useQuery(api.jobs.listForStaff, {
-     ? { search: jobsSearch.trim() || undefined }
+    search: jobsSearch.trim() || undefined,
   }) as AnyJob[] | undefined;
 
   // ----------------------------- mutations/actions -----------------------------
