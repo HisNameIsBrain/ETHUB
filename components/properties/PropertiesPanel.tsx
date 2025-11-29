@@ -94,10 +94,14 @@ export function PropertiesPanel({ documentId }: { documentId: string }) {
               <div key={f.key} className="space-y-1">
                 <label className="text-sm">{f.name}</label>
                 <Select value={v ?? ""} onValueChange={(val) => setVal(f.key, val)}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
                   <SelectContent>
                     {f.options?.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -109,7 +113,15 @@ export function PropertiesPanel({ documentId }: { documentId: string }) {
                 <label className="text-sm">{f.name}</label>
                 <Textarea
                   value={(Array.isArray(v) ? v : []).join(", ")}
-                  onChange={(e) => setVal(f.key, e.target.value.split(",").map((s) => s.trim()).filter(Boolean)))}
+                  onChange={(e) =>
+                    setVal(
+                      f.key,
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
                   placeholder="Comma-separated"
                 />
               </div>
@@ -120,7 +132,15 @@ export function PropertiesPanel({ documentId }: { documentId: string }) {
                 <label className="text-sm">{f.name}</label>
                 <Textarea
                   value={(Array.isArray(v) ? v : []).join("\n")}
-                  onChange={(e) => setVal(f.key, e.target.value.split("\n").map((s) => s.trim()).filter(Boolean)))}
+                  onChange={(e) =>
+                    setVal(
+                      f.key,
+                      e.target.value
+                        .split("\n")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
                   placeholder="One URL per line"
                 />
               </div>

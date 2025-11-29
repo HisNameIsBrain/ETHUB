@@ -5,7 +5,7 @@ import { SiriGlow } from "@/components/siri-glow";
 export default function SiriPreviewPage() {
   return (
     <>
-      <SiriGlowRing />
+      <SiriGlow />
 
       <div className="relative z-[99] flex flex-col items-center justify-center min-h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
         <h1 className="text-4xl font-bold mb-4">🌈 Siri Glow Preview</h1>
