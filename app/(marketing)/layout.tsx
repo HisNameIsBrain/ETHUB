@@ -2,7 +2,6 @@
 import type { ReactNode } from "react";
 import { Footer } from "./_components/footer";
 import { Heading } from "./_components/heading";
-import AssistantLauncher from "@/components/assistant-launcher";
 import VoiceVisualizerGate from "@/components/voice-visualizer-gate";
 
 type MarketingLayoutProps = { children: ReactNode };
@@ -18,7 +17,6 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
       </main>
 
       {/* Client components are fine here */}
-      <AssistantLauncher />
       <VoiceVisualizerGate />
 
       <Footer />
