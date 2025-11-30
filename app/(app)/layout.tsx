@@ -5,7 +5,7 @@ import { useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import AssistantLauncher from "@/components/assistant-launcher";
 import { SearchCommand } from "@/components/search-command";
-import { Navigation } from "@/app/(main)/_components/navigation"; // documents navbar already themed
+import { Navigation } from "@/app/(app)/_components/navigation"; // documents navbar already themed
 import { EnsureUser } from "@/components/ensure-user";
 import { Spinner } from "@/components/spinner";
 
