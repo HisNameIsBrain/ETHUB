@@ -38,13 +38,15 @@ type NavItem = {
 // DevOS tabs + Documents + a Home link
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
+  { href: "/dashboard/services", label: "Services", Icon: Server },
+  { href: "/dashboard/voice-analytics", label: "Voice Analytics", Icon: Search },
   { href: "/dashboard/code", label: "Code Studio", Icon: FileCode2 },
-  { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
-  { href: "/dashboard/files", label: "File Manager", Icon: FolderTree },
-  { href: "/dashboard/preview", label: "Live Preview", Icon: MonitorPlay },
-  // use Server icon for Docker; it exists in all lucide versions
   { href: "/dashboard/docker", label: "Docker", Icon: Server },
   { href: "/dashboard/ssh", label: "SSH Sessions", Icon: Network },
+  { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
+  { href: "/dashboard/preview", label: "Live Preview", Icon: MonitorPlay },
+  { href: "/portal", label: "Portal", Icon: FolderTree },
+  { href: "/mc", label: "Minecraft", Icon: MonitorPlay },
   { href: "/documents", label: "Documents", Icon: FileText },
   { href: "/dashboard/settings", label: "Settings", Icon: Settings },
   { href: "/dashboard/admin", label: "Admin", Icon: ShieldCheck },
