@@ -1,15 +1,15 @@
 "use client";
 
-import { Title, TitleSkeleton } from "@/app/(main)/_components/title";
-import { PublishToggle as Publish } from "@/app/(main)/_components/publish";
-import MenuSkeleton from "@/app/(main)/_components/menu-skeleton";
+import { Title, TitleSkeleton } from "@/app/(app)/_components/title";
+import { PublishToggle as Publish } from "@/app/(app)/_components/publish";
+import MenuSkeleton from "@/app/(app)/_components/menu-skeleton";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { MenuIcon } from "lucide-react";
-import { Banner } from "@/app/(main)/_components/banner";
-import { Menu } from "@/app/(main)/_components/menu";
+import { Banner } from "@/app/(app)/_components/banner";
+import { Menu } from "@/app/(app)/_components/menu";
 
 interface NavbarProps {
   isCollapsed: boolean;

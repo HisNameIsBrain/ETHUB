@@ -1,4 +1,4 @@
-// app/(main)/(routes)/services/[serviceId]/page.tsx
+// app/(marketing)/services/[serviceId]/page.tsx
 import { notFound } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
