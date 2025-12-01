@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useConvexAuth } from "convex/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import AssistantLauncher from "@/components/assistant-launcher";
 import { SearchCommand } from "@/components/search-command";
 import { Navigation } from "@/app/(app)/_components/navigation"; // documents navbar already themed
@@ -11,25 +11,33 @@ import { Spinner } from "@/components/spinner";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const pathname = usePathname();
   const router = useRouter();
 
+  const publicPrefixes = ["/portal", "/mc", "/pc", "/todo"];
+  const isPublicRoute = pathname
+    ? publicPrefixes.some((prefix) => pathname.startsWith(prefix))
+    : false;
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push("/");
-  }, [isLoading, isAuthenticated, router]);
+    if (!isLoading && !isAuthenticated && !isPublicRoute) router.push("/");
+  }, [isLoading, isAuthenticated, isPublicRoute, router]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+  if (!isPublicRoute) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      );
+    }
+
+    if (!isAuthenticated) return null;
   }
-
-  if (!isAuthenticated) return null;
 
   return (
     <>
-      <EnsureUser />
+      {isAuthenticated && <EnsureUser />}
       <AssistantLauncher />
 
       {/* App frame */}
