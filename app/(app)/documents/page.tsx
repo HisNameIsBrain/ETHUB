@@ -51,7 +51,8 @@ type DocNode = DocumentRow & { children: DocNode[] };
 export default function DocumentsPage() {
   const router = useRouter();
 
-  const docs = (useQuery(api.documents.getAll) ?? []) as DocumentRow[];
+  const docsResult = useQuery(api.documents.getAll) as DocumentRow[] | undefined;
+  const docs = useMemo(() => docsResult ?? [], [docsResult]);
   const create = useMutation(api.documents.create);
 
   const tree = useMemo(() => buildTree(docs), [docs]);

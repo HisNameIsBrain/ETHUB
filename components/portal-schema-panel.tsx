@@ -98,8 +98,8 @@ export function InventoryPanel() {
 }
 
 export function PartsCatalogPanel({ query }: { query?: string }) {
-  const docs =
-    useQuery(api.parts.recent, {}) ?? []; // each doc may contain .parts[]
+  const docsResult = useQuery(api.parts.recent, {}); // each doc may contain .parts[]
+  const docs = useMemo(() => docsResult ?? [], [docsResult]);
   const flatParts: CatalogPart[] = useMemo(() => {
     const acc: CatalogPart[] = [];
     for (const d of docs) {
