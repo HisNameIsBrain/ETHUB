@@ -1,57 +1,41 @@
 "use client";
+import type { Route } from "next";
 
-import Image from "next/image";
-import { useUser } from "@clerk/clerk-react";
-import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
-const DocumentsPage = () => {
-  const { user } = useUser();
+export default function DocumentsPage() {
   const router = useRouter();
+  const docs = useQuery(api.documents.getAll) ?? [];
   const create = useMutation(api.documents.create);
-  
-  const onCreate = () => {
-    const promise = create({ title: "Untitled" }).then((documentId) =>
-      router.push(`/documents/${documentId}`),
-    );
-    
-    toast.promise(promise, {
-      loading: "Creating a new note....",
-      success: "New note created!",
-      error: "Failed to create a new note.",
-    });
-  };
-  
+
   return (
-    <div className="flex h-full flex-col items-center justify-center space-y-4">
-      <Image
-        src="/empty.svg"
-        alt="empty"
-        height="300"
-        width="300"
-        priority
-        className="h-auto dark:hidden"
-      />
-      <Image
-        src="/empty-dark.svg"
-        alt="empty"
-        height="300"
-        width="300"
-        priority
-        className="hidden h-auto dark:block"
-      />
-      <h2 className="text-lg font-medium">
-        Welcome to {user?.firstName}&apos;s Zotion
-      </h2>
-      <Button onClick={onCreate}>
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Create a note
-      </Button>
+    <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Your notes</h1>
+        <button
+          className="border rounded px-3 py-2"
+          onClick={async () => {
+            const id = await create({});
+            router.push(`/documents/${id}` as Route);
+          }}
+        >
+          New note
+        </button>
+      </div>
+
+      {docs.length === 0 ? (
+        <p className="text-muted-foreground">No notes yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {docs.map((d: any) => (
+            <li key={d._id} className="border rounded p-3">
+              <a href={`/documents/${d._id}`} className="underline">{d.title}</a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
-};
-export default DocumentsPage;
+}

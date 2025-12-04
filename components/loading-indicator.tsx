@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Router from "next/router";
-import { SiriGlow } from "@/components/siri-glow";
+import { SiriGlow } from "@/app/(marketing)/_components/siri-glow";
 
 export default function LoadingIndicator() {
  const [loading, setLoading] = useState(false);

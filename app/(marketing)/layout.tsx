@@ -1,19 +1,27 @@
+// app/(marketing)/layout.tsx  (SERVER component – no "use client")
+import type { ReactNode } from "react";
+import { Footer } from "./_components/footer";
+import { Heading } from "./_components/heading";
+import AssistantLauncher from "@/components/assistant-launcher";
+import VoiceVisualizerGate from "@/components/voice-visualizer-gate";
 
-import { ClerkProvider } from "@clerk/nextjs";
-import { Navbar } from "@/app/(marketing)/_components/navbar";
-import { SiriGlow } from "@/components/siri-glow";
-import React from "react";
+type MarketingLayoutProps = { children: ReactNode };
 
-export default function MarketingLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
-      <div className="h-full dark:bg-[#1F1F1F]">
-        <Navbar />
-        <SiriGlow />
-        <main className="h-full pt-40">{children}</main>
-      </div>
+    <div className="relative flex min-h-dvh flex-col bg-background">
+      <Heading />
+      <main className="relative flex-1 flex items-start md:items-center">
+        <div className="mx-auto w-full max-w-6xl px-4">
+          {children}
+        </div>
+      </main>
+
+      {/* Client components are fine here */}
+      <AssistantLauncher />
+      <VoiceVisualizerGate />
+
+      <Footer />
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+"use client";
 // components/toolbar.tsx
 "use client";
 

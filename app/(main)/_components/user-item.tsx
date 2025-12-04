@@ -13,7 +13,7 @@ import { ChevronsLeftRight } from "lucide-react";
 
 export const UserItem = () => {
   const { user } = useUser();
-  
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -49,9 +49,7 @@ export const UserItem = () => {
               </Avatar>
             </div>
             <div className="space-y-1">
-              <p className="text-sm line-clamp-1">
-                {user?.fullName}&apos;
-              </p>
+              <p className="text-sm line-clamp-1">{user?.fullName}&apos;</p>
             </div>
           </div>
         </div>

@@ -1,89 +1,37 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
-
-import { Doc } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 
-interface TitleProps {
-  initialData: Doc<"documents">;
-};
+type DocShape = { _id: string; title?: string; icon?: string };
+type TitleProps =
+  | { doc: DocShape; initialData?: never }
+  | { initialData: DocShape; doc?: never };
 
-export const Title = ({
-  initialData
-}: TitleProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+export function Title(props: TitleProps) {
+  const doc = (props as any).doc ?? (props as any).initialData;
   const update = useMutation(api.documents.update);
 
-  const [title, setTitle] = useState(initialData.title || "Untitled");
-  const [isEditing, setIsEditing] = useState(false);
-
-  const enableInput = () => {
-    setTitle(initialData.title);
-    setIsEditing(true);
-    setTimeout(() => {
-      inputRef.current?.focus();
-      inputRef.current?.setSelectionRange(0, inputRef.current.value.length)
-    }, 0);
-  };
-
-  const disableInput = () => {
-    setIsEditing(false);
-  };
-
-  const onChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setTitle(event.target.value);
-    update({
-      id: initialData._id,
-      title: event.target.value || "Untitled"
-    });
-  };
-
-  const onKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (event.key === "Enter") {
-      disableInput();
-    }
-  };
-
   return (
-    <div className="flex items-center gap-x-1">
-      {!!initialData.icon && <p>{initialData.icon}</p>}
-      {isEditing ? (
-        <Input
-          ref={inputRef}
-          onClick={enableInput}
-          onBlur={disableInput}
-          onChange={onChange}
-          onKeyDown={onKeyDown}
-          value={title}
-          className="h-7 px-2 focus-visible:ring-transparent"
-        />
-      ) : (
-        <Button
-          onClick={enableInput}
-          variant="ghost"
-          size="sm"
-          className="font-normal h-auto p-1"
-        >
-          <span className="truncate">
-            {initialData?.title}
-          </span>
-        </Button>
-      )}
+    <div className="flex items-center gap-2">
+      <span className="text-2xl">{doc?.icon ?? "📝"}</span>
+      <input
+        className="text-2xl bg-transparent outline-none"
+        defaultValue={doc?.title ?? "Untitled"}
+        onBlur={(e) => doc && update({ id: doc._id as any, title: e.currentTarget.value })}
+        aria-label="Document title"
+      />
     </div>
-  )
+  );
 }
 
-Title.Skeleton = function TitleSkeleton() {
+export function TitleSkeleton() {
   return (
-    <Skeleton className="h-9 w-20 rounded-md" />
+    <div className="flex items-center gap-2 animate-pulse">
+      <div className="h-6 w-6 rounded bg-muted" />
+      <div className="h-6 w-40 rounded bg-muted" />
+    </div>
   );
-};
+}
+
+export default Title;

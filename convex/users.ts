@@ -1,71 +1,66 @@
-// convex/users.ts
+import { buildServiceSearch } from "./lib/search";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-export const upsertCurrentUser = mutation({
+/**
+ * Upsert by tokenIdentifier (used by some auth flows).
+ * Matches your index: by_token on tokenIdentifier.
+ */
+export const ensureByToken = mutation({
   args: {
-    email: v.string(),
+    tokenIdentifier: v.string(),
+    userId: v.string(),
     name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    imageUrl: v.optional(v.string()), // we’ll map to imageUrl
     username: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
   },
-  handler: async (ctx, { email, name, username, phoneNumber, imageUrl }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const userId = identity.subject;
-    const tokenIdentifier = identity.tokenIdentifier ?? undefined;
+  handler: async (ctx, args) => {
     const now = Date.now();
-    const lower = email.toLowerCase();
 
-    // Look up existing user by userId
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .withIndex("by_token", (q: any) =>
+        q.eq("tokenIdentifier", args.tokenIdentifier),
+      )
       .first();
 
+    const patch = {
+      userId: args.userId,
+      name: args.name ?? "",
+      email: args.email ?? "",
+      imageUrl: args.imageUrl ?? "", // schema field is imageUrl
+      username: args.username,
+      phoneNumber: args.phoneNumber,
+      role: args.role ?? ("user" as const),
+      updatedAt: now,
+    };
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        email: lower, // always safe
-        // Only include required fields if we have values; otherwise keep existing
-        ...(name !== undefined ? { name } : {}),
-        ...(imageUrl !== undefined ? { imageUrl } : {}),
-        // Optionals
-        ...(username !== undefined ? { username } : {}),
-        ...(phoneNumber !== undefined ? { phoneNumber } : {}),
-        ...(tokenIdentifier ? { tokenIdentifier } : {}),
-        updatedAt: now,
-      });
+      await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
 
-    // Insert new user (provide required fields explicitly)
-    const id = await ctx.db.insert("users", {
-      userId,
-      role: "user", // required by your types
-      name: name ?? identity.name ?? "Anonymous",
-      email: lower,
-      imageUrl: imageUrl ?? identity.pictureUrl ?? "",
-      username,
-      phoneNumber,
-      tokenIdentifier,
+    return await ctx.db.insert("users", {
+      tokenIdentifier: args.tokenIdentifier,
+      ...patch,
       createdAt: now,
-      updatedAt: now,
     });
-
-    return id;
   },
 });
 
-export const getMe = query({
+/** Optional helper: fetch current user doc via subject */
+export const me = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
+
     return await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_userId", (q: any) => q.eq("userId", identity.subject))
       .first();
   },
 });

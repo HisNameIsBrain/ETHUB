@@ -1,4 +1,5 @@
 "use client";
+import type { Route } from "next";
 
 import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
@@ -33,7 +34,7 @@ export const Menu = ({ documentId }: MenuProps) => {
       success: "Note moved to trash!",
       error: "Failed to archive note.",
     });
-    router.push("/documents");
+    router.push("/documents" as Route);
   };
   
   return (

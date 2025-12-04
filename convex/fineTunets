@@ -1,0 +1,29 @@
+// convex/fineTune.ts
+type Role = "user" | "system" | "assistant";
+type Msg = { role: Role; content: string };
+type Conversation = { messages: Msg[] };
+
+function normalizeRole(raw: string): Role {
+  const r = raw.toLowerCase();
+  if (r === "user" || r === "system" || r === "assistant") return r;
+  // If your data uses "model", "bot", etc., map them here:
+  if (r === "bot" || r === "model" || r === "assistant_message") return "assistant";
+  // As a last resort, assume user (or throw)
+  return "user";
+}
+
+function coerceConversations(input: { messages: { role: string; content: string }[] }[]): Conversation[] {
+  return input.map(({ messages }) => ({
+    messages: messages.map(m => ({ role: normalizeRole(m.role), content: m.content })),
+  }));
+}
+
+function toJSONL(conversations: Conversation[]): string {
+  return conversations
+    .map(c => JSON.stringify({ messages: c.messages }))
+    .join("\n");
+}
+
+// --- where you call toJSONL ---
+const normalized = coerceConversations(args.conversations);
+const jsonl = toJSONL(normalized);

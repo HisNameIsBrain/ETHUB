@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "usehooks-ts": [
+        "shims/usehooks-ts"
       ]
     },
     "baseUrl": "."
