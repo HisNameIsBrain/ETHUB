@@ -5,27 +5,30 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Menu,
-  SunMedium,
-  MoonStar,
+  Braces,
   ChevronDown,
-  LayoutDashboard,
+  Code2,
+  FileText,
+  FolderKanban,
+  FolderTree,
   Home,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  MonitorPlay,
+  MoonStar,
+  Network,
   Search,
   Server,
   Settings,
-  LogIn,
-  UserPlus,
-  LogOut,
-  FileCode2,
-  TerminalSquare,
-  FolderTree,
-  Network,
-  MonitorPlay,
   ShieldCheck,
-  FileText,
+  SunMedium,
+  TerminalSquare,
+  Users,
+  UserPlus,
+  Wrench,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 
@@ -33,22 +36,79 @@ type NavItem = {
   href: string;
   label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  badge?: string;
 };
 
-// DevOS tabs + Documents + a Home link
-const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
-  { href: "/dashboard/code", label: "Code Studio", Icon: FileCode2 },
-  { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
-  { href: "/dashboard/files", label: "File Manager", Icon: FolderTree },
-  { href: "/dashboard/preview", label: "Live Preview", Icon: MonitorPlay },
-  // use Server icon for Docker; it exists in all lucide versions
-  { href: "/dashboard/docker", label: "Docker", Icon: Server },
-  { href: "/dashboard/ssh", label: "SSH Sessions", Icon: Network },
-  { href: "/documents", label: "Documents", Icon: FileText },
-  { href: "/dashboard/settings", label: "Settings", Icon: Settings },
-  { href: "/dashboard/admin", label: "Admin", Icon: ShieldCheck },
-  { href: "/", label: "Home", Icon: Home },
+type NavSection = {
+  title: string;
+  accent: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
+  {
+    title: "Workspace",
+    accent: "from-cyan-400/40 via-sky-500/40 to-blue-600/35",
+    items: [
+      { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
+      { href: "/dashboard/preview", label: "Preview", Icon: MonitorPlay },
+      { href: "/dashboard/customers", label: "Customers", Icon: Users },
+      { href: "/dashboard/settings", label: "Settings", Icon: Settings },
+      { href: "/dashboard/admin", label: "Admin", Icon: ShieldCheck },
+    ],
+  },
+  {
+    title: "Services",
+    accent: "from-emerald-400/45 via-teal-400/45 to-cyan-500/35",
+    items: [
+      { href: "/dashboard/services", label: "All", Icon: Server, badge: "core" },
+      { href: "/dashboard/services/new", label: "New", Icon: FolderKanban },
+      { href: "/dashboard/services/categories", label: "Categories", Icon: FolderTree },
+      { href: "/dashboard/services/admin/inventory", label: "Inventory", Icon: Wrench },
+    ],
+  },
+  {
+    title: "Build & Ops",
+    accent: "from-fuchsia-400/55 via-purple-500/50 to-indigo-500/40",
+    items: [
+      { href: "/dashboard/code", label: "Code Studio", Icon: Braces },
+      { href: "/dashboard/voice-analytics", label: "Voice", Icon: Search },
+      { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
+      { href: "/dashboard/ssh", label: "SSH", Icon: Network },
+      { href: "/dashboard/docker", label: "Docker", Icon: Server },
+    ],
+  },
+  {
+    title: "Portal",
+    accent: "from-amber-400/50 via-orange-400/50 to-pink-400/45",
+    items: [
+      { href: "/portal", label: "Orders", Icon: FolderTree },
+      { href: "/portal/repair", label: "Repair", Icon: Wrench },
+      { href: "/repair", label: "Device Repair", Icon: Wrench },
+    ],
+  },
+  {
+    title: "Minecraft",
+    accent: "from-lime-400/45 via-emerald-400/45 to-sky-400/35",
+    items: [
+      { href: "/mc", label: "Hub", Icon: MonitorPlay },
+      { href: "/mc/servers", label: "Servers", Icon: Network },
+      { href: "/mc/erealms", label: "eRealms", Icon: Code2 },
+      { href: "/mc/erealms/games", label: "Games", Icon: MonitorPlay },
+      { href: "/mc/erealms/journey", label: "Journey", Icon: FolderKanban },
+      { href: "/mc/erealms/servers", label: "Realm Servers", Icon: Server },
+    ],
+  },
+  {
+    title: "Productivity",
+    accent: "from-sky-400/45 via-blue-500/45 to-fuchsia-500/35",
+    items: [
+      { href: "/documents", label: "Documents", Icon: FileText },
+      { href: "/todo", label: "Todo", Icon: FolderKanban },
+      { href: "/pc", label: "PC", Icon: MonitorPlay },
+      { href: "/", label: "Home", Icon: Home },
+    ],
+  },
 ];
 
 export function MainNavbar() {
@@ -58,6 +118,10 @@ export function MainNavbar() {
 
   const [navOpen, setNavOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
@@ -70,9 +134,23 @@ export function MainNavbar() {
             type="button"
             onClick={() => setNavOpen((v) => !v)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80 shadow-sm transition hover:bg-white/10 hover:text-foreground md:hidden"
-            aria-label="Open navigation"
+            aria-expanded={navOpen}
+            aria-label="Toggle navigation"
           >
-            <Menu className="h-5 w-5" />
+            <div className="relative flex h-4 w-4 flex-col justify-between">
+              {[0, 1, 2].map((index) => (
+                <motion.span
+                  key={index}
+                  className="h-0.5 w-full rounded-full bg-current"
+                  animate={{
+                    rotate: navOpen && index === 1 ? 45 : 0,
+                    y: navOpen ? (index === 0 ? 6 : index === 2 ? -6 : 0) : 0,
+                    opacity: navOpen && index === 1 ? 0 : 1,
+                  }}
+                  transition={{ type: "spring", stiffness: 240, damping: 22 }}
+                />
+              ))}
+            </div>
           </button>
 
           {/* dashboard icon */}
@@ -181,67 +259,125 @@ export function MainNavbar() {
         </div>
       </div>
 
-      {/* DESKTOP TABS ROW (DevOS tabs) */}
-      <nav className="mx-auto hidden max-w-7xl items-center gap-1 px-3 pb-2 md:flex md:px-6">
-        {navItems.map(({ href, label, Icon }) => {
-          const active =
-            pathname === href || pathname?.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={
-                "relative inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition " +
-                (active
-                  ? "bg-white/10 text-foreground ring-1 ring-white/15"
-                  : "text-foreground/70 hover:bg-white/5 hover:text-foreground")
-              }
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-              {active && (
-                <motion.span
-                  layoutId="nav-active-pill"
-                  className="absolute inset-0 -z-10 rounded-xl bg-white/10"
-                  transition={{
-                    type: "spring",
-                    stiffness: 380,
-                    damping: 30,
-                  }}
-                />
-              )}
-            </Link>
-          );
-        })}
+      {/* DESKTOP – compact gradient cards */}
+      <nav className="mx-auto hidden max-w-7xl flex-col gap-2 px-3 pb-3 md:flex md:px-6">
+        <div className="flex w-full gap-2 overflow-x-auto pb-1">
+          {navSections.map((section) => (
+            <div key={section.title} className="min-w-[200px] max-w-[240px] flex-1">
+              <GradientShell accent={section.accent}>
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-foreground/60">
+                  <span>{section.title}</span>
+                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-foreground/70">
+                    {section.items.length}
+                  </span>
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {section.items.map((item) => {
+                    const active =
+                      pathname === item.href || pathname?.startsWith(item.href + "/");
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setNavOpen(false)}
+                        className={
+                          "group relative inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[13px] transition " +
+                          (active
+                            ? "border-white/30 bg-white/10 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+                            : "border-white/10 bg-white/5 text-foreground/75 hover:border-white/20 hover:text-foreground")
+                        }
+                      >
+                        <item.Icon className="h-3.5 w-3.5 opacity-80" />
+                        <span>{item.label}</span>
+                        {item.badge && (
+                          <span className="rounded-full bg-gradient-to-r from-white/20 to-white/5 px-2 text-[10px] font-semibold uppercase tracking-wide text-foreground/70">
+                            {item.badge}
+                          </span>
+                        )}
+                        {active && (
+                          <motion.span
+                            layoutId={`nav-active-${section.title}`}
+                            className="absolute inset-0 -z-10 rounded-full bg-white/10"
+                            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </GradientShell>
+            </div>
+          ))}
+        </div>
       </nav>
 
-      {/* MOBILE TABS DROPDOWN */}
-      {navOpen && (
-        <div className="border-t border-white/10 bg-background/95 px-3 pb-3.pt-2 shadow-lg backdrop-blur md:hidden">
-          <div className="flex flex-col gap-1">
-            {navItems.map(({ href, label, Icon }) => {
-              const active =
-                pathname === href || pathname?.startsWith(href + "/");
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition " +
-                    (active
-                      ? "bg-white/10 text-foreground"
-                      : "text-foreground/75 hover:bg-white/5 hover:text-foreground")
-                  }
-                  onClick={() => setNavOpen(false)}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* MOBILE – stacked rainbow cards */}
+      <AnimatePresence>
+        {navOpen && (
+          <>
+            <motion.button
+              aria-label="Close navigation"
+              type="button"
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden"
+              onClick={() => setNavOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.div
+              className="relative z-50 border-t border-white/10 bg-background/95 px-3 pb-4 pt-3 shadow-xl backdrop-blur md:hidden"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex flex-col gap-3">
+                {navSections.map((section) => (
+                  <GradientShell key={section.title} accent={section.accent}>
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-foreground/60">
+                      <span>{section.title}</span>
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-foreground/70">
+                        {section.items.length}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {section.items.map((item) => {
+                        const active =
+                          pathname === item.href || pathname?.startsWith(item.href + "/");
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setNavOpen(false)}
+                            className={
+                              "relative flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] shadow-sm transition " +
+                              (active
+                                ? "bg-white/10 text-foreground ring-1 ring-white/20"
+                                : "bg-white/5 text-foreground/80 hover:bg-white/10")
+                            }
+                          >
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-white/5 text-foreground/80 shadow-inner">
+                              <item.Icon className="h-4 w-4" />
+                            </span>
+                            <div className="flex flex-col">
+                              <span className="leading-tight">{item.label}</span>
+                              {item.badge && (
+                                <span className="text-[10px] uppercase tracking-wide text-foreground/60">{item.badge}</span>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </GradientShell>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
@@ -303,7 +439,7 @@ function ProfileAvatar({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="grid h-full w-full.place-items-center text-xs font-semibold text-foreground">
+        <div className="grid h-full w-full place-items-center text-xs font-semibold text-foreground">
           {initials}
         </div>
       )}
@@ -352,6 +488,31 @@ function SiriRings() {
         }}
         transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
       />
+    </div>
+  );
+}
+
+function GradientShell({
+  accent,
+  children,
+}: {
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative rounded-3xl p-[1.5px]">
+      <div
+        className={`absolute inset-[-18%] -z-10 rounded-[50%] blur-3xl opacity-40 bg-[conic-gradient(at_50%_50%,#22d3ee,#a855f7,#f472b6,#22d3ee)]`}
+        aria-hidden
+      />
+      <div
+        className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${accent} p-[1px] shadow-[0_12px_40px_-24px_rgba(0,0,0,0.65)]`}
+      >
+        <div className="relative h-full rounded-[calc(1rem+2px)] bg-background/80 px-3 py-3 shadow-inner">
+          <div className="pointer-events-none absolute inset-0 rounded-[calc(1rem+2px)] border border-white/5" />
+          <div className="relative z-10 space-y-1 text-sm">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
