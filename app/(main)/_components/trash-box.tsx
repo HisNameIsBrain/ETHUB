@@ -1,6 +1,6 @@
 "use client";
 import type { Route } from "next";
-// app/(app)/_components/trash-box.tsx
+// app/(main)/_components/trash-box.tsx
 "use client";
 
 import React, { useState } from "react";
