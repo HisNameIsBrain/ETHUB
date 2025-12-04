@@ -17,7 +17,7 @@ npm install
   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...`
   - `CLERK_SECRET_KEY=...`
   - `EDGE_STORE_ACCESS_KEY=...`
-  - `EDGE_STORE_SECRET_KEY=...`
+ - `EDGE_STORE_SECRET_KEY=...`
 - Create a Clerk JWT template named **convex** with Audience `convex`.
 
 3. Convex (dev)
@@ -39,6 +39,16 @@ npm run dev
 ```bash
 npm run build && npm start
 ```
+
+## Terminal MCP ChatGPT agent
+
+Chat with OpenAI from your terminal using a colorized, MCP-inspired interface (type `/help` for commands such as `/model`, `/system`, and `/clear`):
+
+```bash
+OPENAI_API_KEY=sk-... npm run mcp:terminal
+```
+
+Set `OPENAI_MODEL` to override the default `gpt-4o-mini`. See [docs/terminal-mcp-agent.md](docs/terminal-mcp-agent.md) for details.
 
 ## Notes
 
