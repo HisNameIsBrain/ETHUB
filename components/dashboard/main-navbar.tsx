@@ -12,8 +12,6 @@ import {
   MoonStar,
   ChevronDown,
   LayoutDashboard,
-  Home,
-  Search,
   Server,
   Settings,
   LogIn,
@@ -22,9 +20,7 @@ import {
   FileCode2,
   TerminalSquare,
   FolderTree,
-  Network,
   MonitorPlay,
-  ShieldCheck,
   FileText,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
@@ -33,22 +29,20 @@ type NavItem = {
   href: string;
   label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  group?: string;
 };
 
-// DevOS tabs + Documents + a Home link
+// Compact DevOS navigation
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
-  { href: "/dashboard/code", label: "Code Studio", Icon: FileCode2 },
-  { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
-  { href: "/dashboard/files", label: "File Manager", Icon: FolderTree },
-  { href: "/dashboard/preview", label: "Live Preview", Icon: MonitorPlay },
+  { href: "/dashboard", label: "Overview", Icon: LayoutDashboard, group: "Workspace" },
+  { href: "/dashboard/code", label: "Code Studio", Icon: FileCode2, group: "Workspace" },
+  { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare, group: "Workspace" },
+  { href: "/dashboard/files", label: "File Manager", Icon: FolderTree, group: "Workspace" },
+  { href: "/dashboard/preview", label: "Live Preview", Icon: MonitorPlay, group: "Workspace" },
   // use Server icon for Docker; it exists in all lucide versions
-  { href: "/dashboard/docker", label: "Docker", Icon: Server },
-  { href: "/dashboard/ssh", label: "SSH Sessions", Icon: Network },
-  { href: "/documents", label: "Documents", Icon: FileText },
-  { href: "/dashboard/settings", label: "Settings", Icon: Settings },
-  { href: "/dashboard/admin", label: "Admin", Icon: ShieldCheck },
-  { href: "/", label: "Home", Icon: Home },
+  { href: "/dashboard/docker", label: "Docker", Icon: Server, group: "Workspace" },
+  { href: "/documents", label: "Documents", Icon: FileText, group: "Resources" },
+  { href: "/dashboard/settings", label: "Settings", Icon: Settings, group: "System" },
 ];
 
 export function MainNavbar() {
@@ -57,7 +51,13 @@ export function MainNavbar() {
   const { signOut } = useClerk();
 
   const [navOpen, setNavOpen] = React.useState(false);
+  const [desktopMenuOpen, setDesktopMenuOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+
+  const activeNavItem =
+    navItems.find(
+      ({ href }) => pathname === href || pathname?.startsWith(href + "/")
+    ) ?? navItems[0];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
@@ -181,38 +181,64 @@ export function MainNavbar() {
         </div>
       </div>
 
-      {/* DESKTOP TABS ROW (DevOS tabs) */}
-      <nav className="mx-auto hidden max-w-7xl items-center gap-1 px-3 pb-2 md:flex md:px-6">
-        {navItems.map(({ href, label, Icon }) => {
-          const active =
-            pathname === href || pathname?.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
+      {/* DESKTOP DROPDOWN NAV */}
+      <nav className="mx-auto hidden max-w-7xl items-center px-3 pb-2 md:flex md:px-6">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setDesktopMenuOpen((v) => !v)}
+            className="inline-flex min-w-[12rem] items-center justify-between gap-3 rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-foreground ring-1 ring-white/15 transition hover:bg-white/15"
+          >
+            <span className="flex items-center gap-2 text-left">
+              <activeNavItem.Icon className="h-4 w-4" />
+              {activeNavItem.label}
+            </span>
+            <ChevronDown
               className={
-                "relative inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition " +
-                (active
-                  ? "bg-white/10 text-foreground ring-1 ring-white/15"
-                  : "text-foreground/70 hover:bg-white/5 hover:text-foreground")
+                "h-4 w-4 transition " +
+                (desktopMenuOpen ? "rotate-180 opacity-80" : "opacity-60")
               }
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-              {active && (
-                <motion.span
-                  layoutId="nav-active-pill"
-                  className="absolute inset-0 -z-10 rounded-xl bg-white/10"
-                  transition={{
-                    type: "spring",
-                    stiffness: 380,
-                    damping: 30,
-                  }}
-                />
-              )}
-            </Link>
-          );
-        })}
+            />
+          </button>
+
+          {desktopMenuOpen && (
+            <div className="absolute left-0 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-background/95 p-1 text-sm shadow-xl backdrop-blur">
+              {Object.entries(
+                navItems.reduce<Record<string, NavItem[]>>((acc, item) => {
+                  const key = item.group || "Other";
+                  acc[key] = acc[key] ? [...acc[key], item] : [item];
+                  return acc;
+                }, {})
+              ).map(([group, items]) => (
+                <div key={group} className="mb-1 last:mb-0">
+                  <div className="px-2 py-1 text-xs uppercase tracking-wide text-foreground/50">
+                    {group}
+                  </div>
+                  {items.map(({ href, label, Icon }) => {
+                    const active =
+                      pathname === href || pathname?.startsWith(href + "/");
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={
+                          "flex items-center gap-2 rounded-lg px-2 py-1.5 transition " +
+                          (active
+                            ? "bg-white/10 text-foreground"
+                            : "text-foreground/75 hover:bg-white/5 hover:text-foreground")
+                        }
+                        onClick={() => setDesktopMenuOpen(false)}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* MOBILE TABS DROPDOWN */}
