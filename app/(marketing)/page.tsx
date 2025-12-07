@@ -1,12 +1,21 @@
 "use client";
 
+import AssistantLauncher from "@/components/assistant-launcher";
 import { Heroes } from "@/app/(marketing)/_components/heroes";
+
 export default function MarketingPage() {
   return (
-    <div className="min-h-full flex flex-col dark:bg-[#1F1F1F]">
-      <div className="flex flex-col items-center justify-center md:justify-start text-center gap-y-8 flex-1 px-6 pb-10">
-       <Heroes />
+    <main className="min-h-screen w-full bg-[#020617] text-slate-50">
+      {/* Centered content container */}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-y-10 px-6 pb-20 pt-24">
+        {/* Hero / main content */}
+        <Heroes />
+
+        {/* Assistant launcher anchored under content, right-aligned */}
+        <div className="self-end">
+          <AssistantLauncher />
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

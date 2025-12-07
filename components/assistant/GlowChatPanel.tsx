@@ -165,12 +165,7 @@ export function GlowChatPanel({
         <div className="relative p-3 pb-2 grow min-h-[28vh] max-h-[48vh] overflow-auto">
           <canvas ref={canvasRef} className="ethub-wave" />
           <div className="relative space-y-2">
-            {messages?:Messages[]; (
-              <div className="text-sm text-white/80">
-                Ask me about phone repairs—screen, battery, water damage, boot loops, weird gremlins.
-                I’ll speak your answer and draw it in color.
-              </div>
-            ) : (
+            {messages?.length ? (
               messages.map((m, i) =>
                 m.role === "user" ? (
                   <div
@@ -188,6 +183,11 @@ export function GlowChatPanel({
                   </div>
                 )
               )
+            ) : (
+              <div className="text-sm text-white/80">
+                Ask me about phone repairs—screen, battery, water damage, boot loops, weird gremlins. I’ll speak your answer and
+                draw it in color.
+              </div>
             )}
           </div>
         </div>

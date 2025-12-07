@@ -1,72 +1,51 @@
 // app/api/tts/route.ts
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const runtime = "nodejs"; // use Node runtime (Buffer etc. available)
+export const runtime = "nodejs"; // needed for Buffer support
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const text = body.text || "";
+    const voice = body.voice || "alloy";
+    const format = body.format || "mp3";
 
-    const text: string = body.text;
-    const voice: string = body.voice || "alloy";
-    const format: "mp3" | "opus" | "aac" | "flac" =
-      body.format || "mp3";
-
-    if (!text || typeof text !== "string") {
-      return new Response(
-        JSON.stringify({ error: "Missing 'text' in request body." }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+    if (!text.trim()) {
+      return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "OPENAI_API_KEY is not set." }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const speech = await client.audio.speech.create({
+    // CHEAPEST MODEL HERE (tiny price per request)
+    const response = await openai.audio.speech.create({
       model: "gpt-4o-mini-tts",
       voice,
-      input: text,
       format,
+      input: text,
     });
 
-    const audioBuffer = Buffer.from(await speech.arrayBuffer());
+    // Convert ArrayBuffer → Node Buffer
+    const arrayBuf = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuf);
 
-    // Content-Type based on format
-    const mimeType =
-      format === "mp3"
-        ? "audio/mpeg"
-        : format === "aac"
-        ? "audio/aac"
-        : format === "flac"
-        ? "audio/flac"
-        : "audio/ogg"; // opus
-
-    return new Response(audioBuffer, {
+    return new NextResponse(buffer, {
       status: 200,
       headers: {
-        "Content-Type": mimeType,
-        "Content-Length": String(audioBuffer.length),
+        "Content-Type":
+          format === "mp3"
+            ? "audio/mpeg"
+            : format === "wav"
+            ? "audio/wav"
+            : "audio/ogg",
+        "Content-Length": buffer.length.toString(),
         "Cache-Control": "no-store",
       },
     });
-  } catch (error: any) {
-    console.error("TTS API error:", error);
-    return new Response(
-      JSON.stringify({
-        error: "Failed to generate speech.",
-        detail: error?.message || String(error),
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+  } catch (err) {
+    console.error("TTS error:", err);
+    return NextResponse.json({ error: "TTS failed" }, { status: 500 });
   }
 }
-
