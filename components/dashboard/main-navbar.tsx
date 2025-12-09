@@ -54,58 +54,28 @@ const navSections: NavSection[] = [
     accent: "from-cyan-400/50 via-sky-500/50 to-blue-600/40",
     items: [
       { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
-      { href: "/dashboard/voice-analytics", label: "Voice", Icon: Search },
-      { href: "/dashboard/code", label: "Code", Icon: Braces },
+      { href: "/dashboard/voice-analytics", label: "Voice AI", Icon: Search },
+      { href: "/dashboard/code", label: "Studio", Icon: Braces, badge: "dev" },
       { href: "/dashboard/preview", label: "Preview", Icon: MonitorPlay },
     ],
   },
   {
-    title: "Services",
+    title: "Services & Ops",
     accent: "from-emerald-400/50 via-teal-400/50 to-cyan-500/40",
     items: [
-      { href: "/dashboard/services", label: "All", Icon: Server, badge: "core" },
-      { href: "/dashboard/services/new", label: "New", Icon: FolderKanban },
+      { href: "/dashboard/services", label: "Services Hub", Icon: Server, badge: "subdirs" },
       { href: "/dashboard/services/categories", label: "Categories", Icon: FolderTree },
-      { href: "/dashboard/services/admin/inventory", label: "Inventory", Icon: Wrench },
-    ],
-  },
-  {
-    title: "Build & Ops",
-    accent: "from-fuchsia-400/60 via-purple-500/50 to-indigo-500/40",
-    items: [
-      { href: "/dashboard/docker", label: "Docker", Icon: Server },
-      { href: "/dashboard/ssh", label: "SSH", Icon: Network },
+      { href: "/dashboard/ssh", label: "Remote", Icon: Network },
       { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
-      { href: "/dashboard/code", label: "Studio", Icon: FileCode2 },
     ],
   },
   {
     title: "Community",
     accent: "from-pink-400/60 via-violet-500/55 to-cyan-400/45",
     items: [
-      { href: "/dashboard/social", label: "Social Feed", Icon: Sparkles, badge: "new" },
-      { href: "/dashboard/social#dm", label: "Encrypted DM", Icon: MessagesSquare },
+      { href: "/dashboard/social", label: "Social", Icon: Sparkles, badge: "new" },
+      { href: "/dashboard/social#dm", label: "DM", Icon: MessagesSquare },
       { href: "/dashboard/social#moderation", label: "Moderation", Icon: ShieldCheck },
-    ],
-  },
-  {
-    title: "Portal",
-    accent: "from-amber-400/60 via-orange-400/60 to-pink-400/50",
-    items: [
-      { href: "/portal", label: "Orders", Icon: FolderTree },
-      { href: "/portal/repair", label: "Repair", Icon: Wrench },
-    ],
-  },
-  {
-    title: "Minecraft",
-    accent: "from-lime-400/50 via-emerald-400/50 to-sky-400/40",
-    items: [
-      { href: "/mc", label: "Hub", Icon: MonitorPlay },
-      { href: "/mc/servers", label: "Servers", Icon: Network },
-      { href: "/mc/erealms", label: "eRealms", Icon: Code2 },
-      { href: "/mc/erealms/games", label: "Games", Icon: MonitorPlay },
-      { href: "/mc/erealms/journey", label: "Journey", Icon: FolderKanban },
-      { href: "/mc/erealms/servers", label: "Realm Servers", Icon: Server },
     ],
   },
   {
@@ -117,7 +87,17 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Admin & Settings",
+    title: "Play & Support",
+    accent: "from-lime-400/50 via-emerald-400/50 to-amber-400/50",
+    items: [
+      { href: "/portal", label: "Orders", Icon: FolderKanban },
+      { href: "/portal/repair", label: "Repair", Icon: Wrench },
+      { href: "/mc", label: "MC Hub", Icon: MonitorPlay },
+      { href: "/mc/servers", label: "Servers", Icon: Server },
+    ],
+  },
+  {
+    title: "Admin",
     accent: "from-rose-400/50 via-red-400/50 to-amber-400/50",
     items: [
       { href: "/dashboard/settings", label: "Settings", Icon: Settings },
@@ -178,84 +158,15 @@ export function MainNavbar() {
         {/* RIGHT: theme toggle + auth/profile */}
         <div className="flex items-center gap-2">
           <ThemeToggleButton />
-
-          {/* auth / profile */}
-          {!user ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <Link
-                href="/sign-in"
-                className="inline-flex h-9 items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-medium text-foreground/90 shadow-sm transition hover:bg-white/10"
-              >
-                <LogIn className="h-4 w-4" />
-                Log in
-              </Link>
-              <Link
-                href="/sign-up"
-                className="inline-flex h-9 items-center gap-1 rounded-xl bg-foreground px-3 text-sm font-semibold text-background shadow-sm transition hover:opacity-90"
-              >
-                <UserPlus className="h-4 w-4" />
-                Sign up
-              </Link>
-            </div>
-          ) : (
-            <div className="relative">
-              {/* Siri glow ring behind profile */}
-              <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                <SiriRings />
-              </div>
-
-              {/* profile bubble + dropdown */}
-              <button
-                type="button"
-                onClick={() => setProfileOpen((v) => !v)}
-                className="relative z-10 flex h-9 items-center gap-1 rounded-full border border-white/10 bg-white/5 pl-1 pr-2 text-xs"
-              >
-                <ProfileAvatar
-                  name={user.fullName || user.username || "User"}
-                  imageUrl={user.imageUrl}
-                />
-                <ChevronDown className="h-3 w-3 opacity-70" />
-              </button>
-
-              {profileOpen && (
-                <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-background/95 p-1 text-sm shadow-xl backdrop-blur">
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground/75 transition hover:bg-white/5 hover:text-foreground"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/documents"
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground/75 transition hover:bg-white/5 hover:text-foreground"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    <FileText className="h-4 w-4" />
-                    Documents
-                  </Link>
-                  <Link
-                    href="/dashboard/settings"
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground/75 transition hover:bg-white/5 hover:text-foreground"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => signOut({ redirectUrl: "/" })}
-                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red-400 transition hover:bg-red-500/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <ProfileMenu
+            isOpen={profileOpen}
+            onToggle={() => setProfileOpen((v) => !v)}
+            onClose={() => setProfileOpen(false)}
+            userName={user?.fullName || user?.username || "Guest"}
+            imageUrl={user?.imageUrl}
+            isAuthed={Boolean(user)}
+            signOut={() => signOut({ redirectUrl: "/" })}
+          />
         </div>
       </div>
 
@@ -263,7 +174,7 @@ export function MainNavbar() {
       <nav className="mx-auto hidden max-w-7xl flex-col gap-3 px-3 pb-3 md:flex md:px-6">
         <div className="flex w-full gap-3 overflow-x-auto pb-1">
           {navSections.map((section) => (
-            <div key={section.title} className="min-w-[240px] flex-1">
+            <div key={section.title} className="min-w-[200px] flex-1">
               <GradientShell accent={section.accent}>
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-foreground/60">
                   <span>{section.title}</span>
@@ -407,6 +318,101 @@ function ThemeToggleButton() {
         <MoonStar className="h-4 w-4" />
       )}
     </button>
+  );
+}
+
+type ProfileMenuProps = {
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  userName: string;
+  imageUrl?: string | null;
+  isAuthed: boolean;
+  signOut: () => void;
+};
+
+function ProfileMenu({
+  isOpen,
+  onToggle,
+  onClose,
+  userName,
+  imageUrl,
+  isAuthed,
+  signOut,
+}: ProfileMenuProps) {
+  const authedLinks: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+    { href: "/documents", label: "Documents", Icon: FileText },
+    { href: "/dashboard/settings", label: "Profile & Settings", Icon: Settings },
+    { href: "/dashboard/admin", label: "Admin Access", Icon: ShieldCheck },
+  ];
+
+  const guestLinks: NavItem[] = [
+    { href: "/sign-in", label: "Log in", Icon: LogIn },
+    { href: "/sign-up", label: "Create account", Icon: UserPlus },
+  ];
+
+  const links = isAuthed ? authedLinks : guestLinks;
+
+  return (
+    <div className="relative">
+      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+        <SiriRings />
+      </div>
+
+      <button
+        type="button"
+        onClick={onToggle}
+        className="relative z-10 flex h-9 items-center gap-2 overflow-hidden rounded-full border border-white/15 bg-gradient-to-r from-white/10 via-white/5 to-transparent px-2 text-xs text-foreground shadow-[0_10px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+      >
+        <span className="absolute inset-[-2px] -z-10 rounded-full bg-gradient-to-r from-cyan-400/25 via-fuchsia-400/25 to-amber-300/20 blur-xl opacity-70" />
+        <ProfileAvatar name={userName} imageUrl={imageUrl} />
+        <span className="hidden text-foreground/80 sm:inline">{userName}</span>
+        <ChevronDown className="h-3 w-3 opacity-70" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/10 bg-background/95 p-1 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur">
+          <div className="flex items-center gap-2 rounded-xl bg-white/5 px-2 py-2">
+            <ProfileAvatar name={userName} imageUrl={imageUrl} />
+            <div className="leading-tight">
+              <p className="text-xs text-foreground/60">{isAuthed ? "Signed in" : "Guest"}</p>
+              <p className="text-sm font-semibold text-foreground">{userName}</p>
+            </div>
+          </div>
+
+          <div className="mt-1 space-y-1">
+            {links.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-foreground/80 transition hover:bg-white/5 hover:text-foreground"
+              >
+                <item.Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {isAuthed && (
+            <button
+              type="button"
+              onClick={() => {
+                signOut();
+                onClose();
+              }}
+              className="mt-2 flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-red-400 transition hover:bg-red-500/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

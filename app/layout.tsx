@@ -5,6 +5,7 @@ import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { MainNavbar } from "@/components/dashboard/main-navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { SiriFlow } from "@/components/siri-flow";
+import { IntroSplash } from "@/components/intro-splash";
 import { ThemeProvider } from "./providers";
 
 type RootLayoutProps = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <body className="min-h-screen bg-background text-foreground antialiased">
           <ThemeProvider>
             <ConvexClientProvider>
+              <IntroSplash />
               <SiriFlow />
               <MainNavbar />
 
