@@ -22,10 +22,12 @@ import {
   MonitorPlay,
   MoonStar,
   Network,
+  MessagesSquare,
   Search,
   Server,
   Settings,
   ShieldCheck,
+  Sparkles,
   SunMedium,
   TerminalSquare,
   UserPlus,
@@ -78,6 +80,15 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    title: "Community",
+    accent: "from-pink-400/60 via-violet-500/55 to-cyan-400/45",
+    items: [
+      { href: "/dashboard/social", label: "Social Feed", Icon: Sparkles, badge: "new" },
+      { href: "/dashboard/social#dm", label: "Encrypted DM", Icon: MessagesSquare },
+      { href: "/dashboard/social#moderation", label: "Moderation", Icon: ShieldCheck },
+    ],
+  },
+  {
     title: "Portal",
     accent: "from-amber-400/60 via-orange-400/60 to-pink-400/50",
     items: [
@@ -124,7 +135,8 @@ export function MainNavbar() {
   const [profileOpen, setProfileOpen] = React.useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
+    <header className="relative sticky top-0 z-50 w-full overflow-hidden border-b border-white/10 bg-background/70 backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[260px] bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.2),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.16),transparent_34%)] blur-3xl" />
       {/* main bar */}
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:px-6">
         {/* LEFT: mobile menu + dashboard icon */}
@@ -300,7 +312,7 @@ export function MainNavbar() {
 
       {/* MOBILE – stacked rainbow cards */}
       {navOpen && (
-        <div className="border-t border-white/10 bg-background/95 px-3 pb-4 pt-3 shadow-xl backdrop-blur md:hidden">
+        <div className="border-t border-white/10 bg-gradient-to-b from-background/95 via-slate-950/90 to-background/95 px-3 pb-4 pt-3 shadow-xl backdrop-blur md:hidden">
           <div className="flex flex-col gap-3">
             {navSections.map((section) => (
               <GradientShell key={section.title} accent={section.accent}>
@@ -311,33 +323,11 @@ export function MainNavbar() {
                   </span>
                 </div>
 
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="mt-3 flex flex-wrap gap-3">
                   {section.items.map((item) => {
                     const active =
                       pathname === item.href || pathname?.startsWith(item.href + "/");
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setNavOpen(false)}
-                        className={
-                          "relative flex items-center gap-2 rounded-xl px-3 py-2 text-sm shadow-sm transition " +
-                          (active
-                            ? "bg-white/10 text-foreground ring-1 ring-white/20"
-                            : "bg-white/5 text-foreground/80 hover:bg-white/10")
-                        }
-                      >
-                        <span className="grid h-8 w-8 place-items-center rounded-full bg-white/5 text-foreground/80 shadow-inner">
-                          <item.Icon className="h-4 w-4" />
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="leading-tight">{item.label}</span>
-                          {item.badge && (
-                            <span className="text-[10px] uppercase tracking-wide text-foreground/60">{item.badge}</span>
-                          )}
-                        </div>
-                      </Link>
-                    );
+                    return <BubbleLink key={item.href} item={item} active={active} onClick={() => setNavOpen(false)} />;
                   })}
                 </div>
               </GradientShell>
@@ -350,6 +340,43 @@ export function MainNavbar() {
 }
 
 /* Hydration-safe theme toggle */
+
+function BubbleLink({
+  item,
+  active,
+  onClick,
+}: {
+  item: NavItem;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      className="group relative isolate flex min-w-[140px] flex-1 items-center gap-3 overflow-hidden rounded-full border border-white/5 bg-white/5 px-3 py-2 text-sm text-foreground/90 shadow-sm transition hover:border-white/20 hover:bg-white/10"
+    >
+      <span className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-white/10 via-white/5 to-transparent opacity-0 blur-xl transition duration-500 group-hover:opacity-100" />
+      {active && (
+        <motion.span
+          layoutId={`bubble-active-${item.href}`}
+          className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-white/10"
+          transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        />
+      )}
+
+      <span className="relative grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-white/10 via-white/5 to-transparent text-foreground/90 shadow-inner">
+        <item.Icon className="h-4 w-4" />
+      </span>
+      <div className="relative flex flex-col">
+        <span className="leading-tight">{item.label}</span>
+        {item.badge && (
+          <span className="text-[10px] uppercase tracking-wide text-foreground/60">{item.badge}</span>
+        )}
+      </div>
+    </Link>
+  );
+}
 
 function ThemeToggleButton() {
   const { resolvedTheme, setTheme } = useTheme();
