@@ -9,13 +9,13 @@ export const Heroes = () => {
           <Image
             src="/documents.png"
             fill
-            className="object-contain dark:hidden smoke-in"
+            className="object-contain dark:hidden smoke-in hero-figure"
             alt="Documents"
           />
           <Image
             src="/documents-dark.png"
             fill
-            className="object-contain hidden dark:block smoke-in"
+            className="object-contain hidden dark:block smoke-in hero-figure"
             alt="Documents"
           />
         </div>
@@ -23,13 +23,13 @@ export const Heroes = () => {
           <Image
             src="/reading.png"
             fill
-            className="object-contain dark:hidden smoke-in"
+            className="object-contain dark:hidden smoke-in hero-figure"
             alt="Reading"
           />
           <Image
             src="/reading-dark.png"
             fill
-            className="object-contain hidden dark:block smoke-in"
+            className="object-contain hidden dark:block smoke-in hero-figure"
             alt="Reading"
           />
         </div>
