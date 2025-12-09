@@ -175,7 +175,10 @@ export default function SocialPage() {
     (c) => c.id === activeConversationId,
   );
 
+  const isAuthenticated = !!user;
+
   async function handleAttachment(files: FileList | null) {
+    if (!isAuthenticated) return;
     if (!files?.length) return;
 
     const uploads: UploadedAttachment[] = [];
@@ -235,6 +238,7 @@ export default function SocialPage() {
   }
 
   function handlePublish() {
+    if (!isAuthenticated) return;
     if (!composer.text.trim()) return;
 
     const newPost: Post = {
@@ -326,6 +330,7 @@ export default function SocialPage() {
         <div className="space-y-4">
           <Composer
             composer={composer}
+            isAuthenticated={isAuthenticated}
             onTextChange={(text) => setComposer((prev) => ({ ...prev, text }))}
             onAdminToggle={(isAdminBroadcast) =>
               setComposer((prev) => ({ ...prev, isAdminBroadcast }))
@@ -449,12 +454,14 @@ function SignedOutCTA() {
 
 function Composer({
   composer,
+  isAuthenticated,
   onTextChange,
   onAdminToggle,
   onUpload,
   onPublish,
 }: {
   composer: { text: string; attachments: UploadedAttachment[]; isAdminBroadcast: boolean };
+  isAuthenticated: boolean;
   onTextChange: (value: string) => void;
   onAdminToggle: (value: boolean) => void;
   onUpload: (files: FileList | null) => void;
@@ -462,6 +469,13 @@ function Composer({
 }) {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-xl">
+      {!isAuthenticated && (
+        <div className="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-sm" aria-hidden>
+          <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-200">
+            Sign in to publish and upload attachments
+          </div>
+        </div>
+      )}
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_80%_30%,rgba(236,72,153,0.08),transparent_45%),radial-gradient(circle_at_50%_90%,rgba(94,234,212,0.08),transparent_45%)]" />
       <div className="flex items-center justify-between text-sm text-indigo-100">
         <div className="flex items-center gap-2">
@@ -474,6 +488,7 @@ function Composer({
             checked={composer.isAdminBroadcast}
             onChange={(e) => onAdminToggle(e.target.checked)}
             className="h-4 w-4 rounded border-white/30 bg-white/10"
+            disabled={!isAuthenticated}
           />
           Admin-only publish
         </label>
@@ -484,6 +499,7 @@ function Composer({
         placeholder="Write a Bluesky-style post, mention @handles, or paste a link…"
         className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white placeholder:text-slate-400 focus:border-white/20 focus:outline-none"
         rows={4}
+        disabled={!isAuthenticated}
       />
 
       {composer.attachments.length > 0 && (
@@ -525,6 +541,7 @@ function Composer({
               className="hidden"
               multiple
               onChange={(e) => onUpload(e.target.files)}
+              disabled={!isAuthenticated}
             />
           </label>
           <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1">
@@ -539,6 +556,7 @@ function Composer({
         <button
           onClick={onPublish}
           className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-cyan-400 px-4 py-1.5 text-xs font-semibold text-white shadow-md transition hover:brightness-110"
+          disabled={!isAuthenticated}
         >
           <Sparkles className="h-4 w-4" />
           Publish
