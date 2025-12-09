@@ -135,8 +135,10 @@ export function MainNavbar() {
   const [profileOpen, setProfileOpen] = React.useState(false);
 
   return (
-    <header className="relative sticky top-0 z-50 w-full overflow-hidden border-b border-white/10 bg-background/70 backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[260px] bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.2),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.16),transparent_34%)] blur-3xl" />
+    <header className="relative sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-[260px] bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.2),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.16),transparent_34%)] blur-3xl" />
+      </div>
       {/* main bar */}
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:px-6">
         {/* LEFT: mobile menu + dashboard icon */}
