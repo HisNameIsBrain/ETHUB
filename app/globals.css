@@ -34,32 +34,32 @@ html, body, :root { height: 100%; }
    ======================== */
 @layer base {
   :root {
-    --background: 0 0% 17%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 96%;
+    --foreground: 0 0% 6%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 99%;
+    --card-foreground: 0 0% 8%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover: 0 0% 99%;
+    --popover-foreground: 0 0% 6%;
 
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 260 83% 22%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 0 0% 12%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 210 30% 94%;
+    --muted-foreground: 219 15% 35%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 280 72% 96%;
+    --accent-foreground: 280 32% 26%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 350 84% 56%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
+    --border: 220 20% 85%;
+    --input: 220 20% 85%;
     --ring: 0 0% 3.9%;
 
     --radius: 0.5rem;
@@ -69,30 +69,30 @@ html, body, :root { height: 100%; }
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 3.9%;
+    --card: 240 8% 6%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 3.9%;
+    --popover: 240 8% 7%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 266 82% 70%;
+    --primary-foreground: 0 0% 3.9%;
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 8% 16%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 240 6% 14%;
+    --muted-foreground: 240 6% 62%;
 
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 280 46% 18%;
+    --accent-foreground: 280 56% 86%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 350 68% 36%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 240 10% 18%;
+    --input: 240 10% 18%;
+    --ring: 0 0% 96.1%;
   }
 }
 
@@ -114,10 +114,15 @@ html, body, :root { height: 100%; }
     from 0deg,
     #fff200, #ff8a00, #ff007a, #7a00ff, #0048ff, #00a2ff, #00ffa2, #a0ff00, #fff200
   );
-  filter: blur(10px) saturate(115%);
-  opacity: .9;
+  filter: blur(10px) saturate(125%);
+  opacity: .92;
   animation: ethub-spin 12s linear infinite, ethub-hue-rotate 18s linear infinite;
   z-index: -1;
+}
+
+.dark .ethub-glow-border::before {
+  opacity: .82;
+  filter: blur(12px) saturate(140%);
 }
 
 /* Subtle animated halo backdrop for chat panels */
@@ -152,6 +157,61 @@ html, body, :root { height: 100%; }
   border-radius: 1rem;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* Hero artwork polishing */
+.hero-figure {
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 10px 32px rgba(30, 41, 59, 0.2));
+  transition: transform .4s ease, filter .4s ease;
+}
+
+.dark .hero-figure {
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 10px 36px rgba(124, 220, 255, 0.24)) drop-shadow(0 0 26px rgba(236, 72, 153, 0.28));
+}
+
+.hero-figure:hover {
+  transform: translateY(-6px) scale(1.01);
+  filter: drop-shadow(0 18px 38px rgba(30, 41, 59, 0.24));
+}
+
+.dark .hero-figure:hover {
+  filter: drop-shadow(0 18px 52px rgba(124, 220, 255, 0.35)) drop-shadow(0 0 32px rgba(236, 72, 153, 0.32));
+}
+
+/* Intro splash */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 20% 20%, rgba(124, 240, 255, 0.14), transparent 35%),
+              radial-gradient(circle at 80% 10%, rgba(236, 72, 153, 0.12), transparent 32%),
+              radial-gradient(circle at 50% 80%, rgba(255, 178, 77, 0.1), transparent 36%),
+              color-mix(in srgb, rgb(5 8 16) 85%, transparent);
+  backdrop-filter: blur(20px);
+}
+
+.intro-logo {
+  position: relative;
+  padding: 18px 24px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.intro-logo::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: inherit;
+  background: conic-gradient(from 45deg, #7cf, #9f7fff, #ff7de9, #ffb86b, #7cf);
+  filter: blur(16px) saturate(150%);
+  opacity: .52;
+  z-index: -1;
 }
 
 /* Bottom sheet container (safe-area aware) */
