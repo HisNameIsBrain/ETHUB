@@ -1,34 +1,62 @@
-// lib/tts.ts
+// src/lib/tts.ts
 type SpeakOptions = {
   voice?: string;
-  format?: "mp3" | "wav" | "ogg";
+  format?: "mp3" | "ogg";
 };
 
-export async function speakWithOpenAI(text: string, options: SpeakOptions = {}) {
-  if (typeof window === "undefined") return;
-
-  const { voice = "alloy", format = "mp3" } = options;
+/**
+ * Keeps the old name but now calls your /api/tts (Gemini) route.
+ * Returns when playback has started (or throws on failure).
+ */
+export async function speakWithOpenAI(
+  text: string,
+  options: SpeakOptions = {}
+): Promise<void> {
+  const payload = {
+    text,
+    voice: options.voice,            // e.g. "Charon"
+    format: options.format ?? "mp3", // "mp3" or "ogg"
+  };
 
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice, format }),
+    body: JSON.stringify(payload),
   });
 
-  if (!res.ok) throw new Error("TTS request failed");
+  if (!res.ok) {
+    let err: unknown;
+    try {
+      err = await res.json();
+    } catch {
+      err = await res.text();
+    }
+    console.error("TTS HTTP error:", res.status, err);
+    throw new Error("TTS request failed");
+  }
 
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
 
-  try {
+  return new Promise<void>((resolve, reject) => {
     const audio = new Audio(url);
 
-    await new Promise<void>((resolve, reject) => {
-      audio.onended = resolve;
-      audio.onerror = () => reject(new Error("Audio playback failed"));
-      audio.play().catch(reject);
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+    };
+    audio.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      reject(e);
+    };
+
+    audio
+      .play()
+      .then(() => {
+        resolve();
+      })
+      .catch((e) => {
+        URL.revokeObjectURL(url);
+        reject(e);
+      });
+  });
 }
