@@ -176,7 +176,7 @@ export default function SocialPage() {
   );
 
   async function handleAttachment(files: FileList | null) {
-    if (!files?.length) return;
+    if (!user || !files?.length) return;
 
     const uploads: UploadedAttachment[] = [];
     for (const file of Array.from(files)) {
@@ -235,7 +235,7 @@ export default function SocialPage() {
   }
 
   function handlePublish() {
-    if (!composer.text.trim()) return;
+    if (!user || !composer.text.trim()) return;
 
     const newPost: Post = {
       id: crypto.randomUUID(),
@@ -332,6 +332,7 @@ export default function SocialPage() {
             }
             onUpload={handleAttachment}
             onPublish={handlePublish}
+            disabled={!user}
           />
 
           <Feed
@@ -453,15 +454,25 @@ function Composer({
   onAdminToggle,
   onUpload,
   onPublish,
+  disabled = false,
 }: {
   composer: { text: string; attachments: UploadedAttachment[]; isAdminBroadcast: boolean };
   onTextChange: (value: string) => void;
   onAdminToggle: (value: boolean) => void;
   onUpload: (files: FileList | null) => void;
   onPublish: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-xl">
+    <div
+      className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-xl"
+      aria-disabled={disabled}
+    >
+      {disabled && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-slate-950/70 backdrop-blur-sm">
+          <p className="text-sm font-semibold text-slate-200">Sign in to publish and upload</p>
+        </div>
+      )}
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_80%_30%,rgba(236,72,153,0.08),transparent_45%),radial-gradient(circle_at_50%_90%,rgba(94,234,212,0.08),transparent_45%)]" />
       <div className="flex items-center justify-between text-sm text-indigo-100">
         <div className="flex items-center gap-2">
@@ -473,6 +484,7 @@ function Composer({
             type="checkbox"
             checked={composer.isAdminBroadcast}
             onChange={(e) => onAdminToggle(e.target.checked)}
+            disabled={disabled}
             className="h-4 w-4 rounded border-white/30 bg-white/10"
           />
           Admin-only publish
@@ -484,6 +496,7 @@ function Composer({
         placeholder="Write a Bluesky-style post, mention @handles, or paste a link…"
         className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white placeholder:text-slate-400 focus:border-white/20 focus:outline-none"
         rows={4}
+        disabled={disabled}
       />
 
       {composer.attachments.length > 0 && (
@@ -525,6 +538,7 @@ function Composer({
               className="hidden"
               multiple
               onChange={(e) => onUpload(e.target.files)}
+              disabled={disabled}
             />
           </label>
           <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1">
@@ -538,7 +552,8 @@ function Composer({
         </div>
         <button
           onClick={onPublish}
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-cyan-400 px-4 py-1.5 text-xs font-semibold text-white shadow-md transition hover:brightness-110"
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-cyan-400 px-4 py-1.5 text-xs font-semibold text-white shadow-md transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disabled}
         >
           <Sparkles className="h-4 w-4" />
           Publish
