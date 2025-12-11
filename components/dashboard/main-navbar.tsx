@@ -32,6 +32,7 @@ import {
   TerminalSquare,
   UserPlus,
   Wrench,
+  Eye,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 
@@ -134,9 +135,30 @@ export function MainNavbar() {
   const [navOpen, setNavOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    setNavOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
+
+  const activeNavItem = React.useMemo(() => {
+    const allItems = navSections.flatMap((section) =>
+      section.items.map((item) => ({
+        ...item,
+        sectionTitle: section.title,
+      })),
+    );
+
+    return (
+      allItems.find((item) =>
+        pathname === item.href || pathname?.startsWith(item.href + "/"),
+      ) || allItems.find((item) => pathname?.startsWith(item.href))
+    );
+  }, [pathname]);
+
   return (
-    <header className="relative sticky top-0 z-50 w-full overflow-hidden border-b border-white/10 bg-background/70 backdrop-blur-xl">
+    <header className="relative sticky top-0 z-50 w-full overflow-hidden border-b border-white/10 bg-background/80 backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[260px] bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.2),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.16),transparent_34%)] blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/70 to-transparent" />
       {/* main bar */}
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:px-6">
         {/* LEFT: mobile menu + dashboard icon */}
@@ -257,6 +279,40 @@ export function MainNavbar() {
         </div>
       </div>
 
+      {/* Active tab glow ribbon */}
+      <div className="mx-auto max-w-7xl px-3 pb-2 md:px-6">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-white/10 via-white/5 to-transparent shadow-[0_20px_60px_-35px_rgba(236,72,153,0.7)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(244,114,182,0.2),transparent_30%),radial-gradient(circle_at_70%_0%,rgba(59,130,246,0.15),transparent_32%),radial-gradient(circle_at_85%_80%,rgba(16,185,129,0.18),transparent_32%)] blur-2xl" />
+          <div className="relative flex items-center gap-3 px-4 py-3 text-sm text-foreground/90">
+            <motion.div
+              className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-500/30 via-pink-500/20 to-amber-400/25 text-foreground shadow-[0_0_30px_-12px_rgba(236,72,153,0.8)]"
+              animate={{ scale: [1, 1.05, 1], rotate: [0, -2, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {activeNavItem ? <activeNavItem.Icon className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </motion.div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">Active</span>
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <span>{activeNavItem?.sectionTitle || "Explore"}</span>
+                <motion.span
+                  key={activeNavItem?.href || "default"}
+                  layoutId="navbar-active-title"
+                  className="relative rounded-full bg-foreground/90 px-2 py-0.5 text-xs text-background"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                >
+                  {activeNavItem?.label || "Pick a tab"}
+                </motion.span>
+              </div>
+            </div>
+            <div className="ml-auto hidden items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-foreground/50 sm:flex">
+              <span className="h-px w-10 bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              Smooth transitions & glow navigation
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* DESKTOP – compact gradient cards */}
       <nav className="mx-auto hidden max-w-7xl flex-col gap-3 px-3 pb-3 md:flex md:px-6">
         <div className="flex w-full gap-3 overflow-x-auto pb-1">
@@ -274,32 +330,41 @@ export function MainNavbar() {
                   {section.items.map((item) => {
                     const active =
                       pathname === item.href || pathname?.startsWith(item.href + "/");
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setNavOpen(false)}
-                        className={
-                          "group relative inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition " +
-                          (active
-                            ? "border-white/30 bg-white/10 text-foreground"
-                            : "border-white/10 bg-white/5 text-foreground/75 hover:border-white/20 hover:text-foreground")
-                        }
-                      >
-                        <item.Icon className="h-4 w-4 opacity-80" />
-                        <span>{item.label}</span>
-                        {item.badge && (
-                          <span className="rounded-full bg-gradient-to-r from-white/20 to-white/5 px-2 text-[10px] font-semibold uppercase tracking-wide text-foreground/70">
-                            {item.badge}
-                          </span>
-                        )}
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setNavOpen(false)}
+                      className={
+                        "group relative isolate inline-flex items-center gap-2 overflow-hidden rounded-full border px-3 py-1.5 text-sm transition " +
+                        (active
+                          ? "border-fuchsia-400/60 bg-gradient-to-r from-fuchsia-500/20 via-pink-400/15 to-amber-300/10 text-foreground shadow-[0_10px_35px_-20px_rgba(236,72,153,0.8)]"
+                          : "border-white/10 bg-white/5 text-foreground/75 hover:border-white/20 hover:text-foreground")
+                      }
+                    >
+                      <span className="relative grid h-8 w-8 place-items-center rounded-full bg-white/5 text-foreground">
+                        <item.Icon className="h-4 w-4" />
                         {active && (
                           <motion.span
-                            layoutId={`nav-active-${section.title}`}
-                            className="absolute inset-0 -z-10 rounded-full bg-white/10"
+                            layoutId={`nav-icon-${section.title}`}
+                            className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-fuchsia-500/40 via-pink-400/30 to-amber-400/25 blur-xl"
                             transition={{ type: "spring", stiffness: 320, damping: 28 }}
                           />
                         )}
+                      </span>
+                      <span>{item.label}</span>
+                      {item.badge && (
+                        <span className="rounded-full bg-gradient-to-r from-white/20 to-white/5 px-2 text-[10px] font-semibold uppercase tracking-wide text-foreground/70">
+                          {item.badge}
+                        </span>
+                      )}
+                      {active && (
+                        <motion.span
+                          layoutId={`nav-active-${section.title}`}
+                          className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-pink-400/15 to-amber-300/15"
+                          transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                        />
+                      )}
                       </Link>
                     );
                   })}
