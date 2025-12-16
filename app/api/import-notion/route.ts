@@ -5,16 +5,6 @@ import { auth } from "@clerk/nextjs/server";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
-export async function POST(req: Request) {
-  const session = await auth();                          // await
-  const token = await session?.getToken({ template: "convex" });
-  if (!token) return NextResponse.json({ error: "Missing token" }, { status: 401 });
-
-  const body = await req.json();
-  const result = await fetchMutation(api.inventoryParts.create, body);
-  return NextResponse.json(result);
-}
-
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
