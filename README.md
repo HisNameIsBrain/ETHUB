@@ -40,6 +40,20 @@ npm run dev
 npm run build && npm start
 ```
 
+## Go server (API-only)
+
+A lightweight Go server is available for serving the health and OpenAPI endpoints without the Next.js runtime. To start it locally:
+
+```bash
+go run ./cmd/ethub
+```
+
+The server listens on port `8080` by default (override with `PORT`) and exposes:
+
+- `GET /healthz` — simple health probe
+- `GET /api/info` — metadata about the Go service
+- `GET /api/openapi` — serves the repository `openapi.json` specification
+
 ## Terminal MCP ChatGPT agent
 
 Chat with OpenAI from your terminal using a colorized, MCP-inspired interface:
