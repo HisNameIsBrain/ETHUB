@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { MainNavbar } from "@/components/dashboard/main-navbar";
 import { Toaster } from "@/components/ui/sonner";
+import { IntroSplash2D } from "@/components/IntroSplash2D";
 import { SiriFlow } from "@/components/siri-flow";
 import { ThemeProvider } from "./providers";
 
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <body className="min-h-screen bg-background text-foreground antialiased">
           <ThemeProvider>
             <ConvexClientProvider>
+			<IntroSplash2D />
               <SiriFlow />
               <MainNavbar />
 

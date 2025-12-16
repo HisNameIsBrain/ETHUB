@@ -3,52 +3,178 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Home, LayoutDashboard, Search, Settings } from "lucide-react";
-
-
-// If you use Clerk, pass `user` and `signInUrl/signUpUrl` from your layout/page.
-// Otherwise swap these for your auth system.
+import { useTheme } from "next-themes";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+import {
+  Braces,
+  ChevronDown,
+  FileText,
+  FolderKanban,
+  FolderTree,
+  Home,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  MonitorPlay,
+  MoonStar,
+  Network,
+  MessagesSquare,
+  Search,
+  Server,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  SunMedium,
+  TerminalSquare,
+  UserPlus,
+  Wrench,
+  Eye,
+} from "lucide-react";
+import { useUser, useClerk } from "@clerk/nextjs";
 
 type NavItem = {
   href: string;
   label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  badge?: string;
 };
 
-const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/", label: "Home", Icon: Home },
-  { href: "/dashboard/search", label: "Search", Icon: Search },
-  { href: "/dashboard/settings", label: "Settings", Icon: Settings },
+type NavSection = {
+  title: string;
+  accent: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
+  {
+    title: "Workspace",
+    accent: "from-cyan-400/50 via-sky-500/50 to-blue-600/40",
+    items: [
+      { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
+      { href: "/dashboard/voice-analytics", label: "Voice AI", Icon: Search },
+      { href: "/dashboard/code", label: "Studio", Icon: Braces, badge: "dev" },
+      { href: "/dashboard/preview", label: "Preview", Icon: MonitorPlay },
+    ],
+  },
+  {
+    title: "Services & Ops",
+    accent: "from-emerald-400/50 via-teal-400/50 to-cyan-500/40",
+    items: [
+      {
+        href: "/dashboard/services",
+        label: "Services Hub",
+        Icon: Server,
+        badge: "subdirs",
+      },
+      {
+        href: "/dashboard/services/categories",
+        label: "Categories",
+        Icon: FolderTree,
+      },
+      { href: "/dashboard/ssh", label: "Remote", Icon: Network },
+      { href: "/dashboard/terminal", label: "Terminal", Icon: TerminalSquare },
+    ],
+  },
+  {
+    title: "Community",
+    accent: "from-pink-400/60 via-violet-500/55 to-cyan-400/45",
+    items: [
+      { href: "/dashboard/social", label: "Social", Icon: Sparkles, badge: "new" },
+      { href: "/dashboard/social#dm", label: "DM", Icon: MessagesSquare },
+      {
+        href: "/dashboard/social#moderation",
+        label: "Moderation",
+        Icon: ShieldCheck,
+      },
+    ],
+  },
+  {
+    title: "Knowledge",
+    accent: "from-sky-400/50 via-blue-500/50 to-fuchsia-500/40",
+    items: [
+      { href: "/documents", label: "Documents", Icon: FileText },
+      { href: "/", label: "Home", Icon: Home },
+    ],
+  },
+  {
+    title: "Play & Support",
+    accent: "from-lime-400/50 via-emerald-400/50 to-amber-400/50",
+    items: [
+      { href: "/portal", label: "Orders", Icon: FolderKanban },
+      { href: "/portal/repair", label: "Repair", Icon: Wrench },
+      { href: "/mc", label: "MC Hub", Icon: MonitorPlay },
+      { href: "/mc/servers", label: "Servers", Icon: Server },
+    ],
+  },
+  {
+    title: "Admin",
+    accent: "from-rose-400/50 via-red-400/50 to-amber-400/50",
+    items: [
+      { href: "/dashboard/settings", label: "Settings", Icon: Settings },
+      { href: "/dashboard/admin", label: "Admin", Icon: ShieldCheck },
+    ],
+  },
 ];
 
-export function MainNavbar({
-  user,
-  onMenuClick,
-  signInHref = "/sign-in",
-  signUpHref = "/sign-up",
-}: {
-  user?: {
-    imageUrl?: string | null;
-    name?: string | null;
-  } | null;
-  onMenuClick?: () => void;
-  signInHref?: string;
-  signUpHref?: string;
-}) {
+export function MainNavbar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  const [navOpen, setNavOpen] = React.useState(false);
+  const [profileOpen, setProfileOpen] = React.useState(false);
+
+  const [openSection, setOpenSection] = React.useState<string | null>(null);
+  const toggleSection = (title: string) =>
+    setOpenSection((cur) => (cur === title ? null : title));
+
+  React.useEffect(() => {
+    if (!navOpen) setOpenSection(null);
+  }, [navOpen]);
+
+  React.useEffect(() => {
+    setNavOpen(false);
+    setProfileOpen(false);
+    setOpenSection(null);
+  }, [pathname]);
+
+  const activeNavItem = React.useMemo(() => {
+    const allItems = navSections.flatMap((section) =>
+      section.items.map((item) => ({ ...item, sectionTitle: section.title })),
+    );
+
+    const candidates = allItems
+      .filter((item) => {
+        if (!pathname) return false;
+        if (item.href === "/") return pathname === "/";
+        return pathname === item.href || pathname.startsWith(item.href + "/");
+      })
+      .sort((a, b) => b.href.length - a.href.length);
+
+    return candidates[0];
+  }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
+    <header className="relative sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-[260px] bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.2),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.16),transparent_34%)] blur-3xl" />
+      </div>
+
+      {/* main bar */}
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:px-6">
-        {/* Left: dashboard icon + hamburger */}
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onMenuClick}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80 shadow-sm transition hover:bg-white/10 hover:text-foreground"
-            aria-label="Open menu"
+            onClick={() => setNavOpen((v) => !v)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80 shadow-sm transition hover:bg-white/10 hover:text-foreground md:hidden"
+            aria-label="Open navigation"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -65,142 +191,727 @@ export function MainNavbar({
           </Link>
         </div>
 
-        {/* Middle: ETHUB text */}
         <Link
           href="/"
-          className="relative select-none text-center text-sm font-semibold tracking-[0.25em] text-foreground/90 md:text-base"
+          className="relative select-none text-center text-sm font-semibold tracking-[0.3em] text-foreground/90 md:text-base"
         >
           ETHUB
-          <span className="absolute -bottom-1 left-1/2 h-px w-10 -translate-x-1/2 bg-gradient-to-r from-transparent via-foreground/60 to-transparent" />
+          <span className="absolute -bottom-1 left-1/2 h-px w-12 -translate-x-1/2 bg-gradient-to-r from-transparent via-foreground/60 to-transparent" />
         </Link>
 
-        {/* Right: auth area */}
         <div className="flex items-center gap-2">
-          {!user ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href={signInHref}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-medium text-foreground/90 shadow-sm transition hover:bg-white/10"
-              >
-                Log in
-              </Link>
-              <Link
-                href={signUpHref}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-foreground px-3 text-sm font-semibold text-background shadow-sm transition hover:opacity-90"
-              >
-                Sign up
-              </Link>
-            </div>
-          ) : (
-            <ProfileBubble user={user} />
-          )}
+          <ThemeToggleButton />
+          <ProfileMenu
+            isOpen={profileOpen}
+            onToggle={() => setProfileOpen((v) => !v)}
+            onClose={() => setProfileOpen(false)}
+            userName={user?.fullName || user?.username || "Guest"}
+            imageUrl={user?.imageUrl}
+            isAuthed={Boolean(user)}
+            signOut={() => signOut({ redirectUrl: "/" })}
+          />
         </div>
       </div>
 
-      {/* Optional: second-row nav for desktop */}
-      <nav className="mx-auto hidden max-w-7xl items-center gap-1 px-3 pb-2 md:flex md:px-6">
-        {navItems.map(({ href, label, Icon }) => {
-          const active = pathname === href || pathname?.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={
-                "relative inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition " +
-                (active
-                  ? "bg-white/10 text-foreground ring-1 ring-white/15"
-                  : "text-foreground/70 hover:bg-white/5 hover:text-foreground")
-              }
+      {/* Active tab ribbon */}
+      <div className="mx-auto max-w-7xl px-3 pb-2 md:px-6">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-white/10 via-white/5 to-transparent shadow-[0_20px_60px_-35px_rgba(236,72,153,0.7)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(244,114,182,0.2),transparent_30%),radial-gradient(circle_at_70%_0%,rgba(59,130,246,0.15),transparent_32%),radial-gradient(circle_at_85%_80%,rgba(16,185,129,0.18),transparent_32%)] blur-2xl" />
+          <div className="relative flex items-center gap-3 px-4 py-3 text-sm text-foreground/90">
+            <motion.div
+              className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-500/30 via-pink-500/20 to-amber-400/25 text-foreground shadow-[0_0_30px_-12px_rgba(236,72,153,0.8)]"
+              animate={{ scale: [1, 1.05, 1], rotate: [0, -2, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
             >
-              <Icon className="h-4 w-4" />
-              {label}
-              {active && (
-                <motion.span
-                  layoutId="nav-active-pill"
-                  className="absolute inset-0 -z-10 rounded-xl bg-white/10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
+              {activeNavItem ? (
+                <activeNavItem.Icon className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
               )}
-            </Link>
-          );
-        })}
+            </motion.div>
+
+            <div className="flex flex-col leading-tight">
+              <span className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">
+                Active
+              </span>
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <span>{activeNavItem?.sectionTitle || "Explore"}</span>
+                <motion.span
+                  key={activeNavItem?.href || "default"}
+                  layoutId="navbar-active-title"
+                  className="relative rounded-full bg-foreground/90 px-2 py-0.5 text-xs text-background"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                >
+                  {activeNavItem?.label || "Pick a tab"}
+                </motion.span>
+              </div>
+            </div>
+
+            <div className="ml-auto hidden items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-foreground/50 sm:flex">
+              <span className="h-px w-10 bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              Smooth transitions & glow navigation
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* DESKTOP */}
+      <nav className="mx-auto hidden max-w-7xl flex-col gap-3 px-3 pb-3 md:flex md:px-6">
+        <div className="flex w-full gap-3 overflow-x-auto pb-1">
+          {navSections.map((section) => (
+            <div key={section.title} className="min-w-[200px] flex-1">
+              <GradientShell accent={section.accent}>
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-foreground/60">
+                  <span>{section.title}</span>
+                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-foreground/70">
+                    {section.items.length}
+                  </span>
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {section.items.map((item) => {
+                    const active =
+                      pathname === item.href || pathname?.startsWith(item.href + "/");
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setNavOpen(false)}
+                        className={
+                          "group relative isolate inline-flex items-center gap-2 overflow-hidden rounded-full border px-3 py-1.5 text-sm transition " +
+                          (active
+                            ? "border-fuchsia-400/60 bg-gradient-to-r from-fuchsia-500/20 via-pink-400/15 to-amber-300/10 text-foreground shadow-[0_10px_35px_-20px_rgba(236,72,153,0.8)]"
+                            : "border-white/10 bg-white/5 text-foreground/75 hover:border-white/20 hover:text-foreground")
+                        }
+                      >
+                        <span className="relative grid h-8 w-8 place-items-center rounded-full bg-white/5 text-foreground">
+                          <item.Icon className="h-4 w-4" />
+                          {active && (
+                            <motion.span
+                              layoutId={`nav-icon-${section.title}`}
+                              className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-fuchsia-500/40 via-pink-400/30 to-amber-400/25 blur-xl"
+                              transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                            />
+                          )}
+                        </span>
+                        <span>{item.label}</span>
+                        {item.badge && (
+                          <span className="rounded-full bg-gradient-to-r from-white/20 to-white/5 px-2 text-[10px] font-semibold uppercase tracking-wide text-foreground/70">
+                            {item.badge}
+                          </span>
+                        )}
+                        {active && (
+                          <motion.span
+                            layoutId={`nav-active-${section.title}`}
+                            className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-pink-400/15 to-amber-300/15"
+                            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </GradientShell>
+            </div>
+          ))}
+        </div>
       </nav>
+
+      {/* MOBILE RING (separate presence so exit plays cleanly) */}
+      <AnimatePresence>
+        {navOpen && (
+          <LiquidIridescentRing
+            key="nav-iridescent-ring"
+            className="md:hidden left-1/2 top-[58px] h-24 w-24 -translate-x-1/2"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* MOBILE – IRIDESCENT DROP + WOBBLE + EXIT */}
+      <AnimatePresence>
+        {navOpen && (
+          <motion.div
+            key="mobile-nav-wrap"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            className="md:hidden"
+          >
+            <motion.div
+              initial={{ y: -18, scale: 0.98, filter: "blur(6px)" }}
+              animate={{
+                y: 0,
+                scale: 1,
+                filter: "blur(0px)",
+                rotate: [0, -0.6, 0.35, 0],
+              }}
+              exit={{ y: -14, scale: 0.985, filter: "blur(6px)" }}
+              transition={{
+                y: { type: "spring", stiffness: 520, damping: 30, mass: 0.75 },
+                scale: { type: "spring", stiffness: 520, damping: 30, mass: 0.75 },
+                rotate: { duration: 0.55, ease: "easeOut" },
+                filter: { duration: 0.22 },
+              }}
+              className="relative border-t border-white/10 bg-gradient-to-b from-background/95 via-slate-950/90 to-background/95 px-3 pb-4 pt-3 shadow-xl backdrop-blur"
+            >
+              <div className="flex flex-col gap-3">
+                {navSections.map((section) => {
+                  const isOpen = openSection === section.title;
+
+                  return (
+                    <LiquidSection
+                      key={section.title}
+                      sectionTitle={section.title}
+                      accent={section.accent}
+                      isOpen={isOpen}
+                      count={section.items.length}
+                      onToggle={() => toggleSection(section.title)}
+                    >
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {section.items.map((item) => {
+                          const active =
+                            pathname === item.href || pathname?.startsWith(item.href + "/");
+
+                          return (
+                            <BubbleLink
+                              key={item.href}
+                              item={item}
+                              active={active}
+                              onClick={() => {
+                                setNavOpen(false);
+                                setOpenSection(null);
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </LiquidSection>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
 
-function ProfileBubble({
-  user,
+/* Links */
+
+function BubbleLink({
+  item,
+  active,
+  onClick,
 }: {
-  user: { imageUrl?: string | null; name?: string | null };
+  item: NavItem;
+  active: boolean;
+  onClick: () => void;
 }) {
-  const initials = (user?.name || "U")
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("");
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      className="group relative isolate flex min-w-[140px] flex-1 items-center gap-3 overflow-hidden rounded-full border border-white/5 bg-white/5 px-3 py-2 text-sm text-foreground/90 shadow-sm transition hover:border-white/20 hover:bg-white/10"
+    >
+      <span className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-white/10 via-white/5 to-transparent opacity-0 blur-xl transition duration-500 group-hover:opacity-100" />
+      {active && (
+        <motion.span
+          layoutId={`bubble-active-${item.href}`}
+          className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-white/10"
+          transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        />
+      )}
+
+      <span className="relative grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-white/10 via-white/5 to-transparent text-foreground/90 shadow-inner">
+        <item.Icon className="h-4 w-4" />
+      </span>
+      <div className="relative flex flex-col">
+        <span className="leading-tight">{item.label}</span>
+        {item.badge && (
+          <span className="text-[10px] uppercase tracking-wide text-foreground/60">
+            {item.badge}
+          </span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+/* Hydration-safe theme toggle */
+
+function ThemeToggleButton() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
+
+  const isDark = resolvedTheme === "dark";
+  const handleToggle = () => setTheme(isDark ? "light" : "dark");
 
   return (
-    <div className="relative">
-      {/* Siri-like glow rings */}
+    <button
+      type="button"
+      onClick={handleToggle}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80 shadow-sm transition hover:bg-white/10 hover:text-foreground"
+      aria-label="Toggle theme"
+    >
+      {mounted && isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+    </button>
+  );
+}
+
+type ProfileMenuProps = {
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  userName: string;
+  imageUrl?: string | null;
+  isAuthed: boolean;
+  signOut: () => void;
+};
+
+function ProfileMenu({
+  isOpen,
+  onToggle,
+  onClose,
+  userName,
+  imageUrl,
+  isAuthed,
+  signOut,
+}: ProfileMenuProps) {
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const el = rootRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) onClose();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const authedLinks: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+    { href: "/documents", label: "Documents", Icon: FileText },
+    { href: "/dashboard/settings", label: "Profile & Settings", Icon: Settings },
+    { href: "/dashboard/admin", label: "Admin Access", Icon: ShieldCheck },
+  ];
+
+  const guestLinks: NavItem[] = [
+    { href: "/sign-in", label: "Log in", Icon: LogIn },
+    { href: "/sign-up", label: "Create account", Icon: UserPlus },
+  ];
+
+  const links = isAuthed ? authedLinks : guestLinks;
+
+  return (
+    <div ref={rootRef} className="relative">
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
         <SiriRings />
       </div>
 
       <button
         type="button"
-        className="relative z-10 h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/5 ring-1 ring-white/15 shadow-sm"
-        aria-label="Open profile menu"
+        onClick={onToggle}
+        className="relative z-10 flex h-9 items-center gap-2 overflow-hidden rounded-full border border-white/15 bg-gradient-to-r from-white/10 via-white/5 to-transparent px-2 text-xs text-foreground shadow-[0_10px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
       >
-        {user.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.imageUrl}
-            alt={user.name ?? "Profile"}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-xs font-semibold text-foreground">
-            {initials}
-          </div>
-        )}
+        <span className="absolute inset-[-2px] -z-10 rounded-full bg-gradient-to-r from-cyan-400/25 via-fuchsia-400/25 to-amber-300/20 blur-xl opacity-70" />
+        <ProfileAvatar name={userName} imageUrl={imageUrl} />
+        <span className="hidden text-foreground/80 sm:inline">{userName}</span>
+        <ChevronDown className="h-3 w-3 opacity-70" />
       </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="profile-menu"
+            initial={{ opacity: 0, y: 8, scale: 0.98, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: 8, scale: 0.98, filter: "blur(6px)" }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/10 bg-background/95 p-1 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur"
+          >
+            <div className="flex items-center gap-2 rounded-xl bg-white/5 px-2 py-2">
+              <ProfileAvatar name={userName} imageUrl={imageUrl} />
+              <div className="leading-tight">
+                <p className="text-xs text-foreground/60">{isAuthed ? "Signed in" : "Guest"}</p>
+                <p className="text-sm font-semibold text-foreground">{userName}</p>
+              </div>
+            </div>
+
+            <div className="mt-1 space-y-1">
+              {links.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-foreground/80 transition hover:bg-white/5 hover:text-foreground"
+                >
+                  <item.Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            {isAuthed && (
+              <button
+                type="button"
+                onClick={() => {
+                  signOut();
+                  onClose();
+                }}
+                className="mt-2 flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-red-400 transition hover:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* Avatar + Siri rings */
+
+function ProfileAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
+  const initials = name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("");
+
+  return (
+    <div className="h-7 w-7 overflow-hidden rounded-full border border-white/20 bg-white/10">
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+      ) : (
+        <div className="grid h-full w-full place-items-center text-xs font-semibold text-foreground">
+          {initials}
+        </div>
+      )}
     </div>
   );
 }
 
 function SiriRings() {
-  const ring =
-    "absolute rounded-full blur-md opacity-70 mix-blend-screen";
+  const ring = "absolute rounded-full blur-md opacity-70 mix-blend-screen";
 
   return (
     <div className="relative h-14 w-14">
-      {/* Outer slow ring */}
       <motion.div
         className={
           ring +
           " h-14 w-14 bg-[conic-gradient(from_0deg,#7dd3fc,#a78bfa,#f472b6,#f59e0b,#7dd3fc)]"
         }
         animate={{ rotate: 360, scale: [1, 1.08, 1] }}
-        transition={{ rotate: { duration: 9, ease: "linear", repeat: Infinity }, scale: { duration: 2.8, repeat: Infinity } }}
+        transition={{
+          rotate: { duration: 9, ease: "linear", repeat: Infinity },
+          scale: { duration: 2.8, repeat: Infinity },
+        }}
       />
 
-      {/* Inner faster ring */}
       <motion.div
         className={
           ring +
           " left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_90deg,#22d3ee,#60a5fa,#a78bfa,#22d3ee)]"
         }
         animate={{ rotate: -360, scale: [0.9, 1.02, 0.9] }}
-        transition={{ rotate: { duration: 5.5, ease: "linear", repeat: Infinity }, scale: { duration: 1.8, repeat: Infinity } }}
+        transition={{
+          rotate: { duration: 5.5, ease: "linear", repeat: Infinity },
+          scale: { duration: 1.8, repeat: Infinity },
+        }}
       />
 
-      {/* Pulse halo */}
       <motion.div
         className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-cyan-400/30 via-fuchsia-400/30 to-amber-400/30 blur-xl"
         animate={{ scale: [0.9, 1.15, 0.9], opacity: [0.35, 0.6, 0.35] }}
         transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
       />
+    </div>
+  );
+}
+
+/* IRIDESCENT LIQUID RING (alive physics: squash + rebound + wobble) */
+
+function LiquidIridescentRing({ className }: { className?: string }) {
+  const ringVariants = {
+    initial: {
+      y: -64,
+      scale: 0.78,
+      scaleX: 0.92,
+      scaleY: 0.86,
+      rotate: -18,
+      opacity: 0,
+      filter: "blur(14px)",
+      borderRadius: "46% 54% 44% 56% / 54% 46% 58% 42%",
+    },
+    animate: {
+      y: 0,
+      opacity: 1,
+      filter: "blur(0px)",
+      rotate: [0, -2.4, 1.6, -0.8, 0],
+      scale: [1, 1.06, 0.99, 1.02, 1],
+      scaleX: [1.08, 0.98, 1.04, 1],
+      scaleY: [0.92, 1.03, 0.98, 1],
+      borderRadius: [
+        "46% 54% 44% 56% / 54% 46% 58% 42%",
+        "58% 42% 60% 40% / 44% 56% 40% 60%",
+        "44% 56% 48% 52% / 58% 42% 54% 46%",
+        "52% 48% 56% 44% / 46% 54% 42% 58%",
+      ],
+      transition: {
+        y: { type: "spring", stiffness: 680, damping: 24, mass: 0.65 },
+        opacity: { duration: 0.18 },
+        filter: { duration: 0.22 },
+        rotate: { duration: 0.62, ease: "easeOut" },
+        scale: { duration: 0.62, ease: "easeOut" },
+        scaleX: { duration: 0.62, ease: "easeOut" },
+        scaleY: { duration: 0.62, ease: "easeOut" },
+        borderRadius: {
+          duration: 1.15,
+          ease: "easeInOut",
+          repeat: Infinity,
+          repeatType: "mirror",
+        },
+      },
+    },
+    exit: {
+      y: -38,
+      opacity: 0,
+      filter: "blur(14px)",
+      rotate: 14,
+      scale: 0.9,
+      scaleX: 1.06,
+      scaleY: 0.92,
+      borderRadius: "60% 40% 62% 38% / 42% 58% 38% 62%",
+      transition: {
+        y: { type: "spring", stiffness: 520, damping: 28, mass: 0.55 },
+        opacity: { duration: 0.16 },
+        filter: { duration: 0.2 },
+        rotate: { duration: 0.22, ease: "easeOut" },
+        scale: { duration: 0.22, ease: "easeOut" },
+      },
+    },
+  } as const;
+
+  const shimmer = {
+    initial: { opacity: 0 },
+    animate: {
+      opacity: 1,
+      rotate: [0, 18, -10, 0],
+      scale: [1, 1.04, 0.99, 1],
+      transition: { duration: 3.2, ease: "easeInOut", repeat: Infinity },
+    },
+  } as const;
+
+  return (
+    <motion.div
+      variants={ringVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className={["pointer-events-none absolute", className].filter(Boolean).join(" ")}
+      style={{
+        background:
+          "conic-gradient(from 210deg, rgba(34,211,238,0.95), rgba(167,139,250,0.95), rgba(244,114,182,0.95), rgba(245,158,11,0.92), rgba(34,211,238,0.95))",
+        WebkitMaskImage: "radial-gradient(circle at 50% 50%, transparent 50%, black 56%)",
+        maskImage: "radial-gradient(circle at 50% 50%, transparent 50%, black 56%)",
+        boxShadow:
+          "0 30px 90px -52px rgba(236,72,153,0.75), 0 20px 70px -55px rgba(34,211,238,0.75)",
+        mixBlendMode: "screen",
+        opacity: 0.96,
+      }}
+    >
+      <motion.div
+        variants={shimmer}
+        initial="initial"
+        animate="animate"
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 35% 30%, rgba(255,255,255,0.46), transparent 46%), radial-gradient(circle at 72% 74%, rgba(255,255,255,0.18), transparent 58%)",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.22), transparent 60%)",
+          mixBlendMode: "overlay",
+        }}
+      />
+    </motion.div>
+  );
+}
+
+/* MOBILE: “liquid” accordion section wrapper (springy + highlight) */
+
+function LiquidSection({
+  sectionTitle,
+  accent,
+  isOpen,
+  onToggle,
+  count,
+  children,
+}: {
+  sectionTitle: string;
+  accent: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { stiffness: 180, damping: 22, mass: 0.35 });
+  const sy = useSpring(y, { stiffness: 180, damping: 22, mass: 0.35 });
+
+  const glowX = useTransform(sx, (v) => `${50 + v * 0.06}%`);
+  const glowY = useTransform(sy, (v) => `${40 + v * 0.06}%`);
+
+  return (
+    <motion.div
+      layout
+      className="relative rounded-3xl p-[1.5px]"
+      onPointerMove={(e) => {
+        const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        x.set(e.clientX - (r.left + r.width / 2));
+        y.set(e.clientY - (r.top + r.height / 2));
+      }}
+      onPointerLeave={() => {
+        x.set(0);
+        y.set(0);
+      }}
+      transition={{ layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
+    >
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-[-12%] -z-10 rounded-[40%] blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle at var(--gx) var(--gy), rgba(236,72,153,0.22), transparent 55%)",
+          ["--gx" as any]: glowX,
+          ["--gy" as any]: glowY,
+          opacity: isOpen ? 1 : 0.65,
+        }}
+      />
+
+      <div
+        className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${accent} p-[1px] shadow-[0_12px_40px_-24px_rgba(0,0,0,0.65)]`}
+      >
+        <div className="relative h-full rounded-[calc(1rem+2px)] bg-background/80 px-3 py-3 shadow-inner">
+          <div className="pointer-events-none absolute inset-0 rounded-[calc(1rem+2px)] border border-white/5" />
+
+          <button
+            type="button"
+            onClick={onToggle}
+            className="relative z-10 flex w-full items-center justify-between text-left"
+            aria-expanded={isOpen}
+          >
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-foreground/60">
+              <span>{sectionTitle}</span>
+              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-foreground/70">
+                {count}
+              </span>
+            </div>
+
+            <motion.span
+              animate={{ rotate: isOpen ? 180 : 0, scale: isOpen ? 1.05 : 1 }}
+              transition={{ type: "spring", stiffness: 520, damping: 34 }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-foreground/80"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </motion.span>
+          </button>
+
+          <AnimatePresence initial={false}>
+            {isOpen && (
+              <motion.div
+                key={`${sectionTitle}-gel`}
+                initial={{ opacity: 0, scaleX: 0.75 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                exit={{ opacity: 0, scaleX: 0.8 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-3 h-px w-full origin-left bg-gradient-to-r from-transparent via-white/20 to-transparent"
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            {isOpen && (
+              <motion.div
+                key={`${sectionTitle}-panel`}
+                initial={{ height: 0, opacity: 0, filter: "blur(6px)" }}
+                animate={{ height: "auto", opacity: 1, filter: "blur(0px)" }}
+                exit={{ height: 0, opacity: 0, filter: "blur(6px)" }}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                className="relative z-10 overflow-hidden"
+              >
+                <motion.div
+                  initial={{ y: 8 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: 6 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                >
+                  {children}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                aria-hidden
+                initial={{ opacity: 0, x: "-30%" }}
+                animate={{ opacity: 1, x: "110%" }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.9, ease: "easeInOut" }}
+                className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-sm"
+              />
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function GradientShell({ accent, children }: { accent: string; children: React.ReactNode }) {
+  return (
+    <div className="relative rounded-3xl p-[1.5px]">
+      <div
+        className={`absolute inset-[-18%] -z-10 rounded-[50%] blur-3xl opacity-40 bg-[conic-gradient(at_50%_50%,#22d3ee,#a855f7,#f472b6,#22d3ee)]`}
+        aria-hidden
+      />
+      <div
+        className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${accent} p-[1px] shadow-[0_12px_40px_-24px_rgba(0,0,0,0.65)]`}
+      >
+        <div className="relative h-full rounded-[calc(1rem+2px)] bg-background/80 px-3 py-3 shadow-inner">
+          <div className="pointer-events-none absolute inset-0 rounded-[calc(1rem+2px)] border border-white/5" />
+          <div className="relative z-10 space-y-1 text-sm">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
