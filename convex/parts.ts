@@ -1,32 +1,33 @@
-// convex/parts.ts
-"use node";
-
 import { query, mutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
-const existing = (await ctx.runQuery(api.parts.getAll, { limit: 500 })) as Array<{
-  _id: Id<"parts">;
-  parts?: Array<{ device?: string }>;
-}>;
+type PartItem = {
+  title: string;
+  device?: string;
+  type?: string;
+  query?: string;
+  source?: string;
+  partPrice?: number;
+  labor?: number;
+  total?: number;
+  eta?: string;
+  image?: string;
+  createdAt?: number;
+  updatedAt: number;
+};
 
-const toDelete = existing.filter(
-  (x: { parts?: Array<{ device?: string }> }) =>
-    (x.parts ?? []).some((p: { device?: string }) => p.device === device)
-);
-const existing = (await ctx.runQuery(api.parts.getAll, { limit: 500 })) as Array<{
+type PartsDoc = {
   _id: Id<"parts">;
-  parts?: Array<{ device?: string }>;
-}>;
-
-const toDelete = existing.filter(
-  (x: { parts?: Array<{ device?: string }> }) =>
-    (x.parts ?? []).some((p: { device?: string }) => p.device === device)
-);
+  parts?: PartItem[];
+  images?: string[];
+  createdAt?: number;
+  updatedAt?: number;
+};
 
 type FlatPart = {
-  _id: Id<"parts">;
+  _id: Id<"parts">; // doc id
   title: string;
   device?: string;
   type?: string;
@@ -43,12 +44,11 @@ type FlatPart = {
 export const getAll = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit = 200 }) => {
-    const docs = await ctx.db.query("parts").order("desc").take(limit);
-    return docs;
+    return await ctx.db.query("parts").order("desc").take(limit);
   },
 });
 
-// Flatten: read from docs[].parts[] → FlatPart[]
+// Flatten: docs[].parts[] → FlatPart[]
 export const searchFlat = query({
   args: {
     q: v.optional(v.string()),
@@ -56,15 +56,19 @@ export const searchFlat = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, { q, limitDocs = 200, limit = 200 }) => {
-    const docs = await ctx.db.query("parts").order("desc").take(limitDocs);
+    const docs = (await ctx.db
+      .query("parts")
+      .order("desc")
+      .take(limitDocs)) as PartsDoc[];
 
     const out: FlatPart[] = [];
+
     for (const d of docs) {
       const items = d.parts ?? [];
       for (const p of items) {
-        const candidate: FlatPart = {
+        out.push({
           _id: d._id,
-          title: p.title,            // <-- read from nested item (fixes p.title error)
+          title: p.title,
           device: p.device,
           type: p.type,
           query: p.query,
@@ -75,30 +79,29 @@ export const searchFlat = query({
           eta: p.eta,
           image: p.image,
           updatedAt: p.updatedAt,
-        };
-        out.push(candidate);
+        });
       }
     }
 
-    let filtered = out;
     if (q && q.trim()) {
       const needle = q.toLowerCase();
-      filtered = out.filter((x) => {
-        return (
-          x.title?.toLowerCase().includes(needle) ||
-          x.device?.toLowerCase().includes(needle) ||
-          x.type?.toLowerCase().includes(needle) ||
-          x.query?.toLowerCase().includes(needle) ||
-          x.source?.toLowerCase().includes(needle)
-        );
-      });
+      const filtered = out.filter((x) =>
+        [
+          x.title,
+          x.device,
+          x.type,
+          x.query,
+          x.source,
+        ].some((f) => f?.toLowerCase().includes(needle))
+      );
+      return filtered.slice(0, limit);
     }
 
-    return filtered.slice(0, limit);
+    return out.slice(0, limit);
   },
 });
 
-// Create: wrap a single part into the doc.parts[] array to match schema
+// Create: wrap a single part into doc.parts[] to match schema
 export const create = mutation({
   args: v.object({
     title: v.string(),
@@ -134,7 +137,7 @@ export const remove = mutation({
   },
 });
 
-// Bulk ingest stub; can reset existing device rows, then insert provided items
+// Bulk ingest; optionally reset existing device docs, then insert provided items
 export const ingestFromVendor = action({
   args: v.object({
     device: v.string(),
@@ -161,10 +164,16 @@ export const ingestFromVendor = action({
   }),
   handler: async (ctx, { device, count = 6, reset = false, items = [] }) => {
     if (reset) {
-      const existing = await ctx.runQuery(api.parts.getAll, { limit: 500 });
-      const toDelete = existing.filter((x) => (x.parts ?? []).some((p) => p.device === device));
-      for (const item of toDelete) {
-        await ctx.runMutation(api.parts.remove, { id: item._id });
+      const existing = (await ctx.runQuery(api.parts.getAll, {
+        limit: 500,
+      })) as PartsDoc[];
+
+      const toDelete = existing.filter((x) =>
+        (x.parts ?? []).some((p) => p.device === device)
+      );
+
+      for (const doc of toDelete) {
+        await ctx.runMutation(api.parts.remove, { id: doc._id });
       }
     }
 

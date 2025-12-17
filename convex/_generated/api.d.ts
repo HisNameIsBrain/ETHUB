@@ -47,7 +47,6 @@ import type * as partsCard from "../partsCard.js";
 import type * as propertySchema from "../propertySchema.js";
 import type * as qs from "../qs.js";
 import type * as scrape_files from "../scrape_files.js";
-import type * as seed from "../seed.js";
 import type * as services from "../services.js";
 import type * as services_import from "../services_import.js";
 import type * as template from "../template.js";
@@ -100,7 +99,6 @@ declare const fullApi: ApiFromModules<{
   propertySchema: typeof propertySchema;
   qs: typeof qs;
   scrape_files: typeof scrape_files;
-  seed: typeof seed;
   services: typeof services;
   services_import: typeof services_import;
   template: typeof template;
