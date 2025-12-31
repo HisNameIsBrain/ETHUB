@@ -107,22 +107,22 @@ export function PropertiesPanel({ documentId }: { documentId: string }) {
             return (
               <div key={f.key} className="space-y-1">
                 <label className="text-sm">{f.name}</label>
-                <Textarea
-                  value={(Array.isArray(v) ? v : []).join(", ")}
-                  onChange={(e) => setVal(f.key, e.target.value.split(",").map((s) => s.trim()).filter(Boolean)))}
-                  placeholder="Comma-separated"
-                />
+                  <Textarea
+                    value={(Array.isArray(v) ? v : []).join(", ")}
+                    onChange={(e) => setVal(f.key, e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
+                    placeholder="Comma-separated"
+                  />
               </div>
             );
           case "files":
             return (
               <div key={f.key} className="space-y-1">
                 <label className="text-sm">{f.name}</label>
-                <Textarea
-                  value={(Array.isArray(v) ? v : []).join("\n")}
-                  onChange={(e) => setVal(f.key, e.target.value.split("\n").map((s) => s.trim()).filter(Boolean)))}
-                  placeholder="One URL per line"
-                />
+                  <Textarea
+                    value={(Array.isArray(v) ? v : []).join("\n")}
+                    onChange={(e) => setVal(f.key, e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))}
+                    placeholder="One URL per line"
+                  />
               </div>
             );
           case "relation":

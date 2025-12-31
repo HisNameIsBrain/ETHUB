@@ -20,7 +20,7 @@ export function useAssistant(opts: {
   const bucketRef = React.useRef({ tokens: bucketCap, last: Date.now() });
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function takeToken() {
+  const takeToken = React.useCallback(() => {
     const now = Date.now();
     const elapsed = now - bucketRef.current.last;
     bucketRef.current.tokens = Math.min(
@@ -30,7 +30,7 @@ export function useAssistant(opts: {
     bucketRef.current.last = now;
     if (bucketRef.current.tokens >= 1) { bucketRef.current.tokens -= 1; return true; }
     return false;
-  }
+  }, [bucketCap, bucketRefillPerMin]);
 
   const send = React.useCallback(
     async (prompt: string, model?: string): Promise<SendResult> => {
@@ -49,7 +49,7 @@ export function useAssistant(opts: {
         setBusy(false);
       }
     },
-    [busy, chat, history, bucketCap, bucketRefillPerMin]
+    [busy, chat, history, takeToken]
   );
 
   const sendDebounced = React.useCallback(
