@@ -14,322 +14,369 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Home,
-  Search,
-  Percent,
-  ShoppingCart,
-  User,
-  Menu,
-  Settings,
-  LogOut,
-  LayoutGrid,
-  Terminal,
+  BarChart3,
+  BookOpen,
+  Boxes,
+  Compass,
+  FileBox,
   Folder,
-  MessageSquare,
+  Gamepad2,
+  Home,
+  Layers,
+  ListChecks,
+  LogOut,
+  Menu,
+  MonitorCog,
+  Network,
+  Route,
   Shield,
+  Sparkles,
+  Terminal,
+  Wrench,
 } from "lucide-react";
 
-/**
- * Goal:
- * - Mobile: pill-style bottom bar like the RIGHT image (active item expands w/ label)
- * - Left-side: smooth, dynamic “category rail” menu effect like the LEFT example (icons -> reveal panel)
- * - No extra packages: uses framer-motion + shadcn Sheet + lucide
- *
- * Drop into: components/dashboard/main-navbar.tsx
- */
-
-type DockKey = "home" | "search" | "offers" | "cart" | "profile";
-
-type DockItem = {
-  key: DockKey;
+type NavItem = {
   label: string;
   href: string;
-  Icon: React.ComponentType<{ className?: string }>;
+  Icon?: React.ComponentType<{ className?: string }>;
 };
 
-const DOCK: DockItem[] = [
-  { key: "home", label: "Home", href: "/dashboard", Icon: Home },
-  { key: "search", label: "Search", href: "/dashboard/search", Icon: Search },
-  { key: "offers", label: "Offers", href: "/dashboard/offers", Icon: Percent },
-  { key: "cart", label: "Cart", href: "/dashboard/cart", Icon: ShoppingCart },
-  { key: "profile", label: "Profile", href: "/dashboard/profile", Icon: User },
-];
+type NavSection = {
+  title: string;
+  items: NavItem[];
+};
 
-type RailSection = {
-  id: string;
+type NavGroup = {
   label: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  items: { label: string; href: string; Icon?: React.ComponentType<{ className?: string }> }[];
+  icon: React.ComponentType<{ className?: string }>;
+  sections: NavSection[];
 };
 
-const RAIL: RailSection[] = [
+const NAV_GROUPS: NavGroup[] = [
   {
-    id: "core",
-    label: "Core",
-    Icon: LayoutGrid,
-    items: [
-      { label: "Dashboard", href: "/dashboard", Icon: Home },
-      { label: "Documents", href: "/dashboard/documents", Icon: Folder },
-      { label: "Settings", href: "/dashboard/settings", Icon: Settings },
+    label: "Marketing",
+    icon: Sparkles,
+    sections: [
+      {
+        title: "Landing",
+        items: [
+          { label: "Home", href: "/", Icon: Home },
+          { label: "Services", href: "/services", Icon: Boxes },
+          { label: "Manufacturer Catalog", href: "/services/example-maker", Icon: Route },
+          { label: "Service Detail", href: "/services/example-maker/example-service", Icon: ListChecks },
+          { label: "Erealms", href: "/erealms", Icon: Compass },
+          { label: "Siri Preview", href: "/siri-preview", Icon: Sparkles },
+        ],
+      },
     ],
   },
   {
-    id: "tools",
-    label: "Tools",
-    Icon: Terminal,
-    items: [
-      { label: "Terminal", href: "/dashboard/terminal", Icon: Terminal },
-      { label: "FTP", href: "/dashboard/ftp", Icon: Folder },
+    label: "Dashboard",
+    icon: BarChart3,
+    sections: [
+      {
+        title: "Overview",
+        items: [
+          { label: "Main Dashboard", href: "/dashboard", Icon: Home },
+          { label: "Files", href: "/dashboard/files", Icon: FileBox },
+          { label: "Preview", href: "/dashboard/preview", Icon: MonitorCog },
+          { label: "Social", href: "/dashboard/social", Icon: Compass },
+          { label: "SSH", href: "/dashboard/ssh", Icon: Network },
+          { label: "Customers", href: "/dashboard/customers", Icon: UsersIcon },
+          { label: "Settings", href: "/dashboard/settings", Icon: Shield },
+          { label: "Code", href: "/dashboard/code", Icon: Terminal },
+        ],
+      },
+      {
+        title: "Services",
+        items: [
+          { label: "Catalog", href: "/dashboard/services", Icon: Boxes },
+          { label: "New Service", href: "/dashboard/services/new", Icon: Sparkles },
+          { label: "Categories", href: "/dashboard/services/categories", Icon: Layers },
+          { label: "Service Details", href: "/dashboard/services/sample-service", Icon: ListChecks },
+          { label: "Admin Inventory", href: "/dashboard/services/admin/inventory", Icon: Wrench },
+        ],
+      },
+      {
+        title: "Data & Tools",
+        items: [
+          { label: "Voice Analytics", href: "/dashboard/voice-analytics", Icon: BarChart3 },
+          { label: "Dashboard Terminal", href: "/dashboard/terminal", Icon: Terminal },
+        ],
+      },
     ],
   },
   {
-    id: "social",
-    label: "Social",
-    Icon: MessageSquare,
-    items: [{ label: "Messages", href: "/dashboard/dm", Icon: MessageSquare }],
+    label: "Workspace",
+    icon: Folder,
+    sections: [
+      {
+        title: "Docs & Files",
+        items: [
+          { label: "Documents", href: "/documents", Icon: BookOpen },
+          { label: "Document Detail", href: "/documents/sample-doc", Icon: FileBox },
+          { label: "FTP", href: "/ftp", Icon: Network },
+          { label: "Terminal", href: "/terminal", Icon: Terminal },
+        ],
+      },
+      {
+        title: "Hardware & Repairs",
+        items: [
+          { label: "PC", href: "/pc", Icon: MonitorCog },
+          { label: "Repair", href: "/repair", Icon: Wrench },
+          { label: "Portal", href: "/portal", Icon: Compass },
+          { label: "Portal Order", href: "/portal/example-order", Icon: ListChecks },
+          { label: "Portal Repair", href: "/portal/repair", Icon: Wrench },
+        ],
+      },
+    ],
   },
   {
-    id: "admin",
-    label: "Admin",
-    Icon: Shield,
-    items: [{ label: "Admin", href: "/dashboard/admin", Icon: Shield }],
+    label: "MC & Realms",
+    icon: Gamepad2,
+    sections: [
+      {
+        title: "Servers & Journeys",
+        items: [
+          { label: "Minecraft", href: "/mc", Icon: Gamepad2 },
+          { label: "Servers", href: "/mc/servers", Icon: Network },
+          { label: "Server Detail", href: "/mc/servers/sample", Icon: Route },
+          { label: "Journeys", href: "/mc/journey", Icon: Compass },
+          { label: "Journey Detail", href: "/mc/journey/sample", Icon: Route },
+        ],
+      },
+      {
+        title: "Erealms",
+        items: [
+          { label: "Erealms", href: "/mc/erealms", Icon: Compass },
+          { label: "Erealms Servers", href: "/mc/erealms/servers", Icon: Network },
+          { label: "Server Detail", href: "/mc/erealms/servers/sample", Icon: Route },
+          { label: "Erealms Journey", href: "/mc/erealms/journey", Icon: Compass },
+          { label: "Journey Detail", href: "/mc/erealms/journey/sample", Icon: Route },
+          { label: "Games", href: "/mc/erealms/games", Icon: Gamepad2 },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Accounts",
+    icon: Shield,
+    sections: [
+      {
+        title: "Access",
+        items: [
+          { label: "Sign In", href: "/sign-in", Icon: Shield },
+          { label: "Sign Up", href: "/sign-up", Icon: Shield },
+          { label: "SSO Callback", href: "/sso-callback", Icon: Network },
+          { label: "Unauthorized", href: "/unauthorized", Icon: Shield },
+        ],
+      },
+      {
+        title: "Organization",
+        items: [
+          { label: "Create Organization", href: "/create-organization", Icon: Layers },
+          { label: "Customers", href: "/customers", Icon: UsersIcon },
+          { label: "Admin Import", href: "/admin/dashboard/services/import", Icon: Wrench },
+        ],
+      },
+    ],
   },
 ];
 
-function activeDockFromPath(pathname: string): DockKey {
-  if (pathname.startsWith("/dashboard/search")) return "search";
-  if (pathname.startsWith("/dashboard/offers")) return "offers";
-  if (pathname.startsWith("/dashboard/cart")) return "cart";
-  if (pathname.startsWith("/dashboard/profile")) return "profile";
-  return "home";
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
 }
 
 export function MainNavbar() {
-  const pathname = usePathname() || "/dashboard";
+  const pathname = usePathname() || "/";
   const [open, setOpen] = React.useState(false);
 
   return (
-    <>
-      {/* Top mini bar (optional) */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center px-4">
-          <div className="flex items-center gap-2">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
+    <header className="sticky top-0 z-40 w-full border-b bg-background/70 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open navigation">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
 
-              <SheetContent side="left" className="p-0 w-[360px]">
-                {/* Accessibility requirement */}
-                <SheetTitle className="sr-only">Main navigation</SheetTitle>
-                <SheetDescription className="sr-only">
-                  Navigate ETHUB sections and pages
-                </SheetDescription>
+            <SheetContent side="left" className="w-[360px] overflow-y-auto p-0">
+              <SheetTitle className="sr-only">Main navigation</SheetTitle>
+              <SheetDescription className="sr-only">
+                Navigate ETHUB sections and pages
+              </SheetDescription>
 
-                <RailMenu pathname={pathname} onNavigate={() => setOpen(false)} />
-                <div className="border-t p-3">
-                  <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => setOpen(false)}>
-                    <LogOut className="h-4 w-4" />
-                    Close
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Link href="/dashboard" className="font-semibold tracking-wide">
-              ETHUB
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile bottom dock (RIGHT image style) */}
-      <MobileDock pathname={pathname} />
-
-      {/* Spacer so bottom dock doesn’t overlap content */}
-      <div className="h-[84px] md:h-0" />
-    </>
-  );
-}
-
-/* -----------------------------------------
-   LEFT: “Rail + reveal panel” smooth menu
------------------------------------------- */
-
-function RailMenu({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate: () => void;
-}) {
-  const [active, setActive] = React.useState<string>(RAIL[0]?.id ?? "core");
-
-  // Keep active section stable: if current route matches a section item, auto-select it.
-  React.useEffect(() => {
-    const match = RAIL.find((s) => s.items.some((it) => pathname === it.href || pathname.startsWith(it.href + "/")));
-    if (match) setActive(match.id);
-  }, [pathname]);
-
-  const activeSection = RAIL.find((s) => s.id === active) ?? RAIL[0];
-
-  return (
-    <div className="h-full">
-      <div className="px-4 pt-4 pb-2">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">Menu</div>
-      </div>
-
-      <div className="grid grid-cols-[72px_1fr] gap-0 px-2 pb-3">
-        {/* Icon rail */}
-        <div className="flex flex-col items-center gap-2 py-2">
-          {RAIL.map((s) => {
-            const isOn = s.id === active;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setActive(s.id)}
-                className={cn(
-                  "relative flex h-12 w-12 items-center justify-center rounded-2xl border",
-                  "transition-colors",
-                  isOn ? "bg-primary/10 border-primary/20" : "bg-background hover:bg-accent"
-                )}
-                aria-label={s.label}
-              >
-                {isOn && (
-                  <motion.div
-                    layoutId="railActive"
-                    className="absolute inset-0 rounded-2xl bg-primary/10"
-                    transition={{ type: "spring", stiffness: 520, damping: 36 }}
-                  />
-                )}
-                <s.Icon className={cn("relative h-5 w-5", isOn ? "text-primary" : "text-muted-foreground")} />
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Reveal panel */}
-        <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-background to-accent/20">
-          <div className="px-4 py-3">
-            <div className="flex items-center gap-2">
-              <activeSection.Icon className="h-4 w-4 text-primary" />
-              <div className="font-semibold">{activeSection.label}</div>
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Quick access
-            </div>
-          </div>
-
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              key={activeSection.id}
-              initial={{ x: 26, opacity: 0, filter: "blur(6px)" }}
-              animate={{ x: 0, opacity: 1, filter: "blur(0px)" }}
-              exit={{ x: -26, opacity: 0, filter: "blur(6px)" }}
-              transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              className="px-2 pb-3"
-            >
-              <div className="space-y-1">
-                {activeSection.items.map((it) => {
-                  const on = pathname === it.href || pathname.startsWith(it.href + "/");
-                  const ItIcon = it.Icon;
-                  return (
-                    <Link
-                      key={it.href}
-                      href={it.href}
-                      onClick={onNavigate}
-                      className={cn(
-                        "flex items-center gap-2 rounded-xl px-3 py-2 text-sm",
-                        on ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent"
-                      )}
-                    >
-                      {ItIcon ? <ItIcon className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} /> : null}
-                      <span>{it.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* soft dots like the sample */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.08]"
-               style={{
-                 backgroundImage:
-                   "radial-gradient(currentColor 1px, transparent 1px)",
-                 backgroundSize: "18px 18px",
-               }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -----------------------------------------
-   RIGHT: Pill bottom dock (expanding active)
------------------------------------------- */
-
-function MobileDock({ pathname }: { pathname: string }) {
-  const activeKey = activeDockFromPath(pathname);
-
-  return (
-    <div className="fixed bottom-3 left-0 right-0 z-50 md:hidden">
-      <div className="mx-auto w-[min(560px,92vw)]">
-        <div className="rounded-[28px] border bg-primary px-2 py-2 shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            {DOCK.map((it) => {
-              const on = it.key === activeKey;
-              const Icon = it.Icon;
-
-              return (
-                <Link
-                  key={it.key}
-                  href={it.href}
-                  className={cn(
-                    "relative flex items-center justify-center rounded-[22px] px-3 py-2",
-                    "text-white/80 hover:text-white transition-colors",
-                    on ? "flex-[1.3]" : "flex-1"
-                  )}
-                  aria-label={it.label}
-                >
-                  {/* active pill background (shared layout for smooth slide) */}
-                  {on && (
-                    <motion.div
-                      layoutId="dockActive"
-                      className="absolute inset-0 rounded-[22px] bg-white"
-                      transition={{ type: "spring", stiffness: 520, damping: 38 }}
-                    />
-                  )}
-
-                  <div className="relative z-10 flex items-center justify-center gap-2">
-                    <Icon className={cn("h-5 w-5", on ? "text-primary" : "text-white/80")} />
-                    <AnimatePresence initial={false}>
-                      {on ? (
-                        <motion.span
-                          key="label"
-                          initial={{ width: 0, opacity: 0, x: -6 }}
-                          animate={{ width: "auto", opacity: 1, x: 0 }}
-                          exit={{ width: 0, opacity: 0, x: -6 }}
-                          transition={{ type: "spring", stiffness: 520, damping: 40 }}
-                          className="whitespace-nowrap text-sm font-semibold text-primary"
-                        >
-                          {it.label}
-                        </motion.span>
-                      ) : null}
-                    </AnimatePresence>
+              <div className="space-y-6 p-4">
+                {NAV_GROUPS.map((group) => (
+                  <div key={group.label} className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <group.icon className="h-4 w-4" />
+                      <span>{group.label}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {group.sections.map((section) => (
+                        <div key={section.title} className="space-y-1">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {section.title}
+                          </div>
+                          <div className="space-y-1">
+                            {section.items.map((item) => (
+                              <NavLink
+                                key={item.href}
+                                href={item.href}
+                                label={item.label}
+                                Icon={item.Icon}
+                                isActive={isActive(pathname, item.href)}
+                                onNavigate={() => setOpen(false)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </Link>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+
+              <div className="border-t p-4">
+                <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => setOpen(false)}>
+                  <LogOut className="h-4 w-4" />
+                  Close menu
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <Link href="/" className="font-semibold tracking-wide">
+            ETHUB
+          </Link>
         </div>
 
-        {/* subtle “glow” like the reference */}
-        <div className="pointer-events-none mx-auto mt-2 h-2 w-[88%] rounded-full blur-xl bg-primary/30" />
+        <nav className="hidden items-center gap-4 md:flex">
+          {NAV_GROUPS.map((group) => (
+            <NavDropdown key={group.label} group={group} pathname={pathname} />
+          ))}
+        </nav>
       </div>
+    </header>
+  );
+}
+
+function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string }) {
+  const [open, setOpen] = React.useState(false);
+  const isGroupActive = group.sections.some((section) =>
+    section.items.some((item) => isActive(pathname, item.href))
+  );
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition",
+          "hover:text-primary",
+          isGroupActive ? "text-primary" : "text-foreground"
+        )}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <group.icon className={cn("h-4 w-4 transition-transform", open ? "scale-110" : "scale-100")} />
+        <span>{group.label}</span>
+      </button>
+
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            className="absolute left-0 top-full mt-3 w-[380px]"
+          >
+            <div className="rounded-2xl border border-primary/15 bg-transparent backdrop-blur-xl shadow-xl">
+              <div className="grid gap-4 p-4">
+                {group.sections.map((section) => (
+                  <div key={section.title} className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+                      {section.title}
+                    </div>
+                    <div className="grid gap-1">
+                      {section.items.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+                            isActive(pathname, item.href)
+                              ? "text-primary"
+                              : "text-foreground hover:text-primary"
+                          )}
+                        >
+                          {item.Icon ? (
+                            <item.Icon className="h-4 w-4" />
+                          ) : null}
+                          <span>{item.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
+}
+
+function NavLink({
+  href,
+  label,
+  Icon,
+  isActive,
+  onNavigate,
+}: NavItem & { isActive: boolean; onNavigate?: () => void }) {
+  const IconComponent = Icon;
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={cn(
+        "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
+        isActive ? "text-primary" : "hover:text-primary"
+      )}
+    >
+      {IconComponent ? <IconComponent className="h-4 w-4" /> : null}
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
