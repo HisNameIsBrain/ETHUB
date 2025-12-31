@@ -5,9 +5,8 @@ import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { MainNavbar } from "@/components/dashboard/main-navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { SiriFlow } from "@/components/siri-flow";
-import { IntroSplash } from "@/components/intro-splash";
+import IntroSplash2D from "@/components/IntroSplash2D";
 import { ThemeProvider } from "./providers";
-import { EdgeStoreProvider } from "@/lib/edgestore";
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -15,27 +14,18 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-      <html lang="en" suppressHydrationWarning>
-        <body className="min-h-screen bg-background text-foreground antialiased">
-          <ThemeProvider>
-<<<<<<< ours
-            <EdgeStoreProvider>
-              <ConvexClientProvider>
-                <SiriFlow />
-                <MainNavbar />
-=======
-            <ConvexClientProvider>
-              <IntroSplash />
-              <SiriFlow />
-              <MainNavbar />
->>>>>>> theirs
-
-                <Suspense fallback={null}>{children}</Suspense>
-                <Toaster richColors />
-              </ConvexClientProvider>
-            </EdgeStoreProvider>
-          </ThemeProvider>
-        </body>
-      </html>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <ThemeProvider>
+          <ConvexClientProvider>
+            <IntroSplash2D />
+            <SiriFlow />
+            <MainNavbar />
+            <Suspense fallback={null}>{children}</Suspense>
+            <Toaster richColors />
+          </ConvexClientProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

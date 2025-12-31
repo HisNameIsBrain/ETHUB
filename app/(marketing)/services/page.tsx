@@ -1,129 +1,70 @@
+// 3) app/(app)/services/page.tsx
 "use client";
 
-import * as React from "react";
+import Link from "next/link";
 import { useQuery } from "convex/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { api } from "@/convex/_generated/api";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Smartphone, Apple, BadgeCheck, Zap, Cpu, Shield } from "lucide-react";
 
-const PAGE_SIZE = 10;
+function iconForManufacturer(m: string) {
+  const k = m.toLowerCase();
+  if (k.includes("apple")) return Apple;
+  if (k.includes("samsung")) return Smartphone;
+  if (k.includes("google")) return Cpu;
+  if (k.includes("motorola")) return Zap;
+  if (k.includes("oneplus")) return BadgeCheck;
+  return Shield;
+}
+
+function toSlug(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export default function ServicesPage() {
-  const raw = useQuery("services:getPublics") ?? undefined; // undefined while loading
-  const [q, setQ] = React.useState("");
-  const [page, setPage] = React.useState(1);
-
-  // Filter & stable data array
-  const services = React.useMemo(() => {
-    const list = Array.isArray(raw) ? raw : [];
-    const term = q.trim().toLowerCase();
-    if (!term) return list;
-    return list.filter((s: any) =>
-      (s.name ?? "").toLowerCase().includes(term) ||
-      (s.description ?? "").toLowerCase().includes(term)
-    );
-  }, [raw, q]);
-
-  const total = services.length;
-  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, page), lastPage);
-  const startIndex = total > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0;
-  const endIndex = total > 0 ? Math.min(safePage * PAGE_SIZE, total) : 0;
-
-  React.useEffect(() => {
-    // if data changes or search term changes, clamp page back into range
-    setPage((p) =>
-      Math.min(Math.max(1, p), Math.max(1, Math.ceil(services.length / PAGE_SIZE)))
-    );
-  }, [q, services.length]);
-
-  const pageItems =
-    total > 0
-      ? services.slice((safePage - 1) * PAGE_SIZE, (safePage - 1) * PAGE_SIZE + PAGE_SIZE)
-      : [];
-
-  const isLoading = raw === undefined;
+  const manufacturers = useQuery(api.phoneServices.listManufacturers, {
+    deviceType: "phone",
+    onlyPublic: true,
+  });
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8">
-      <div className="mb-6 flex items-center gap-3">
-        <Input
-          placeholder="Search service"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="max-w-sm"
-        />
+    <div className="p-6 space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">Phone Repair Services</h1>
+        <p className="text-sm text-muted-foreground">
+          Select a manufacturer to view quick repair services.
+        </p>
       </div>
 
-      <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-      <p className="mt-2 text-muted-foreground">Browse available services.</p>
-
-      {/* Loading */}
-      {isLoading && (
-        <div className="mt-6 text-sm text-muted-foreground">Loading services…</div>
-      )}
-
-      {!isLoading && (
-        <div className="mt-6 overflow-hidden rounded border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/3">Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-24 text-right">Price</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageItems.map((svc: any) => (
-                <TableRow key={svc._id}>
-                  <TableCell className="font-medium">{svc.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {svc.description || "No description"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {svc.priceCents != null ? `$${(svc.priceCents / 100).toFixed(2)}` : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {pageItems.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
-                    No services found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          Showing {startIndex}-{endIndex} of {total}
-        </span>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => p - 1)}>
-            Previous
-          </Button>
-          <span>
-            Page {safePage} of {lastPage}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={safePage >= lastPage}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {(manufacturers ?? []).map(({ manufacturer }) => {
+          const Icon = iconForManufacturer(manufacturer);
+          return (
+            <Link
+              key={manufacturer}
+              href={`/services/${toSlug(manufacturer)}`}
+              className="block"
+            >
+              <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-lg">{manufacturer}</CardTitle>
+                  </div>
+                  <CardDescription>
+                    View available repairs and pricing by service type.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

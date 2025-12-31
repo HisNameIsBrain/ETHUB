@@ -2,8 +2,16 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+/* =========================
+   Helpers (TOP LEVEL ONLY)
+   ========================= */
+const money = v.object({
+  amountCents: v.number(),
+  currency: v.optional(v.string()),
+});
+
 export default defineSchema({
-   documents: defineTable({
+  documents: defineTable({
     title: v.string(),
     content: v.optional(v.string()),
     userId: v.string(),
@@ -52,11 +60,7 @@ export default defineSchema({
             })
           )
         ),
-        relation: v.optional(
-          v.object({
-            table: v.literal("documents"),
-          })
-        ),
+        relation: v.optional(v.object({ table: v.literal("documents") })),
         required: v.optional(v.boolean()),
       })
     ),
@@ -75,7 +79,7 @@ export default defineSchema({
 
   // --- Inventory parts (stocked items) ---
   inventoryParts: defineTable({
-    name: v.string(), 
+    name: v.string(),
     device: v.optional(v.string()),
     category: v.optional(v.string()),
     compatibleModels: v.optional(v.array(v.string())),
@@ -152,20 +156,14 @@ export default defineSchema({
     contact: v.object({
       phone: v.optional(v.string()),
       email: v.optional(v.string()),
-      preferred: v.optional(
-        v.union(v.literal("phone"), v.literal("email"))
-      ),
+      preferred: v.optional(v.union(v.literal("phone"), v.literal("email"))),
     }),
     deviceModel: v.string(),
     issueDescription: v.string(),
     requestedService: v.optional(v.string()),
     notes: v.optional(v.string()),
     status: v.optional(
-      v.union(
-        v.literal("draft"),
-        v.literal("submitted"),
-        v.literal("cancelled")
-      )
+      v.union(v.literal("draft"), v.literal("submitted"), v.literal("cancelled"))
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -245,6 +243,7 @@ export default defineSchema({
     .index("by_job_createdAt", ["jobId", "createdAt"]),
 
   // ================================== SERVICES =====================================
+  // ✅ UPDATED: add manufacturer/serviceKey/deviceType
   services: defineTable({
     slug: v.optional(v.string()),
     title: v.optional(v.string()),
@@ -261,50 +260,58 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     search: v.optional(v.string()),
+
+    // ✅ for UI grouping
+    manufacturer: v.optional(v.string()), // "Apple", "Samsung"
+    serviceKey: v.optional(v.string()),   // "screen_repair"
+    deviceType: v.optional(v.string()),   // "phone"
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["category"])
     .index("by_isPublic", ["isPublic"])
     .index("by_createdAt", ["createdAt"])
+    .index("by_manufacturer", ["manufacturer"])
+    .index("by_serviceKey", ["serviceKey"])
+    .index("by_manufacturer_public", ["manufacturer", "isPublic"])
     .searchIndex("search_all", { searchField: "search" }),
 
   // ========================= MINECRAFT / eREALMS TABLES ============================
-mcTimelineEvents: defineTable({
-  userId: v.string(),
-  title: v.string(),
-  description: v.optional(v.string()),
-  body: v.optional(v.string()),        // ← add this to match existing docs
-  year: v.optional(v.string()),
-  dateLabel: v.optional(v.string()),
-  kind: v.optional(v.string()),
-  icon: v.optional(v.string()),
-  link: v.optional(v.string()),
-  sortIndex: v.optional(v.number()),
-  createdAt: v.optional(v.number()),
-  updatedAt: v.optional(v.number()),
-}).index("by_user", ["userId"]),
+  mcTimelineEvents: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    body: v.optional(v.string()),
+    year: v.optional(v.string()),
+    dateLabel: v.optional(v.string()),
+    kind: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    link: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  }).index("by_user", ["userId"]),
 
-mcServerPlans: defineTable({
-  slug: v.string(),
-  name: v.string(),
-  description: v.optional(v.string()),
-  monthlyPriceUsd: v.optional(v.number()), // your field
-  currency: v.optional(v.string()),        // now optional
-  isFeatured: v.optional(v.boolean()),
-  shortTag: v.optional(v.string()),
-  specs: v.optional(v.string()),
-  maxPlayers: v.optional(v.number()),
-  ramGb: v.optional(v.number()),
-  storageGb: v.optional(v.number()),
-  features: v.optional(v.array(v.string())),
-  isPublic: v.optional(v.boolean()),
-  sortIndex: v.optional(v.number()),
-  createdAt: v.optional(v.number()),
-  updatedAt: v.optional(v.number()),
-})
-  .index("by_slug", ["slug"])
-  .index("by_isPublic", ["isPublic"])
-  .index("by_isFeatured", ["isFeatured"]),
+  mcServerPlans: defineTable({
+    slug: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    monthlyPriceUsd: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    isFeatured: v.optional(v.boolean()),
+    shortTag: v.optional(v.string()),
+    specs: v.optional(v.string()),
+    maxPlayers: v.optional(v.number()),
+    ramGb: v.optional(v.number()),
+    storageGb: v.optional(v.number()),
+    features: v.optional(v.array(v.string())),
+    isPublic: v.optional(v.boolean()),
+    sortIndex: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_isPublic", ["isPublic"])
+    .index("by_isFeatured", ["isFeatured"]),
 
   mcJourneys: defineTable({
     userId: v.string(),
@@ -322,31 +329,30 @@ mcServerPlans: defineTable({
     .index("by_slug", ["slug"])
     .index("by_published", ["isPublished", "sortIndex"]),
 
-mcButtons: defineTable({
-  key: v.optional(v.string()),       // e.g. "erealms_back_to_journal"
-  label: v.string(),
-  group: v.optional(v.string()),     // make optional to match args
-  href: v.optional(v.string()),
-  icon: v.optional(v.string()),
-  description: v.optional(v.string()),
-  variant: v.optional(v.string()),   // e.g. "ghost"
-  sortIndex: v.optional(v.number()),
-  createdAt: v.optional(v.number()),
-  updatedAt: v.optional(v.number()),
-})
-  .index("by_group", ["group"]),
+  mcButtons: defineTable({
+    key: v.optional(v.string()),
+    label: v.string(),
+    group: v.optional(v.string()),
+    href: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    description: v.optional(v.string()),
+    variant: v.optional(v.string()),
+    sortIndex: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  }).index("by_group", ["group"]),
 
-mcButtonClicks: defineTable({
-  buttonKey: v.string(), // string key like "erealms_back_to_journal"
-  userId: v.optional(v.string()),
-  path: v.optional(v.string()),      // route where click happened
-  sessionId: v.optional(v.string()), // optional tracking id
-  metadata: v.optional(v.record(v.string(), v.any())),
-  createdAt: v.number(),
-})
-  .index("by_buttonKey", ["buttonKey"])
-  .index("by_user", ["userId"])
-  .index("by_createdAt", ["createdAt"]),
+  mcButtonClicks: defineTable({
+    buttonKey: v.string(),
+    userId: v.optional(v.string()),
+    path: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.any())),
+    createdAt: v.number(),
+  })
+    .index("by_buttonKey", ["buttonKey"])
+    .index("by_user", ["userId"])
+    .index("by_createdAt", ["createdAt"]),
 
   // =========================== VOICE & AI TELEMETRY ================================
   voiceSessions: defineTable({
@@ -363,11 +369,7 @@ mcButtonClicks: defineTable({
 
   voiceLogs: defineTable({
     sessionId: v.id("voiceSessions"),
-    kind: v.union(
-      v.literal("input"),
-      v.literal("output"),
-      v.literal("event")
-    ),
+    kind: v.union(v.literal("input"), v.literal("output"), v.literal("event")),
     payloadJson: v.string(),
     createdAt: v.number(),
   })
@@ -388,4 +390,38 @@ mcButtonClicks: defineTable({
     .index("by_userId", ["userId"])
     .index("by_ok", ["ok"])
     .index("by_createdAt", ["createdAt"]),
+
+  /* =========================
+     NEW: CATALOG ITEMS (links to services)
+     ========================= */
+  catalogItems: defineTable({
+    kind: v.union(v.literal("service"), v.literal("product"), v.literal("item")),
+
+    title: v.string(),
+    description: v.optional(v.string()),
+
+    price: v.optional(money),
+    category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+
+    imageUrl: v.optional(v.string()),
+    isActive: v.boolean(),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+
+    // ✅ links to services for your "expand to serviceId catalog" UI
+    serviceId: v.optional(v.id("services")),
+    manufacturer: v.optional(v.string()),
+    deviceModel: v.optional(v.string()),
+  })
+    .index("by_serviceId", ["serviceId"])
+    .index("by_kind", ["kind"])
+    .index("by_category", ["category"])
+    .index("by_active", ["isActive"])
+    .index("by_manufacturer", ["manufacturer"])
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["kind", "category", "isActive", "manufacturer"],
+    }),
 });

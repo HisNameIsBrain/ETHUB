@@ -8,11 +8,17 @@
  * @module
  */
 
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 import type * as actions_seedPortalData from "../actions/seedPortalData.js";
 import type * as assistant from "../assistant.js";
 import type * as authz from "../authz.js";
 import type * as backfill_documents from "../backfill_documents.js";
 import type * as backfill_services from "../backfill_services.js";
+import type * as catalog from "../catalog.js";
 import type * as devSeed from "../devSeed.js";
 import type * as documentProperties from "../documentProperties.js";
 import type * as documents from "../documents.js";
@@ -40,6 +46,7 @@ import type * as openai from "../openai.js";
 import type * as openaiModels from "../openaiModels.js";
 import type * as parts from "../parts.js";
 import type * as partsCard from "../partsCard.js";
+import type * as phoneServices from "../phoneServices.js";
 import type * as propertySchema from "../propertySchema.js";
 import type * as qs from "../qs.js";
 import type * as scrape_files from "../scrape_files.js";
@@ -52,18 +59,21 @@ import type * as tools_backfill_documents from "../tools/backfill_documents.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
-
+/**
+ * A utility for referencing Convex functions in your app's API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 declare const fullApi: ApiFromModules<{
   "actions/seedPortalData": typeof actions_seedPortalData;
   assistant: typeof assistant;
   authz: typeof authz;
   backfill_documents: typeof backfill_documents;
   backfill_services: typeof backfill_services;
+  catalog: typeof catalog;
   devSeed: typeof devSeed;
   documentProperties: typeof documentProperties;
   documents: typeof documents;
@@ -91,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   openaiModels: typeof openaiModels;
   parts: typeof parts;
   partsCard: typeof partsCard;
+  phoneServices: typeof phoneServices;
   propertySchema: typeof propertySchema;
   qs: typeof qs;
   scrape_files: typeof scrape_files;
@@ -103,31 +114,11 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   voice: typeof voice;
 }>;
-
-/**
- * A utility for referencing Convex functions in your app's public API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
-
-/**
- * A utility for referencing Convex functions in your app's internal API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = internal.myModule.myFunction;
- * ```
- */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
-
-export declare const components: {};
