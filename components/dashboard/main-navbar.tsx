@@ -100,7 +100,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         title: "Data & Tools",
         items: [
-          { label: "Voice Analytics", href: "/dashboard/voice-analytics", Icon: BarChart3 },
+          { label: "Voice Clone", href: "/dashboard/voice-clone", Icon: BarChart3 },
           { label: "Dashboard Terminal", href: "/dashboard/terminal", Icon: Terminal },
         ],
       },
@@ -177,6 +177,26 @@ const NAV_GROUPS: NavGroup[] = [
           { label: "Create Organization", href: "/create-organization", Icon: Layers },
           { label: "Customers", href: "/customers", Icon: UsersIcon },
           { label: "Admin Import", href: "/admin/dashboard/services/import", Icon: Wrench },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Other Tabs",
+    icon: ListChecks,
+    sections: [
+      {
+        title: "Account & Access",
+        items: [
+          { label: "Create Organization", href: "/create-organization", Icon: Layers },
+          { label: "Customers", href: "/customers", Icon: UsersIcon },
+          { label: "Unauthorized", href: "/unauthorized", Icon: Shield },
+        ],
+      },
+      {
+        title: "Previews & Misc",
+        items: [
+          { label: "Siri Preview", href: "/siri-preview", Icon: Sparkles },
         ],
       },
     ],
