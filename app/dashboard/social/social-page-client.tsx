@@ -396,8 +396,36 @@ export function SocialPageClient() {
   );
 }
 
+function Bubble({ who, text }: { who: string; text: string }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border bg-muted/30 p-3 text-sm">
+      <div className="text-xs font-medium text-muted-foreground">{who}</div>
+      <div>{text}</div>
+    </div>
+  );
+}
+
 function TabButton({
   active,
   onClick,
   children,
 }: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-md px-3 py-2 text-sm transition",
+        active
+          ? "bg-primary text-primary-foreground shadow"
+          : "border border-transparent hover:bg-accent hover:text-accent-foreground",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}

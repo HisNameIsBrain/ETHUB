@@ -17,7 +17,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useMediaQuery } from "usehooks-ts";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { UserItem } from "@/app/(app)/_components/user-item";
@@ -35,6 +34,21 @@ import { TrashBox } from "@/app/(app)/_components/trash-box";
 import { useSearch } from "@/hooks/use-search";
 import { useSettings } from "@/hooks/use-settings";
 import { Navbar } from "@/app/(app)/_components/navbar";
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(query);
+    const handler = (event: MediaQueryListEvent) => setMatches(event.matches);
+    setMatches(mql.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [query]);
+
+  return matches;
+}
 
 export const Navigation = () => {
   const router = useRouter();

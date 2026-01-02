@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // Monaco must be dynamically imported (no SSR)
-const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
+const MonacoEditor = dynamic(() => import("./MonacoEditorStub"), {
   ssr: false,
 });
 

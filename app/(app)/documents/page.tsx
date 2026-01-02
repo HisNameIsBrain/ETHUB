@@ -119,7 +119,7 @@ export default function DocumentsPage() {
                 w-full text-left text-sm
               "
               onClick={async () => {
-                const id = await create({});
+                const id = await create({ title: "Untitled" });
                 router.push(`/documents/${id}` as Route);
               }}
             >

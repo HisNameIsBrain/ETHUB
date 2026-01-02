@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,15 +73,12 @@ function computeTotal(part: Part, qty: number) {
   return totalPerUnit * qty;
 }
 
-type PageProps = {
-  params: { serviceId: string };
-};
-
-export default function ServiceDetailPage({ params }: PageProps) {
+export default function ServiceDetailPage() {
+  const params = useParams<{ serviceId: string }>();
   const router = useRouter();
   const [qty, setQty] = useState(1);
 
-  const service = mockParts.find((p) => p.id === params.serviceId);
+  const service = mockParts.find((p) => p.id === params?.serviceId);
   const related = useMemo(() => {
     if (!service) return [];
     return mockParts.filter(

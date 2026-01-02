@@ -3,14 +3,12 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 
-type JourneyPageProps = {
-  params: { slug: string };
-};
-
-export default function JourneyPage({ params }: JourneyPageProps) {
-  const journey = useQuery(api.mcJourneys.getBySlug, { slug: params.slug });
+export default function JourneyPage() {
+  const params = useParams<{ slug: string }>();
+  const journey = useQuery(api.mcJourneys.getBySlug, { slug: params?.slug ?? "" });
 
   if (journey === undefined) {
     return (

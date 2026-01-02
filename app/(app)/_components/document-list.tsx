@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 
 export default function DocumentList() {
-  const docs = useQuery(api.documents.getSidebar, {}) ?? [];
+  const docs = useQuery(api.documents.getAll, {}) ?? [];
   return (
     <ul className="space-y-1">
       {docs.map((document: any) => (

@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     if (!rel) throw new Error("Missing path");
     if (Buffer.byteLength(content, "utf8") > MAX_BYTES) {
-      throw new Error(\`Content too large (> \${MAX_BYTES} bytes)\`);
+      throw new Error(`Content too large (> ${MAX_BYTES} bytes)`);
     }
 
     const target = safeResolve(rel);
@@ -34,9 +34,6 @@ export async function POST(req: Request) {
     await fs.writeFile(target, content, "utf8");
     return NextResponse.json({ ok: true, path: rel });
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? "Error" },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: e?.message ?? "Error" }, { status: 400 });
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { Card } from "@/components/ui/card";
@@ -18,10 +18,14 @@ const statusLabel: Record<string,string> = {
   on_hold: "On Hold"
 };
 
-export default function Page({ params }: { params: { orderNumber: string } }) {
+export default function Page() {
+  const params = useParams<{ orderNumber: string }>();
   const sp = useSearchParams();
   const token = sp.get("token") ?? "";
-  const data = useQuery(api.jobs.getPublic, token ? { orderNumber: params.orderNumber, token } : "skip");
+  const data = useQuery(
+    api.jobs.getPublic,
+    token ? { orderNumber: params?.orderNumber ?? "", token } : "skip",
+  );
   const [err, setErr] = useState<string|undefined>();
   useEffect(() => { if (!token) setErr("Missing token"); }, [token]);
   if (!token) return <ErrorBox msg="Access token required."/>;

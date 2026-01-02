@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { CellEditingStoppedEvent, ColDef, GridReadyEvent } from "ag-grid-community";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import "@ag-grid-community/styles/ag-grid.css";
-import "@ag-grid-community/styles/ag-theme-quartz.css";
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-quartz.css";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -38,15 +38,44 @@ type Row = {
 };
 
 export default function InventoryPage() {
-  const rows = useQuery(api["services.inventory"].list) as Row[] | undefined;
-  const update = useMutation(api["services.inventory"].update);
+  const services = useQuery(api.services.fetch, {
+    limit: 500,
+    onlyPublic: false,
+  });
+  const update = useMutation(api.services.update);
   const gridRef = useRef<AgGridReact<Row>>(null);
 
   const [rowData, setRowData] = useState<Row[]>([]);
 
   useEffect(() => {
-    if (rows) setRowData(rows);
-  }, [rows]);
+    if (services?.services) {
+      const mapped = services.services.map((svc: any) => ({
+        _id: svc._id,
+        name: svc.title ?? svc.slug ?? "",
+        description: svc.notes ?? "",
+        price: typeof svc.priceCents === "number" ? svc.priceCents / 100 : 0,
+        isPublic: !!svc.isPublic,
+        slug: svc.slug ?? "",
+        archived: !!svc.archived,
+        buttonLabel: "",
+        buttonHref: svc.sourceUrl ?? "",
+        imageUrl: svc.imageUrl ?? "",
+        sku: svc.sku ?? svc.slug ?? "",
+        category: svc.category ?? "",
+        stockQty: svc.stockQty ?? 0,
+        minQty: svc.minQty ?? 0,
+        maxQty: svc.maxQty ?? 0,
+        tags: Array.isArray(svc.tags) ? svc.tags : [],
+        isFeatured: svc.isFeatured ?? false,
+        cost: typeof svc.costCents === "number" ? svc.costCents / 100 : 0,
+        createdBy: svc.createdBy ?? "",
+        updatedBy: svc.updatedBy ?? "",
+        createdAt: svc.createdAt ?? 0,
+        updatedAt: svc.updatedAt ?? 0,
+      }));
+      setRowData(mapped);
+    }
+  }, [services]);
 
   const colDefs = useMemo<ColDef<Row>[]>(
     () => [
@@ -168,8 +197,18 @@ export default function InventoryPage() {
   const onCellEditingStopped = async (e: CellEditingStoppedEvent<Row, any>) => {
     if (!e.data?._id || e.oldValue === e.value) return;
     const key = e.colDef.field as keyof Row;
-    const patch: Partial<Row> = { [key]: e.value } as Partial<Row>;
-    await update({ id: e.data._id as any, patch });
+    const patch: Record<string, any> = {};
+
+    if (key === "name") patch.title = String(e.value ?? "");
+    else if (key === "description") patch.notes = String(e.value ?? "");
+    else if (key === "price") patch.priceCents = Math.round(Number(e.value) * 100) || 0;
+    else if (key === "isPublic") patch.isPublic = Boolean(e.value);
+    else if (key === "archived") patch.archived = Boolean(e.value);
+    else if (key === "category") patch.category = String(e.value ?? "");
+    else if (key === "tags") patch.tags = Array.isArray(e.value) ? e.value : String(e.value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    else return;
+
+    await update({ id: e.data._id as any, ...patch });
   };
 
   const gridReady = (_e: GridReadyEvent) => {};
