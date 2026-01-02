@@ -13,14 +13,23 @@ const asServiceId = (id: string) => id as Id<"services">;
 export async function createService(
   input: {
     name: string;
-    isPublic: boolean;
+    isPublic?: boolean;
     description?: string;
     price?: number;
     deliveryTime?: string;
   },
   opts?: { revalidate?: string }
 ) {
-  await fetchMutation(api.services.create, input);
+  await fetchMutation(api.services.create, {
+    title: input.name,
+    isPublic: input.isPublic ?? false,
+    deliveryTime: input.deliveryTime,
+    notes: input.description,
+    priceCents:
+      input.price !== undefined && input.price !== null
+        ? Math.round(input.price * 100)
+        : undefined,
+  });
   if (opts?.revalidate) revalidatePath(opts.revalidate);
 }
 
@@ -45,7 +54,7 @@ export async function archiveService(
   id: string,
   opts?: { revalidate?: string }
 ) {
-  await fetchMutation(api.services.archive, { id: asServiceId(id) });
+  await fetchMutation(api.services.update, { id: asServiceId(id), archived: true });
   if (opts?.revalidate) revalidatePath(opts.revalidate);
 }
 
@@ -62,8 +71,7 @@ export async function restoreService(
   id: string,
   opts?: { revalidate?: string }
 ) {
-  // If you have `services.restore` on the server, this will just work.
-  await fetchMutation(api.services.restore, { id: asServiceId(id) });
+  await fetchMutation(api.services.update, { id: asServiceId(id), archived: false });
   if (opts?.revalidate) revalidatePath(opts.revalidate);
 }
 

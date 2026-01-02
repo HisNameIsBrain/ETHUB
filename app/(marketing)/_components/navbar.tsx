@@ -18,6 +18,9 @@ import {
   Settings as Cog,
   User as UserIcon,
   Search,
+  Code2,
+  HardDrive,
+  Terminal,
 } from "lucide-react";
 import * as React from "react";
 
@@ -53,6 +56,61 @@ function NavItem({
   );
 }
 
+type NavNode = {
+  key: string;
+  label: string;
+  href?: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  children?: NavNode[];
+};
+
+const NAV_ITEMS: NavNode[] = [
+  { key: "home", label: "Home", href: "/", Icon: HomeIcon },
+  { key: "dashboard", label: "Dashboard", href: "/dashboard", Icon: LayoutDashboard },
+  {
+    key: "services",
+    label: "Services",
+    Icon: FolderCog,
+    children: [
+      { key: "svc-all", label: "All Services", href: "/dashboard/services", Icon: FolderCog },
+      { key: "svc-new", label: "New Service", href: "/dashboard/services/new", Icon: Sparkles },
+      { key: "svc-categories", label: "Categories", href: "/dashboard/services/categories", Icon: PanelsTopLeft },
+    ],
+  },
+  {
+    key: "erealms",
+    label: "eRealms",
+    Icon: FolderCog,
+    children: [
+      { key: "erealms-home", label: "eRealms Home", href: "/mc/erealms", Icon: FolderCog },
+      { key: "erealms-games", label: "Games", href: "/mc/erealms/games", Icon: FolderCog },
+    ],
+  },
+  {
+    key: "journey",
+    label: "Journey",
+    Icon: FolderCog,
+    children: [
+      { key: "journey-index", label: "Journal Index", href: "/mc/erealms/journey", Icon: FolderCog },
+      { key: "journey-origin", label: "Origin Story", href: "/mc/erealms/journey/origin-story", Icon: FolderCog },
+    ],
+  },
+  {
+    key: "servers",
+    label: "Servers",
+    Icon: FolderCog,
+    children: [
+      { key: "servers-erealms", label: "eRealms Servers", href: "/mc/erealms/servers", Icon: FolderCog },
+      { key: "servers-all", label: "All Server Offers", href: "/servers", Icon: FolderCog },
+    ],
+  },
+  { key: "documents", label: "Documents", href: "/documents", Icon: FileText },
+  { key: "portal", label: "Portal", href: "/portal", Icon: PanelsTopLeft },
+  { key: "code", label: "Code", href: "/dashboard/code", Icon: Code2 },
+  { key: "ftp", label: "FTP", href: "/ftp", Icon: HardDrive },
+  { key: "terminal", label: "Terminal", href: "/terminal", Icon: Terminal },
+];
+
 function ProfileButtonLg() {
   return (
     <div className="relative h-12 w-12">
@@ -80,16 +138,8 @@ export default function Navbar() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [svcOpen, setSvcOpen] = React.useState(false);
-  const [svcOpenMobile, setSvcOpenMobile] = React.useState(false);
-
-  const [erealmsOpen, setErealmsOpen] = React.useState(false);
-  const [journeyOpen, setJourneyOpen] = React.useState(false);
-  const [serversOpen, setServersOpen] = React.useState(false);
-
-  const [erealmsOpenMobile, setErealmsOpenMobile] = React.useState(false);
-  const [journeyOpenMobile, setJourneyOpenMobile] = React.useState(false);
-  const [serversOpenMobile, setServersOpenMobile] = React.useState(false);
+  const [desktopOpen, setDesktopOpen] = React.useState<Record<string, boolean>>({});
+  const [mobileOpen, setMobileOpen] = React.useState<Record<string, boolean>>({});
 
   const [query, setQuery] = React.useState("");
   const [drawerQuery, setDrawerQuery] = React.useState("");
@@ -184,236 +234,100 @@ export default function Navbar() {
 
           {/* Row 3: desktop nav */}
           <div className="hidden md:flex items-center gap-1 mt-2">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.35 }}
-            >
-              <NavItem
-                href="/"
-                label="Home"
-                Icon={HomeIcon}
-                active={isActive("/")}
-              />
-            </motion.div>
+            {NAV_ITEMS.map((item) => {
+              if (!item.children?.length) {
+                return (
+                  <NavItem
+                    key={item.key}
+                    href={item.href ?? "#"}
+                    label={item.label}
+                    Icon={item.Icon}
+                    active={item.href ? isActive(item.href) : false}
+                  />
+                );
+              }
 
-            <NavItem
-              href="/dashboard"
-              label="Dashboard"
-              Icon={LayoutDashboard}
-              active={isActive("/dashboard")}
-            />
+              const open = desktopOpen[item.key];
 
-            {/* Services dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setSvcOpen((v) => !v)}
-                className={[
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/dashboard/services")
-                    ? "bg-primary text-primary-foreground border-transparent"
-                    : "hover:bg-white/5 border-transparent",
-                ].join(" ")}
-              >
-                <FolderCog className="h-4 w-4" />
-                Services
-                <ChevronDown
-                  className={`h-4 w-4 transition ${svcOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              <AnimatePresence>
-                {svcOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    onMouseLeave={() => setSvcOpen(false)}
-                    className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
+              return (
+                <div className="relative" key={item.key}>
+                  <button
+                    onClick={() =>
+                      setDesktopOpen((prev) => ({
+                        ...prev,
+                        [item.key]: !prev[item.key],
+                      }))
+                    }
+                    className={[
+                      "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
+                      item.href && pathname.startsWith(item.href)
+                        ? "bg-primary text-primary-foreground border-transparent"
+                        : "hover:bg-white/5 border-transparent",
+                    ].join(" ")}
                   >
-                    <Link
-                      href="/dashboard/services"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setSvcOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> All Services
-                    </Link>
-                    <Link
-                      href="/dashboard/services/new"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setSvcOpen(false)}
-                    >
-                      <Sparkles className="h-4 w-4" /> New Service
-                    </Link>
-                    <Link
-                      href="/dashboard/services/categories"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setSvcOpen(false)}
-                    >
-                      <PanelsTopLeft className="h-4 w-4" /> Categories
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    <item.Icon className="h-4 w-4" />
+                    {item.label}
+                    <ChevronDown
+                      className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  <AnimatePresence>
+                    {open && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        onMouseLeave={() =>
+                          setDesktopOpen((prev) => ({
+                            ...prev,
+                            [item.key]: false,
+                          }))
+                        }
+                        className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
+                      >
+                        {item.children.map((child) => (
+                          <div key={child.key} className="space-y-1">
+                            <Link
+                              href={child.href ?? "#"}
+                              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                              onClick={() =>
+                                setDesktopOpen((prev) => ({
+                                  ...prev,
+                                  [item.key]: false,
+                                }))
+                              }
+                            >
+                              <child.Icon className="h-4 w-4" /> {child.label}
+                            </Link>
 
-            {/* eRealms dropdown -> /app/mc/erealms/... */}
-            <div className="relative">
-              <button
-                onClick={() => setErealmsOpen((v) => !v)}
-                className={[
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/mc/erealms")
-                    ? "bg-primary text-primary-foreground border-transparent"
-                    : "hover:bg-white/5 border-transparent",
-                ].join(" ")}
-              >
-                <FolderCog className="h-4 w-4" />
-                eRealms
-                <ChevronDown
-                  className={`h-4 w-4 transition ${
-                    erealmsOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {erealmsOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    onMouseLeave={() => setErealmsOpen(false)}
-                    className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
-                  >
-                    <Link
-                      href="/mc/erealms"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setErealmsOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> eRealms Home
-                    </Link>
-                    <Link
-                      href="/mc/erealms/games"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setErealmsOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> Games
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Journey dropdown -> /app/mc/erealms/journey/... */}
-            <div className="relative">
-              <button
-                onClick={() => setJourneyOpen((v) => !v)}
-                className={[
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/mc/erealms/journey")
-                    ? "bg-primary text-primary-foreground border-transparent"
-                    : "hover:bg-white/5 border-transparent",
-                ].join(" ")}
-              >
-                <FolderCog className="h-4 w-4" />
-                Journey
-                <ChevronDown
-                  className={`h-4 w-4 transition ${
-                    journeyOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {journeyOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    onMouseLeave={() => setJourneyOpen(false)}
-                    className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
-                  >
-                    <Link
-                      href="/mc/erealms/journey"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setJourneyOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> Journal Index
-                    </Link>
-                    <Link
-                      href="/mc/erealms/journey/origin-story"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setJourneyOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> Origin Story
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Servers dropdown -> /app/mc/erealms/servers/... */}
-            <div className="relative">
-              <button
-                onClick={() => setServersOpen((v) => !v)}
-                className={[
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition border",
-                  pathname.startsWith("/mc/erealms/servers") ||
-                  pathname.startsWith("/servers")
-                    ? "bg-primary text-primary-foreground border-transparent"
-                    : "hover:bg-white/5 border-transparent",
-                ].join(" ")}
-              >
-                <FolderCog className="h-4 w-4" />
-                Servers
-                <ChevronDown
-                  className={`h-4 w-4 transition ${
-                    serversOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {serversOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    onMouseLeave={() => setServersOpen(false)}
-                    className="absolute left-0 mt-2 w-56 rounded-lg border bg-background shadow-lg p-2"
-                  >
-                    <Link
-                      href="/mc/erealms/servers"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setServersOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> eRealms Servers
-                    </Link>
-                    <Link
-                      href="/servers"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                      onClick={() => setServersOpen(false)}
-                    >
-                      <FolderCog className="h-4 w-4" /> All Server Offers
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <NavItem
-              href="/documents"
-              label="Documents"
-              Icon={FileText}
-              active={isActive("/documents")}
-            />
-            <NavItem
-              href="/portal"
-              label="Portal"
-              Icon={PanelsTopLeft}
-              active={isActive("/portal")}
-            />
+                            {child.children?.length ? (
+                              <div className="ml-6 space-y-1">
+                                {child.children.map((grand) => (
+                                  <Link
+                                    key={grand.key}
+                                    href={grand.href ?? "#"}
+                                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/5"
+                                    onClick={() =>
+                                      setDesktopOpen((prev) => ({
+                                        ...prev,
+                                        [item.key]: false,
+                                      }))
+                                    }
+                                  >
+                                    <grand.Icon className="h-4 w-4" /> {grand.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
         </div>
       </nav>
@@ -493,228 +407,16 @@ export default function Navbar() {
 
               {/* Links */}
               <div className="p-2 space-y-1 overflow-y-auto">
-                <Link
-                  href="/"
-                  onClick={() => setOpen(false)}
-                  className={[
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                    isActive("/")
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  <HomeIcon className="h-4 w-4" /> Home
-                </Link>
-
-                <Link
-                  href="/dashboard"
-                  onClick={() => setOpen(false)}
-                  className={[
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                    isActive("/dashboard")
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  <LayoutDashboard className="h-4 w-4" /> Dashboard
-                </Link>
-
-                {/* Services nested */}
-                <button
-                  onClick={() => setSvcOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                >
-                  <span className="inline-flex items-center gap-3">
-                    <FolderCog className="h-4 w-4" /> Services
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${
-                      svcOpenMobile ? "rotate-180" : ""
-                    }`}
+                {NAV_ITEMS.map((item) => (
+                  <MobileNavNode
+                    key={item.key}
+                    item={item}
+                    isActive={isActive}
+                    closeDrawer={() => setOpen(false)}
+                    mobileOpen={mobileOpen}
+                    setMobileOpen={setMobileOpen}
                   />
-                </button>
-                <AnimatePresence initial={false}>
-                  {svcOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
-                    >
-                      <Link
-                        href="/dashboard/services"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        All Services
-                      </Link>
-                      <Link
-                        href="/dashboard/services/new"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        New Service
-                      </Link>
-                      <Link
-                        href="/dashboard/services/categories"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Categories
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* eRealms nested */}
-                <button
-                  onClick={() => setErealmsOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                >
-                  <span className="inline-flex items-center gap-3">
-                    <FolderCog className="h-4 w-4" /> eRealms
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${
-                      erealmsOpenMobile ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                <AnimatePresence initial={false}>
-                  {erealmsOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
-                    >
-                      <Link
-                        href="/mc/erealms"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        eRealms Home
-                      </Link>
-                      <Link
-                        href="/mc/erealms/games"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Games
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Journey nested */}
-                <button
-                  onClick={() => setJourneyOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                >
-                  <span className="inline-flex items-center gap-3">
-                    <FolderCog className="h-4 w-4" /> Journey
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${
-                      journeyOpenMobile ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                <AnimatePresence initial={false}>
-                  {journeyOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
-                    >
-                      <Link
-                        href="/mc/erealms/journey"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Journal Index
-                      </Link>
-                      <Link
-                        href="/mc/erealms/journey/origin-story"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        Origin Story
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Servers nested */}
-                <button
-                  onClick={() => setServersOpenMobile((v) => !v)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
-                >
-                  <span className="inline-flex items-center gap-3">
-                    <FolderCog className="h-4 w-4" /> Servers
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${
-                      serversOpenMobile ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                <AnimatePresence initial={false}>
-                  {serversOpenMobile && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="ml-8 flex flex-col"
-                    >
-                      <Link
-                        href="/mc/erealms/servers"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        eRealms Servers
-                      </Link>
-                      <Link
-                        href="/servers"
-                        onClick={() => setOpen(false)}
-                        className="px-3 py-2 text-sm rounded-md hover:bg-white/5"
-                      >
-                        All Server Offers
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <Link
-                  href="/documents"
-                  onClick={() => setOpen(false)}
-                  className={[
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                    isActive("/documents")
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  <FileText className="h-4 w-4" /> Documents
-                </Link>
-
-                <Link
-                  href="/portal"
-                  onClick={() => setOpen(false)}
-                  className={[
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                    isActive("/portal")
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  <PanelsTopLeft className="h-4 w-4" /> Portal
-                </Link>
+                ))}
               </div>
 
               {/* Settings pinned bottom */}
@@ -737,6 +439,90 @@ export default function Navbar() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function MobileNavNode({
+  item,
+  depth = 0,
+  isActive,
+  closeDrawer,
+  mobileOpen,
+  setMobileOpen,
+}: {
+  item: NavNode;
+  depth?: number;
+  isActive: (href: string) => boolean;
+  closeDrawer: () => void;
+  mobileOpen: Record<string, boolean>;
+  setMobileOpen: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}) {
+  const hasChildren = !!item.children?.length;
+  const open = mobileOpen[item.key];
+  const leftPad = depth * 12;
+
+  if (!hasChildren) {
+    return (
+      <Link
+        href={item.href ?? "#"}
+        onClick={closeDrawer}
+        className={[
+          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+          isActive(item.href ?? "")
+            ? "bg-primary text-primary-foreground"
+            : "hover:bg-white/5",
+        ].join(" ")}
+        style={{ marginLeft: leftPad }}
+      >
+        <item.Icon className="h-4 w-4" /> {item.label}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="space-y-1" style={{ marginLeft: leftPad }}>
+      <button
+        onClick={() =>
+          setMobileOpen((prev) => ({
+            ...prev,
+            [item.key]: !prev[item.key],
+          }))
+        }
+        className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/5"
+        aria-expanded={open}
+      >
+        <span className="inline-flex items-center gap-3">
+          <item.Icon className="h-4 w-4" /> {item.label}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col"
+          >
+            {item.children?.map((child) => (
+              <MobileNavNode
+                key={child.key}
+                item={child}
+                depth={depth + 1}
+                isActive={isActive}
+                closeDrawer={closeDrawer}
+                mobileOpen={mobileOpen}
+                setMobileOpen={setMobileOpen}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

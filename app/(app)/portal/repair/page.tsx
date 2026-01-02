@@ -25,7 +25,7 @@ export default function RepairPage() {
 
       <Card className="p-4">
         <h2 className="font-medium text-lg mb-2">Invoices</h2>
-        <AssistantInvoiceControls lastAssistantText={assistantText} />
+        <AssistantInvoiceControls />
       </Card>
 
       <AssistantLauncher onAssistantMessage={setAssistantText} />

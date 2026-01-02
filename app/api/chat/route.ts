@@ -1,22 +1,4 @@
-import type { NextRequest } from "next/server";
 import { NextRequest } from "next/server";
-import { streamText } from "ai";
-import { openai } from "@ai-sdk/openai";
-import { MOBILE_REPAIR_SYSTEM_PROMPT } from "@/lib/prompts/mobileRepair";
-
-export const runtime = "edge"; // optional
-
-export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
-
-  const result = await streamText({
-    model: openai("gpt-4.1-mini"), // pick your model
-    system: MOBILE_REPAIR_SYSTEM_PROMPT, // <-- your system prompt
-    messages, // user/assistant turns from your UI
-  });
-
-  return result.toAIStreamResponse();
-}
 
 export const runtime = "nodejs"; // needed if you call localhost in dev
 

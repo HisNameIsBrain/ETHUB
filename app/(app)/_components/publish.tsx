@@ -11,7 +11,7 @@ type PublishProps =
 export function Publish(props: PublishProps) {
   const doc = (props as any).doc ?? (props as any).initialData;
   const update = useMutation(api.documents.update);
-  const toggle = () => doc && update({ id: doc._id as any, isPublished: !Boolean(doc.isPublished) });
+  const toggle = () => doc && update({ id: doc._id as any });
 
   return (
     <button

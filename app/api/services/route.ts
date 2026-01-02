@@ -4,7 +4,7 @@ export const revalidate = 0;
 
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "./_generated/api";
+import { api } from "@/convex/_generated/api";
 
 const PAGE_SIZE = 10;
 const TIMEOUT_MS = 8000;

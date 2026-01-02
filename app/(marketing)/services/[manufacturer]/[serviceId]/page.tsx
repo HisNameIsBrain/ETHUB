@@ -51,7 +51,7 @@ export default function ManufacturerServicesPage() {
         type="single"
         collapsible
         value={open}
-        onValueChange={setOpen}
+        onValueChange={(val) => setOpen(val as string | undefined)}
         className="space-y-3"
       >
         {(serviceGroups ?? []).map((svc) => (

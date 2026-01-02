@@ -3,22 +3,21 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
-type ServerDetailProps = {
-  params: { slug: string };
-};
-
-export default function ServerDetailPage({ params }: ServerDetailProps) {
-  const plan = useQuery(api.mcServerPlans.getBySlug, { slug: params.slug });
+export default function ServerDetailPage() {
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug ?? "";
+  const plan = useQuery(api.mcServerPlans.getBySlug, { slug });
   const logClick = useMutation(api.mcButtonClicks.logClick);
 
   const handleLaunchClick = async () => {
     await logClick({
       buttonKey: "launch_realm",
-      path: `/mc/erealms/servers/${params.slug}`,
-      metadata: { planSlug: params.slug },
+      path: `/mc/erealms/servers/${slug}`,
+      metadata: { planSlug: slug },
     });
   };
 

@@ -603,7 +603,7 @@ export default function PortalPage() {
 
                             <div className="flex flex-wrap gap-1">
                               <Button
-                                size="xs"
+                                size="sm"
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -614,7 +614,7 @@ export default function PortalPage() {
                               </Button>
 
                               <Button
-                                size="xs"
+                                size="sm"
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -642,7 +642,7 @@ export default function PortalPage() {
                     <div key={inv._id} className="flex justify-between items-center gap-2">
                       <div className="truncate">{inv.description}</div>
                       <Button
-                        size="xs"
+                        size="sm"
                         variant="outline"
                         onClick={() => setActiveInvoiceId(inv._id)}
                       >
@@ -807,41 +807,41 @@ export default function PortalPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  <Button size="xs" onClick={() => handleJobSetStatus(activeJob, "diagnosis")}>
+                  <Button size="sm" onClick={() => handleJobSetStatus(activeJob, "diagnosis")}>
                     Diagnosis
                   </Button>
-                  <Button size="xs" onClick={() => handleJobSetStatus(activeJob, "awaiting_parts")}>
+                  <Button size="sm" onClick={() => handleJobSetStatus(activeJob, "awaiting_parts")}>
                     Awaiting Parts
                   </Button>
-                  <Button size="xs" onClick={() => handleJobSetStatus(activeJob, "repair")}>
+                  <Button size="sm" onClick={() => handleJobSetStatus(activeJob, "repair")}>
                     Repair
                   </Button>
-                  <Button size="xs" onClick={() => handleJobSetStatus(activeJob, "qa")}>
+                  <Button size="sm" onClick={() => handleJobSetStatus(activeJob, "qa")}>
                     QA
                   </Button>
-                  <Button size="xs" onClick={() => handleJobSetStatus(activeJob, "ready")}>
+                  <Button size="sm" onClick={() => handleJobSetStatus(activeJob, "ready")}>
                     Ready
                   </Button>
-                  <Button size="xs" onClick={() => handleJobSetStatus(activeJob, "delivered")}>
+                  <Button size="sm" onClick={() => handleJobSetStatus(activeJob, "delivered")}>
                     Delivered
                   </Button>
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  <Button size="xs" variant="outline" onClick={() => handleJobPassQA(activeJob)}>
+                  <Button size="sm" variant="outline" onClick={() => handleJobPassQA(activeJob)}>
                     Pass QA (qs.passQA)
                   </Button>
-                  <Button size="xs" variant="outline" onClick={() => handleJobAddNote(activeJob)}>
+                  <Button size="sm" variant="outline" onClick={() => handleJobAddNote(activeJob)}>
                     Add note (jobs.addEvent)
                   </Button>
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  <Button size="xs" variant="secondary" onClick={() => handleGeneratePublicLink(activeJob)}>
+                  <Button size="sm" variant="secondary" onClick={() => handleGeneratePublicLink(activeJob)}>
                     Generate client link
                   </Button>
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="ghost"
                     onClick={() =>
                       router.push(`/portal/${activeJob.orderNumber}` as Route)
@@ -924,7 +924,7 @@ export default function PortalPage() {
                       Category: {p.category ?? p.metadata?.category ?? "—"}
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      SKU: {p.sku ?? p.vendorSku ?? "—"}
+                      SKU: {p.sku ?? p.metadata?.sku ?? p.vendor ?? "—"}
                     </div>
                     <div className="text-sm font-semibold">
                       {fmtMoney(p.price, p.currency)}{" "}

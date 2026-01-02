@@ -27,9 +27,9 @@ const MAX_OUT = 200_000;
 const TIMEOUT_MS = 12_000;
 
 function tokenize(input: string) {
-  const bad = /[|&;><`$\\\\]/;
+  const bad = /[|&;><`$\\]/;
   if (bad.test(input)) throw new Error("Unsupported shell characters");
-  const parts = input.trim().split(/\\s+/).filter(Boolean);
+  const parts = input.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) throw new Error("Empty command");
   return parts;
 }
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const parts = tokenize(String(cmd ?? ""));
     const bin = parts[0];
 
-    if (!ALLOW.has(bin)) throw new Error(\`Command not allowed: \${bin}\`);
+    if (!ALLOW.has(bin)) throw new Error(`Command not allowed: ${bin}`);
 
     const child = spawn(bin, parts.slice(1), {
       cwd: APP_ROOT,

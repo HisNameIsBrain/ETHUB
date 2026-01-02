@@ -16,7 +16,12 @@ export default function NewServicePage() {
 
   const onSubmit = async () => {
     if (!name.trim()) return;
-    const promise = createService({ name, description: "", price: 0 });
+    const promise = createService({
+      title: name,
+      notes: "",
+      priceCents: 0,
+      isPublic: false,
+    });
     toast.promise(promise, {
       loading: "Creating service...",
       success: () => {
