@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "TS_NODE_COMPILER_OPTIONS=\"{\\\"module\\\":\\\"CommonJS\\\",\\\"moduleResolution\\\":\\\"node\\\"}\" node --test -r ts-node/register/transpile-only",
+    "check:conflicts": "node scripts/check-merge-conflicts.js",
     "mcp:terminal": "node scripts/terminal-mcp-agent.mjs"
   },
   "dependencies": {
