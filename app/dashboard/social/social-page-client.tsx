@@ -396,8 +396,26 @@ export function SocialPageClient() {
   );
 }
 
+
 function TabButton({
   active,
   onClick,
   children,
 }: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-md border px-3 py-1.5 text-sm",
+        active ? "bg-accent" : "hover:bg-accent",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}

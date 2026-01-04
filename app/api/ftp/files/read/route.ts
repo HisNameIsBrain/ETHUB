@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const st = await fs.lstat(target);
     if (st.isSymbolicLink()) throw new Error("Symlinks not allowed");
     if (!st.isFile()) throw new Error("Not a file");
-    if (st.size > MAX_BYTES) throw new Error(\`File too large (> \${MAX_BYTES} bytes)\`);
+    if (st.size > MAX_BYTES) throw new Error(`File too large (> ${MAX_BYTES} bytes)`);
 
     const content = await fs.readFile(target, "utf8");
     return NextResponse.json({ ok: true, path: rel, content });
