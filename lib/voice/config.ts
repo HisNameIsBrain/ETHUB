@@ -14,8 +14,16 @@ export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
 
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 const DEFAULT_ALLOWED_IPS = new Set(["127.0.0.1", "::1"]);
+const TRUSTED_IP_HEADER = () =>
+  process.env.VOICE_TRUSTED_IP_HEADER?.toLowerCase().trim() || undefined;
 
 type RequestWithIp = Request & { ip?: string | null };
+
+function normalizeIp(value?: string | null) {
+  if (!value) return undefined;
+  const trimmed = String(value).trim();
+  return trimmed || undefined;
+}
 
 export function getAllowedClientIps() {
   const raw = process.env.VOICE_ALLOWED_IPS;
@@ -29,21 +37,26 @@ export function getAllowedClientIps() {
 }
 
 export function getRequestIp(req: RequestWithIp) {
-  const directIp = req.ip ?? (req as any)?.ip;
-  if (directIp && String(directIp).trim()) return String(directIp).trim();
+  const directIp = normalizeIp(req.ip ?? (req as any)?.ip);
+  if (directIp) return directIp;
 
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const parts = forwarded
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
-    const last = parts.at(-1);
-    if (last) return last;
+  const trustedHeader = TRUSTED_IP_HEADER();
+  if (trustedHeader) {
+    const headerValue = req.headers.get(trustedHeader);
+    if (headerValue) {
+      if (trustedHeader === "x-forwarded-for") {
+        const parts = headerValue
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean);
+        if (parts.length) return parts[0];
+      }
+
+      const normalized = normalizeIp(headerValue);
+      if (normalized) return normalized;
+    }
   }
 
-  const real = req.headers.get("x-real-ip");
-  if (real && real.trim()) return real.trim();
   return undefined;
 }
 

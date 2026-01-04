@@ -7,6 +7,7 @@ This module enables authenticated users to record voice samples locally in the b
 - `VOICE_MASTER_KEY` – **required**, 32-byte base64 string used as the master encryption key for AES-256-GCM. Generate this securely (for example, from a local `openssl rand -base64 32` invocation) and keep it private.
 - `VOICE_STORAGE_DIR` – optional custom directory for private storage. Defaults to `<repo>/.private/voice`.
 - `VOICE_ALLOWED_IPS` – optional comma-separated allowlist of client IPs permitted to call the voice APIs. Defaults to loopback (`127.0.0.1`, `::1`).
+- `VOICE_TRUSTED_IP_HEADER` – optional trusted header name (e.g., `x-forwarded-for`) to read the client IP from when behind a known proxy. When unset, client-provided forwarding headers are ignored and only the direct request IP is used.
 
 ## Storage layout
 

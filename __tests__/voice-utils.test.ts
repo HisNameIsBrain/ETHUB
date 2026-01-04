@@ -47,25 +47,44 @@ test("getAllowedClientIps defaults to localhost loopback", () => {
 
 test("assertAllowedClientIp enforces allowlist", () => {
   process.env.VOICE_ALLOWED_IPS = "10.0.0.1";
-  const okReq = new Request("http://localhost/api", { headers: { "x-forwarded-for": "9.9.9.9, 10.0.0.1" } });
-  const blockedReq = new Request("http://localhost/api", { headers: { "x-forwarded-for": "8.8.8.8" } });
+  process.env.VOICE_TRUSTED_IP_HEADER = "x-forwarded-for";
+
+  const okReq = new Request("http://localhost/api", {
+    headers: { "x-forwarded-for": "10.0.0.1, 9.9.9.9" },
+  });
+  const blockedReq = new Request("http://localhost/api", {
+    headers: { "x-forwarded-for": "8.8.8.8, 10.0.0.1" },
+  });
   assert.doesNotThrow(() => assertAllowedClientIp(okReq));
   assert.throws(() => assertAllowedClientIp(blockedReq));
 });
 
 test("assertAllowedClientIp falls back to localhost when no ip present", () => {
   delete process.env.VOICE_ALLOWED_IPS;
+  delete process.env.VOICE_TRUSTED_IP_HEADER;
   const req = new Request("http://localhost/api");
   assert.doesNotThrow(() => assertAllowedClientIp(req));
 });
 
 test("getRequestIp uses direct ip when present", () => {
+  delete process.env.VOICE_TRUSTED_IP_HEADER;
   const req = new Request("http://localhost/api") as Request & { ip?: string };
   req.ip = "192.168.0.1";
   assert.strictEqual(getRequestIp(req), "192.168.0.1");
 });
 
-test("getRequestIp extracts last forwarded ip", () => {
-  const req = new Request("http://localhost/api", { headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" } });
-  assert.strictEqual(getRequestIp(req), "5.6.7.8");
+test("getRequestIp ignores forwarded headers when not trusted", () => {
+  delete process.env.VOICE_TRUSTED_IP_HEADER;
+  const req = new Request("http://localhost/api", {
+    headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" },
+  });
+  assert.strictEqual(getRequestIp(req), undefined);
+});
+
+test("getRequestIp respects trusted forwarded header", () => {
+  process.env.VOICE_TRUSTED_IP_HEADER = "x-forwarded-for";
+  const req = new Request("http://localhost/api", {
+    headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" },
+  });
+  assert.strictEqual(getRequestIp(req), "1.2.3.4");
 });
