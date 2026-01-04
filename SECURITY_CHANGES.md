@@ -3,6 +3,7 @@
 ## Current changes (paths, lines, severity)
 - Local-only voice service guard (`lib/voice/config.ts` lines 15-22): blocks any non-localhost VOICE_SERVICE_URL usage. **Severity mitigated:** High (prevents remote voice endpoint exposure). Enforced by callers in `/app/api/voice/train/route.ts` and `/app/api/voice/speak/route.ts`.
 - IP allowlist enforcement (`lib/voice/config.ts`): rejects voice API requests unless the client IP matches the allowlist (defaults to loopback only or `VOICE_ALLOWED_IPS`). Forwarding headers are ignored unless a trusted header is explicitly configured via `VOICE_TRUSTED_IP_HEADER`. **Severity mitigated:** High (ensures voice endpoints are reachable only from explicitly permitted addresses without trusting spoofable client headers). Applied across all voice API routes.
+- Global security headers (`middleware.ts`): enforces anti-clickjacking (`X-Frame-Options`), MIME sniffing protection (`X-Content-Type-Options`), strict referrer handling, cross-origin isolation, and HSTS on all matched routes. **Severity mitigated:** Medium (reduces browser-side exploit surface across the app).
 - Encrypted-at-rest voice storage (`lib/voice/crypto.ts` and `lib/voice/storage.ts`): per-user HKDF AES-256-GCM for recordings and metadata outside `public/`. **Severity mitigated:** High (protects recorded audio if filesystem is accessed).
 - Dependency patches (`package.json`): `jsonwebtoken@9.0.3`, `autoprefixer@10.4.23`, `tailwindcss@3.4.19`. **Severity mitigated:** Medium (applies upstream security/maintenance fixes).
 
